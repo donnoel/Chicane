@@ -104,7 +104,7 @@ struct AppSettings: Codable, Hashable, Sendable {
     var showSpoilersSection: Bool
 
     static let `default` = AppSettings(
-        seasonBetText: "Winner chooses a chore: wash the other's windows.",
+        seasonBetText: "Winner determines.",
         spoilerGateEnabled: true,
         spoilersDontAskAgain: false,
         showSpoilersSection: false
