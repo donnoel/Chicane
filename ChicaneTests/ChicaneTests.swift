@@ -124,6 +124,30 @@ final class ChicaneTests: XCTestCase {
         XCTAssertEqual(dateComponents.day, 29)
     }
 
+    func testF1ResultsParserExtractsTopThreeDriverNames() {
+        let html = """
+        <table>
+            <tbody>
+                <tr class="Table-module_body-row__shKd-">
+                    <td>1</td><td>4</td>
+                    <td><span class="max-lg:hidden">Lando</span>&nbsp;<span class="max-md:hidden">Norris</span><span class="md:hidden">NOR</span></td>
+                </tr>
+                <tr class="Table-module_body-row__shKd-">
+                    <td>2</td><td>1</td>
+                    <td><span class="max-lg:hidden">Max</span>&nbsp;<span class="max-md:hidden">Verstappen</span><span class="md:hidden">VER</span></td>
+                </tr>
+                <tr class="Table-module_body-row__shKd-">
+                    <td>3</td><td>63</td>
+                    <td><span class="max-lg:hidden">George</span>&nbsp;<span class="max-md:hidden">Russell</span><span class="md:hidden">RUS</span></td>
+                </tr>
+            </tbody>
+        </table>
+        """
+
+        let names = OnlineResultRepository.parseF1PodiumNames(from: html)
+        XCTAssertEqual(names, ["Lando Norris", "Max Verstappen", "George Russell"])
+    }
+
     private func base64Context(_ dictionary: [String: String]) throws -> String {
         let data = try JSONSerialization.data(withJSONObject: dictionary)
         return data.base64EncodedString()

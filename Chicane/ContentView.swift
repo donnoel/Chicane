@@ -10,6 +10,7 @@ struct ContentView: View {
     let viewModel = AppViewModel(
         driverRepository: BundledDriverRepository(),
         calendarRepository: BundledCalendarRepository(),
+        resultRepository: OnlineResultRepository(),
         seasonRepository: LocalSeasonRepository()
     )
     ContentView()

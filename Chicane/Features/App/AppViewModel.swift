@@ -15,6 +15,7 @@ final class AppViewModel: ObservableObject {
 
     private let driverRepository: DriverRepository
     private let calendarRepository: CalendarRepository
+    private let resultRepository: ResultRepository
     private let seasonRepository: SeasonRepository
     private let scoringService = ScoringService()
     private let scoreboardCalculator = ScoreboardCalculator()
@@ -25,10 +26,12 @@ final class AppViewModel: ObservableObject {
     init(
         driverRepository: DriverRepository,
         calendarRepository: CalendarRepository,
+        resultRepository: ResultRepository,
         seasonRepository: SeasonRepository
     ) {
         self.driverRepository = driverRepository
         self.calendarRepository = calendarRepository
+        self.resultRepository = resultRepository
         self.seasonRepository = seasonRepository
     }
 
@@ -150,6 +153,31 @@ final class AppViewModel: ObservableObject {
         apply(state: state)
     }
 
+    func updateResultFromOfficialSource(
+        series: RaceSeries,
+        eventID: String,
+        lockResult: Bool = true
+    ) async throws {
+        guard let event = events(for: series).first(where: { $0.id == eventID }) else {
+            throw AppViewModelError.eventNotFound
+        }
+
+        let officialNames = try await resultRepository.podium(for: event)
+        guard officialNames.count == 3 else {
+            throw AppViewModelError.resultUnavailable
+        }
+
+        let ids: [String] = try officialNames.map { name in
+            if let id = matchingParticipantID(for: name, series: series) {
+                return id
+            }
+            throw AppViewModelError.participantNotFound(name: name)
+        }
+
+        let draft = PodiumDraft(p1: ids[0], p2: ids[1], p3: ids[2])
+        try await saveResult(series: series, eventID: eventID, draft: draft, lockResult: lockResult)
+    }
+
     func unlockResult(series: RaceSeries, eventID: String) async throws {
         guard var existing = result(for: series, eventID: eventID) else {
             return
@@ -232,15 +260,69 @@ final class AppViewModel: ObservableObject {
         results = state.results
         settings = state.settings
     }
+
+    private func matchingParticipantID(for name: String, series: RaceSeries) -> String? {
+        let normalizedTarget = normalizedParticipantName(name)
+        guard !normalizedTarget.isEmpty else { return nil }
+
+        let participants = drivers(for: series)
+
+        if let exact = participants.first(where: { normalizedParticipantName($0.name) == normalizedTarget }) {
+            return exact.id
+        }
+
+        if let partial = participants.first(where: {
+            let candidate = normalizedParticipantName($0.name)
+            return candidate.contains(normalizedTarget) || normalizedTarget.contains(candidate)
+        }) {
+            return partial.id
+        }
+
+        let targetTokens = Set(normalizedTarget.split(separator: " ").map(String.init))
+        if let tokenMatch = participants.first(where: {
+            let candidateTokens = Set(normalizedParticipantName($0.name).split(separator: " ").map(String.init))
+            return candidateTokens.intersection(targetTokens).count >= 2
+        }) {
+            return tokenMatch.id
+        }
+
+        return nil
+    }
+
+    private func normalizedParticipantName(_ value: String) -> String {
+        value
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .replacingOccurrences(
+                of: #"[^a-zA-Z0-9 ]"#,
+                with: " ",
+                options: .regularExpression
+            )
+            .replacingOccurrences(
+                of: #"\s+"#,
+                with: " ",
+                options: .regularExpression
+            )
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
 }
 
 enum AppViewModelError: LocalizedError {
     case resultLocked
+    case eventNotFound
+    case resultUnavailable
+    case participantNotFound(name: String)
 
     var errorDescription: String? {
         switch self {
         case .resultLocked:
             return "Results are locked. Unlock first to edit."
+        case .eventNotFound:
+            return "Selected event could not be found."
+        case .resultUnavailable:
+            return "Official top-3 results are not available for this event yet."
+        case let .participantNotFound(name):
+            return "Could not match \(name) with the current participant list."
         }
     }
 }

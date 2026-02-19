@@ -37,7 +37,7 @@ Chicane tracks standings across:
 | Feature | Description |
 |--------|-------------|
 | Podium Picks | Create/edit picks per series, round, and player. |
-| Results Locking | Enter actual podium results, then lock to prevent accidental edits. |
+| Results Update + Locking | Tap `Update Results` to fetch official top-3 podium, then lock to prevent accidental edits. |
 | Exact Scoring | Position-only scoring (no points for correct rider/driver in wrong position). |
 | Scoreboard | Series and combined standings, plus per-event history. |
 | Spoiler Safety | No race spoilers by default; Spoilers section is optional and gated. |
@@ -64,7 +64,7 @@ Chicane tracks standings across:
 2. Driver/rider lists and calendars refresh from online sources when available.
 3. If network fetch fails, bundled seed JSON is used automatically.
 4. Users enter picks for each event.
-5. Users enter actual results and lock the event.
+5. Users tap `Update Results` to pull official podium results and lock the event.
 6. Standings are computed deterministically from stored picks/results.
 
 ---

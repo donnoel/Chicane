@@ -83,7 +83,7 @@ struct ResultsView: View {
 
     private var pickerHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Enter race result podium")
+            Text("Update race result podium")
                 .font(.title2.weight(.bold))
 
             Picker("Series", selection: $selectedSeries) {
@@ -145,7 +145,7 @@ struct ResultsView: View {
                 participantSingular: participantSingular,
                 participantPlural: participantPlural,
                 draft: $draft,
-                isDisabled: currentResult?.isLocked == true
+                isDisabled: true
             )
 
             if currentResult?.isLocked == true {
@@ -157,13 +157,14 @@ struct ResultsView: View {
                 .frame(minHeight: 44)
                 .accessibilityHint("Confirm to edit this locked result")
             } else {
-                Button("Save and lock result") {
+                Button("Update Results") {
                     Task {
-                        await saveResult()
+                        await updateResults()
                     }
                 }
                 .buttonStyle(LargeActionButtonStyle())
-                .accessibilityLabel("Save and lock result")
+                .accessibilityLabel("Update results")
+                .accessibilityHint("Fetches official top three and locks this result")
             }
         }
         .glassCard()
@@ -191,7 +192,7 @@ struct ResultsView: View {
                 .font(.headline)
 
             if points.isEmpty {
-                Text("Save the result to compute points.")
+                Text("Update results to compute points.")
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else {
@@ -231,16 +232,15 @@ struct ResultsView: View {
         draft = PodiumDraft(podium: existingResult.podium)
     }
 
-    private func saveResult() async {
+    private func updateResults() async {
         guard let selectedEventID else { return }
         do {
-            try await viewModel.saveResult(
+            try await viewModel.updateResultFromOfficialSource(
                 series: selectedSeries,
                 eventID: selectedEventID,
-                draft: draft,
                 lockResult: true
             )
-            statusMessage = "Result saved and locked."
+            statusMessage = "Results updated and locked."
             hydrateDraft()
         } catch {
             viewModel.errorMessage = error.localizedDescription
@@ -251,7 +251,7 @@ struct ResultsView: View {
         guard let selectedEventID else { return }
         do {
             try await viewModel.unlockResult(series: selectedSeries, eventID: selectedEventID)
-            statusMessage = "Result unlocked. Edit and save to lock again."
+            statusMessage = "Result unlocked. Tap Update Results to refresh official podium."
             hydrateDraft()
         } catch {
             viewModel.errorMessage = error.localizedDescription

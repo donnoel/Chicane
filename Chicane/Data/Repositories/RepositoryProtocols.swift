@@ -9,6 +9,10 @@ protocol CalendarRepository: Sendable {
     func allEvents() async throws -> [RaceEvent]
 }
 
+protocol ResultRepository: Sendable {
+    func podium(for event: RaceEvent) async throws -> [String]
+}
+
 protocol SeasonRepository: Sendable {
     func loadState() async throws -> PersistedState
     func savePlayers(_ players: [Player]) async throws -> PersistedState
