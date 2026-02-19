@@ -3,54 +3,63 @@
 # Chicane Project Guide for Agents
 
 ## Product intent
-Describe what this app is for in plain language.
-Suggested structure:
-- Who the app serves
-- The main problem it solves
-- The success criteria
+- Audience: two or more family/friend viewers tracking F1 and MotoGP weekend podium bets.
+- Problem solved: fast, spoiler-safe pick entry and season-long scoring without accounts or cloud setup.
+- Success criteria: simple flow for older users (large controls, clear labels), deterministic scoring, reliable offline persistence.
 
-## Current product phase (scaffold)
-This file is expected to evolve over time.
-Update this section as soon as implementation starts.
-
-Starter checklist:
-1) Define MVP scope
-2) Define architecture boundaries
-3) Define reliability and UX goals
-4) Define testing priorities
+## Current product phase (MVP implemented)
+1) MVP scope: Home, Picks, Results, Scoreboard, Spoilers, Settings.
+2) Architecture boundaries: SwiftUI views + single app-level `AppViewModel`, repository layer, scoring services.
+3) Reliability/UX goals: no default spoilers, locked results protection, atomic file writes.
+4) Testing priorities: scoring rule correctness and standings aggregation.
 
 ## Architecture snapshot (current)
-Capture the current technical shape as it becomes real:
-- app entry and navigation model
-- core view models/services
-- data flow and persistence
+- App entry/navigation:
+  - `ChicaneApp` injects `AppViewModel`.
+  - `RootTabView` hosts tabs for Home, Picks, Results, Scoreboard, optional Spoilers tab, Settings.
+- Core view models/services:
+  - `AppViewModel` (main-actor UI state orchestration)
+  - `ScoringService` and `ScoreboardCalculator` (pure logic)
+  - `LocalSeasonRepository` + `FileStateStore` (actor-based persistence)
+  - `BundledDriverRepository` / `BundledCalendarRepository` (seed JSON loaders)
+- Data flow/persistence:
+  - Seed data from bundled JSON in `Chicane/Resources/Seed`.
+  - User state persisted to application-support JSON file with atomic writes.
 
 ## Concurrency rules (important)
-Keep rules explicit for this project as they become known.
-- keep UI state on the main actor
-- keep IO/network work off the main actor
-- avoid broad isolation as a shortcut
+- Keep SwiftUI/view model state on `@MainActor`.
+- Keep disk IO and repository mutations off main actor via actors.
+- Default actor isolation is configured to `nonisolated`; do not rely on broad global actor defaults.
 
 ## Behavior invariants (do not regress)
-List critical product contracts once identified.
-Examples:
-- setup flows
-- creation/sync pipelines
-- data safety guarantees
+- No spoilers shown unless user explicitly enters results or confirms spoiler gate.
+- Podium picks/results must contain 3 unique drivers.
+- Scoring is position-exact only (P1/P2/P3 exact matches only, 0-3 points per event).
+- Locked results must not be editable until explicit unlock confirmation.
+- Season reset clears picks/results but preserves players/settings.
 
 ## UX rules
-Document UX guarantees (copy tone, interactions, failure handling, keyboard flows).
+- Large controls and readable typography by default.
+- Keep interactions short and explicit with clear confirmation/error copy.
+- Spoilers tab hidden by default; warning gate must appear when enabled and configured.
 
 ## Coding conventions
-Project-specific style or patterns that go beyond AGENTS.md.
+- Prefer small, focused types in `Domain`, `Data`, `Features`, `Shared`.
+- Avoid third-party dependencies.
+- Use deterministic services for business logic and unit testing.
 
 ## Build/run notes
-- target platforms
-- warning policy
-- local run/test setup notes
+- Platforms: iPhone + iPad only (`TARGETED_DEVICE_FAMILY = 1,2`).
+- Warning policy: zero warnings for app build.
+- Build command:
+  - `xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'generic/platform=iOS Simulator' build`
+- Unit tests:
+  - `xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:ChicaneTests test`
 
 ## Near-term priorities
-Keep this list short and current.
+- Add focused UI tests for picks/results lock flow.
+- Add optional remote data repositories behind explicit user opt-in.
+- Expand calendar/driver seed update documentation.
 
 ## Output expectations per patch
 Provide:

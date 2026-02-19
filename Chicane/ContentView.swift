@@ -2,15 +2,16 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "globe")
-                .imageScale(.large)
-            Text("Hello, world!")
-        }
-        .padding()
+        RootTabView()
     }
 }
 
 #Preview {
+    let viewModel = AppViewModel(
+        driverRepository: BundledDriverRepository(),
+        calendarRepository: BundledCalendarRepository(),
+        seasonRepository: LocalSeasonRepository()
+    )
     ContentView()
+        .environmentObject(viewModel)
 }

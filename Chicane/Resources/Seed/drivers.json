@@ -1,0 +1,25 @@
+{
+  "drivers": [
+    { "id": "f1-verstappen", "series": "formula1", "name": "Max Verstappen", "team": "Red Bull Racing", "number": "1" },
+    { "id": "f1-norris", "series": "formula1", "name": "Lando Norris", "team": "McLaren", "number": "4" },
+    { "id": "f1-leclerc", "series": "formula1", "name": "Charles Leclerc", "team": "Ferrari", "number": "16" },
+    { "id": "f1-hamilton", "series": "formula1", "name": "Lewis Hamilton", "team": "Ferrari", "number": "44" },
+    { "id": "f1-piastri", "series": "formula1", "name": "Oscar Piastri", "team": "McLaren", "number": "81" },
+    { "id": "f1-russell", "series": "formula1", "name": "George Russell", "team": "Mercedes", "number": "63" },
+    { "id": "f1-sainz", "series": "formula1", "name": "Carlos Sainz", "team": "Williams", "number": "55" },
+    { "id": "f1-alonso", "series": "formula1", "name": "Fernando Alonso", "team": "Aston Martin", "number": "14" },
+    { "id": "f1-gasly", "series": "formula1", "name": "Pierre Gasly", "team": "Alpine", "number": "10" },
+    { "id": "f1-albon", "series": "formula1", "name": "Alex Albon", "team": "Williams", "number": "23" },
+
+    { "id": "mgp-bagnaia", "series": "motoGP", "name": "Francesco Bagnaia", "team": "Ducati Lenovo", "number": "63" },
+    { "id": "mgp-mmarquez", "series": "motoGP", "name": "Marc Marquez", "team": "Ducati Lenovo", "number": "93" },
+    { "id": "mgp-amarquez", "series": "motoGP", "name": "Alex Marquez", "team": "Gresini Racing", "number": "73" },
+    { "id": "mgp-martin", "series": "motoGP", "name": "Jorge Martin", "team": "Aprilia Racing", "number": "1" },
+    { "id": "mgp-binder", "series": "motoGP", "name": "Brad Binder", "team": "Red Bull KTM", "number": "33" },
+    { "id": "mgp-acosta", "series": "motoGP", "name": "Pedro Acosta", "team": "Red Bull KTM", "number": "31" },
+    { "id": "mgp-quartararo", "series": "motoGP", "name": "Fabio Quartararo", "team": "Monster Yamaha", "number": "20" },
+    { "id": "mgp-bezzecchi", "series": "motoGP", "name": "Marco Bezzecchi", "team": "Aprilia Racing", "number": "72" },
+    { "id": "mgp-vinales", "series": "motoGP", "name": "Maverick Vinales", "team": "Tech3 KTM", "number": "12" },
+    { "id": "mgp-zarco", "series": "motoGP", "name": "Johann Zarco", "team": "LCR Honda", "number": "5" }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "events": [
+    {
+      "id": "f1-2026-australia",
+      "series": "formula1",
+      "season": 2026,
+      "round": 1,
+      "title": "Australian Grand Prix",
+      "circuit": "Albert Park",
+      "raceDate": "2026-03-15T04:00:00Z"
+    },
+    {
+      "id": "f1-2026-japan",
+      "series": "formula1",
+      "season": 2026,
+      "round": 2,
+      "title": "Japanese Grand Prix",
+      "circuit": "Suzuka",
+      "raceDate": "2026-03-29T05:00:00Z"
+    },
+    {
+      "id": "f1-2026-bahrain",
+      "series": "formula1",
+      "season": 2026,
+      "round": 3,
+      "title": "Bahrain Grand Prix",
+      "circuit": "Sakhir",
+      "raceDate": "2026-04-12T15:00:00Z"
+    },
+    {
+      "id": "f1-2026-monaco",
+      "series": "formula1",
+      "season": 2026,
+      "round": 4,
+      "title": "Monaco Grand Prix",
+      "circuit": "Monte Carlo",
+      "raceDate": "2026-05-24T13:00:00Z"
+    },
+    {
+      "id": "f1-2026-silverstone",
+      "series": "formula1",
+      "season": 2026,
+      "round": 5,
+      "title": "British Grand Prix",
+      "circuit": "Silverstone",
+      "raceDate": "2026-07-05T14:00:00Z"
+    },
+
+    {
+      "id": "mgp-2026-qatar",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 1,
+      "title": "Qatar GP",
+      "circuit": "Lusail",
+      "raceDate": "2026-03-08T17:00:00Z"
+    },
+    {
+      "id": "mgp-2026-portugal",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 2,
+      "title": "Portuguese GP",
+      "circuit": "Portimao",
+      "raceDate": "2026-03-22T14:00:00Z"
+    },
+    {
+      "id": "mgp-2026-spain",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 3,
+      "title": "Spanish GP",
+      "circuit": "Jerez",
+      "raceDate": "2026-04-26T13:00:00Z"
+    },
+    {
+      "id": "mgp-2026-france",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 4,
+      "title": "French GP",
+      "circuit": "Le Mans",
+      "raceDate": "2026-05-10T12:00:00Z"
+    },
+    {
+      "id": "mgp-2026-italy",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 5,
+      "title": "Italian GP",
+      "circuit": "Mugello",
+      "raceDate": "2026-05-31T13:00:00Z"
+    }
+  ]
+}
