@@ -37,7 +37,7 @@ struct PodiumPickerSection: View {
             if draft.hasDuplicates {
                 Text("Pick 3 unique \(participantPlural)")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.red)
+                    .foregroundStyle(ChicaneTheme.f1Red)
                     .accessibilityLabel("Error: Pick 3 unique \(participantPlural)")
             }
         }
@@ -67,7 +67,7 @@ struct PodiumPickerSection: View {
             .frame(minHeight: 48, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.primary.opacity(0.05))
+                    .fill(Color.white.opacity(0.1))
             )
             .accessibilityLabel("\(title) selection")
             .accessibilityHint("Select a \(participantSingular)")

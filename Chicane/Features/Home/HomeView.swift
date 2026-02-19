@@ -15,6 +15,7 @@ struct HomeView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .tint(ChicaneTheme.motoBlue)
                 .accessibilityLabel("Standings series")
 
                 nextRaceCard
@@ -29,12 +30,17 @@ struct HomeView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Weekend Podium Bets")
-                .font(.largeTitle.weight(.bold))
-                .minimumScaleFactor(0.8)
+            HStack(spacing: 10) {
+                Image(systemName: "flag.checkered.2.crossed")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(ChicaneTheme.actionGradient)
+                Text("Weekend Podium Bets")
+                    .font(.largeTitle.weight(.bold))
+                    .minimumScaleFactor(0.8)
+            }
             Text("Friendly picks for Formula 1 and MotoGP")
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.white.opacity(0.88))
         }
     }
 
@@ -48,14 +54,15 @@ struct HomeView: View {
                     .font(.title2.weight(.semibold))
                 Text(event.circuit)
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white.opacity(0.86))
                 Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
                     .font(.body.weight(.medium))
                 Text(event.series.title)
                     .font(.callout.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.15), in: Capsule())
+                    .foregroundStyle(.white)
+                    .background(ChicaneTheme.seriesColor(event.series), in: Capsule())
             } else {
                 Text("No upcoming race in the sample calendar")
                     .font(.body)
@@ -92,7 +99,7 @@ struct HomeView: View {
 
             Text(viewModel.leaderText(for: selectedScope))
                 .font(.body.weight(.semibold))
-                .foregroundStyle(.blue)
+                .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
         }
         .glassCard()
         .accessibilityElement(children: .contain)
@@ -102,6 +109,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Season bet", systemImage: "sparkles")
                 .font(.headline)
+                .foregroundStyle(ChicaneTheme.actionGradient)
             Text(viewModel.settings.seasonBetText)
                 .font(.body)
                 .foregroundStyle(.primary)

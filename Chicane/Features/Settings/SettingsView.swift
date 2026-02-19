@@ -21,12 +21,13 @@ struct SettingsView: View {
                 Section {
                     Text(statusMessage)
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(ChicaneTheme.motoBlue)
                 }
             }
         }
         .scrollContentBackground(.hidden)
         .background(LiquidGlassBackground())
+        .tint(ChicaneTheme.motoBlue)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .task {

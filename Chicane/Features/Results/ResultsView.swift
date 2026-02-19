@@ -27,7 +27,7 @@ struct ResultsView: View {
                 if let statusMessage {
                     Text(statusMessage)
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(ChicaneTheme.motoBlue)
                 }
             }
             .padding(20)
@@ -92,6 +92,7 @@ struct ResultsView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .tint(ChicaneTheme.motoBlue)
 
             Picker("Event", selection: $selectedEventID) {
                 Text("Choose event").tag(Optional<String>.none)
@@ -112,11 +113,20 @@ struct ResultsView: View {
 
     private func eventHeader(event: RaceEvent) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(event.title)
-                .font(.title3.weight(.semibold))
+            HStack {
+                Text(event.title)
+                    .font(.title3.weight(.semibold))
+                Spacer()
+                Text(event.series.shortTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(ChicaneTheme.seriesColor(event.series), in: Capsule())
+            }
             Text("Round \(event.round) · \(event.circuit)")
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.white.opacity(0.88))
             Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
                 .font(.body)
         }

@@ -16,6 +16,7 @@ struct ScoreboardView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .tint(ChicaneTheme.motoBlue)
                 .accessibilityLabel("Scoreboard scope")
 
                 standingsCard
@@ -52,7 +53,7 @@ struct ScoreboardView: View {
 
                 Text(viewModel.leaderText(for: selectedScope))
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
             }
         }
         .glassCard()
@@ -78,9 +79,10 @@ struct ScoreboardView: View {
                             Spacer()
                             Text(row.series.shortTitle)
                                 .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Color.blue.opacity(0.15), in: Capsule())
+                                .background(ChicaneTheme.seriesColor(row.series), in: Capsule())
                         }
 
                         Text(DateFormatter.dayMonthYear.string(from: row.event.raceDate))
@@ -101,7 +103,7 @@ struct ScoreboardView: View {
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.primary.opacity(0.05))
+                            .fill(Color.white.opacity(0.1))
                     )
                 }
             }

@@ -52,6 +52,9 @@ struct RootTabView: View {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
             }
+            .tint(ChicaneTheme.motoBlue)
+            .toolbarBackground(.visible, for: .tabBar)
+            .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         }
         .task {
             await viewModel.loadIfNeeded()

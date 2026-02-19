@@ -42,10 +42,11 @@ struct NewsView: View {
         VStack(alignment: .leading, spacing: 16) {
             Label("Spoiler warning", systemImage: "exclamationmark.triangle.fill")
                 .font(.title2.weight(.bold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(ChicaneTheme.glowAmber)
 
             Text("This section may contain spoilers. Continue?")
                 .font(.title3)
+                .foregroundStyle(Color.white.opacity(0.9))
 
             Toggle("Don't show this warning again", isOn: $dontShowAgain)
                 .font(.body)
@@ -85,7 +86,7 @@ struct NewsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.primary.opacity(0.05))
+                        .fill(Color.white.opacity(0.08))
                 )
             }
         }
