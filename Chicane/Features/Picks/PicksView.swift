@@ -64,6 +64,14 @@ struct PicksView: View {
         viewModel.drivers(for: selectedSeries)
     }
 
+    private var participantSingular: String {
+        selectedSeries == .motoGP ? "rider" : "driver"
+    }
+
+    private var participantPlural: String {
+        selectedSeries == .motoGP ? "riders" : "drivers"
+    }
+
     private var pickerHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Create weekend podium picks")
@@ -113,6 +121,8 @@ struct PicksView: View {
                 PodiumPickerSection(
                     title: "\(player.name)'s podium",
                     drivers: drivers,
+                    participantSingular: participantSingular,
+                    participantPlural: participantPlural,
                     draft: binding(for: player.id)
                 )
 

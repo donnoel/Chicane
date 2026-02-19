@@ -73,6 +73,14 @@ struct ResultsView: View {
         return viewModel.result(for: selectedSeries, eventID: selectedEventID)
     }
 
+    private var participantSingular: String {
+        selectedSeries == .motoGP ? "rider" : "driver"
+    }
+
+    private var participantPlural: String {
+        selectedSeries == .motoGP ? "riders" : "drivers"
+    }
+
     private var pickerHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Enter race result podium")
@@ -124,6 +132,8 @@ struct ResultsView: View {
             PodiumPickerSection(
                 title: "Actual podium",
                 drivers: viewModel.drivers(for: selectedSeries),
+                participantSingular: participantSingular,
+                participantPlural: participantPlural,
                 draft: $draft,
                 isDisabled: currentResult?.isLocked == true
             )

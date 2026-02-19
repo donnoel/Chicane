@@ -27,7 +27,7 @@ enum RepositoryError: LocalizedError {
         case let .missingBundleResource(name):
             return "Missing bundled resource: \(name)."
         case .invalidPodium:
-            return "Pick 3 unique drivers."
+            return "Pick 3 unique podium selections."
         }
     }
 }

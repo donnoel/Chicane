@@ -10,7 +10,7 @@
 ## Current product phase (MVP implemented)
 1) MVP scope: Home, Picks, Results, Scoreboard, Spoilers, Settings.
 2) Architecture boundaries: SwiftUI views + single app-level `AppViewModel`, repository layer, scoring services.
-3) Reliability/UX goals: no default spoilers, locked results protection, atomic file writes.
+3) Reliability/UX goals: no default spoilers, locked results protection, atomic file writes, online data with bundled fallback.
 4) Testing priorities: scoring rule correctness and standings aggregation.
 
 ## Architecture snapshot (current)
@@ -21,9 +21,12 @@
   - `AppViewModel` (main-actor UI state orchestration)
   - `ScoringService` and `ScoreboardCalculator` (pure logic)
   - `LocalSeasonRepository` + `FileStateStore` (actor-based persistence)
+  - `OnlineDriverRepository` / `OnlineCalendarRepository` (official source fetchers)
+  - `FallbackDriverRepository` / `FallbackCalendarRepository` (automatic offline fallback)
   - `BundledDriverRepository` / `BundledCalendarRepository` (seed JSON loaders)
 - Data flow/persistence:
-  - Seed data from bundled JSON in `Chicane/Resources/Seed`.
+  - Online refresh for calendars/drivers from official sources when reachable.
+  - Seed data from bundled JSON in `Chicane/Resources/Seed` when online fetch fails.
   - User state persisted to application-support JSON file with atomic writes.
 
 ## Concurrency rules (important)
@@ -33,7 +36,7 @@
 
 ## Behavior invariants (do not regress)
 - No spoilers shown unless user explicitly enters results or confirms spoiler gate.
-- Podium picks/results must contain 3 unique drivers.
+- Podium picks/results must contain 3 unique participants (drivers for F1, riders for MotoGP).
 - Scoring is position-exact only (P1/P2/P3 exact matches only, 0-3 points per event).
 - Locked results must not be editable until explicit unlock confirmation.
 - Season reset clears picks/results but preserves players/settings.
@@ -58,7 +61,7 @@
 
 ## Near-term priorities
 - Add focused UI tests for picks/results lock flow.
-- Add optional remote data repositories behind explicit user opt-in.
+- Add lightweight repository tests for online payload/HTML parsing edge cases.
 - Expand calendar/driver seed update documentation.
 
 ## Output expectations per patch

@@ -3,8 +3,26 @@ import SwiftUI
 struct PodiumPickerSection: View {
     let title: String
     let drivers: [Driver]
+    let participantSingular: String
+    let participantPlural: String
     @Binding var draft: PodiumDraft
     var isDisabled = false
+
+    init(
+        title: String,
+        drivers: [Driver],
+        participantSingular: String = "driver",
+        participantPlural: String = "drivers",
+        draft: Binding<PodiumDraft>,
+        isDisabled: Bool = false
+    ) {
+        self.title = title
+        self.drivers = drivers
+        self.participantSingular = participantSingular
+        self.participantPlural = participantPlural
+        _draft = draft
+        self.isDisabled = isDisabled
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -17,10 +35,10 @@ struct PodiumPickerSection: View {
             positionPicker(title: "P3", position: 3, selection: $draft.p3)
 
             if draft.hasDuplicates {
-                Text("Pick 3 unique drivers")
+                Text("Pick 3 unique \(participantPlural)")
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.red)
-                    .accessibilityLabel("Error: Pick 3 unique drivers")
+                    .accessibilityLabel("Error: Pick 3 unique \(participantPlural)")
             }
         }
         .disabled(isDisabled)
@@ -36,7 +54,7 @@ struct PodiumPickerSection: View {
                 .font(.body.weight(.semibold))
 
             Picker(title, selection: selection) {
-                Text("Choose driver")
+                Text("Choose \(participantSingular)")
                     .tag(Optional<String>.none)
                 ForEach(drivers) { driver in
                     Text("\(driver.name) (\(driver.team))")
@@ -52,7 +70,7 @@ struct PodiumPickerSection: View {
                     .fill(Color.primary.opacity(0.05))
             )
             .accessibilityLabel("\(title) selection")
-            .accessibilityHint("Select a driver")
+            .accessibilityHint("Select a \(participantSingular)")
         }
     }
 }

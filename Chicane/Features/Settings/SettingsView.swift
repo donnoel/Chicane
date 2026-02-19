@@ -131,7 +131,7 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Section("About & Privacy") {
             Text("No account. Data stored on device.")
-            Text("Offline-first MVP with bundled drivers and calendar placeholders.")
+            Text("Offline-first MVP with bundled driver/rider lists and calendar placeholders.")
                 .foregroundStyle(.secondary)
         }
     }

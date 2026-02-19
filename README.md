@@ -22,9 +22,12 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 - Settings for players, season reset, spoiler behavior, and season bet text
 
 ## Architecture
-SwiftUI + MVVM with offline-first repositories:
+SwiftUI + MVVM with online-first repositories and offline fallback:
 - `AppViewModel` orchestrates app state for all screens
-- `DriverRepository` and `CalendarRepository` read bundled JSON
+- `OnlineDriverRepository` and `OnlineCalendarRepository` fetch current data from:
+  - `https://www.formula1.com` (drivers + season calendar page parsing)
+  - `https://api.pulselive.motogp.com/motogp/v1` (riders + events API used by motogp.com)
+- `FallbackDriverRepository` and `FallbackCalendarRepository` automatically fall back to bundled JSON when online fetch fails
 - `SeasonRepository` (`LocalSeasonRepository`) persists picks/results/settings
 - `ScoringService` and `ScoreboardCalculator` provide deterministic scoring logic
 
@@ -41,5 +44,6 @@ State is stored locally on-device as JSON via atomic file writes:
 
 ## Privacy
 - No account
-- No required network calls
-- Data stays on device
+- Picks, results, players, and settings stay on device
+- Calendar/driver reference data is fetched from official Formula 1 and MotoGP sources when online
+- If online fetch is unavailable, the app uses bundled offline seed data

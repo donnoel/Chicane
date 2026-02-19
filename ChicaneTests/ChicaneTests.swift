@@ -60,4 +60,72 @@ final class ChicaneTests: XCTestCase {
         XCTAssertEqual(standings.last?.player.name, "Don")
         XCTAssertEqual(standings.last?.points, 3)
     }
+
+    func testF1DriverParserParsesUniqueDriverCards() throws {
+        let gaslyContext = try base64Context([
+            "actionType": "driver_card_clicked",
+            "driverName": "Pierre Gasly",
+            "driverTeam": "Alpine"
+        ])
+        let norrisContext = try base64Context([
+            "actionType": "driver_card_clicked",
+            "driverName": "Lando Norris",
+            "driverTeam": "McLaren"
+        ])
+
+        let html = """
+        <a data-f1rd-a7s-click="driver_card_click" data-f1rd-a7s-context="\(gaslyContext)" href="/en/drivers/pierre-gasly">
+        <a data-f1rd-a7s-click="driver_card_click" data-f1rd-a7s-context="\(norrisContext)" href="/en/drivers/lando-norris">
+        <a data-f1rd-a7s-click="driver_card_click" data-f1rd-a7s-context="\(gaslyContext)" href="/en/drivers/pierre-gasly">
+        """
+
+        let drivers = F1OfficialHTMLParser.parseDrivers(from: html)
+        XCTAssertEqual(drivers.count, 2)
+        XCTAssertEqual(drivers.map(\.id), ["f1-lando-norris", "f1-pierre-gasly"])
+    }
+
+    func testF1CalendarParserSkipsTestingAndParsesRaceDate() throws {
+        let testingContext = try base64Context([
+            "raceName": "FORMULA 1 PRE-SEASON TESTING 2026",
+            "trackName": "Bahrain"
+        ])
+        let round3Context = try base64Context([
+            "raceName": "FORMULA 1 ARAMCO JAPANESE GRAND PRIX 2026",
+            "trackName": "Suzuka"
+        ])
+        let round4Context = try base64Context([
+            "raceName": "FORMULA 1 GULF AIR BAHRAIN GRAND PRIX 2026",
+            "trackName": "Sakhir"
+        ])
+
+        let html = """
+        <a class="group" data-f1rd-a7s-context="\(testingContext)" href="/en/racing/2026/pre-season-testing">
+            <span>TESTING</span>
+            <span>18 - 20 Feb</span>
+        </a>
+        <a class="group" data-f1rd-a7s-context="\(round3Context)" href="/en/racing/2026/japan">
+            <span>ROUND 3</span>
+            <span>27 - 29 Mar</span>
+        </a>
+        <a class="group" data-f1rd-a7s-context="\(round4Context)" href="/en/racing/2026/bahrain">
+            <span>ROUND 4</span>
+            <span>10 - 12 Apr</span>
+        </a>
+        """
+
+        let events = F1OfficialHTMLParser.parseEvents(from: html, expectedSeason: 2026)
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(events.map(\.round), [3, 4])
+        XCTAssertEqual(events.first?.circuit, "Suzuka")
+
+        let dateComponents = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: events.first!.raceDate)
+        XCTAssertEqual(dateComponents.year, 2026)
+        XCTAssertEqual(dateComponents.month, 3)
+        XCTAssertEqual(dateComponents.day, 29)
+    }
+
+    private func base64Context(_ dictionary: [String: String]) throws -> String {
+        let data = try JSONSerialization.data(withJSONObject: dictionary)
+        return data.base64EncodedString()
+    }
 }
