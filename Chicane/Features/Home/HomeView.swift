@@ -47,7 +47,7 @@ struct HomeView: View {
             }
             Text("Friendly picks for Formula 1 and MotoGP")
                 .font(.title3)
-                .foregroundStyle(Color.white.opacity(0.88))
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -61,7 +61,7 @@ struct HomeView: View {
                     .font(.title2.weight(.semibold))
                 Text(event.circuit)
                     .font(.body)
-                    .foregroundStyle(Color.white.opacity(0.86))
+                    .foregroundStyle(.secondary)
                 Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
                     .font(.body.weight(.medium))
                 Text(event.series.title)
