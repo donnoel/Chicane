@@ -7,12 +7,11 @@ struct RootTabView: View {
 
     var body: some View {
         ZStack {
-            LiquidGlassBackground()
-
             TabView {
                 NavigationStack {
                     HomeView()
                 }
+                .background(LiquidGlassBackground())
                 .tabItem {
                     Label("Home", systemImage: "house.fill")
                 }
@@ -20,6 +19,7 @@ struct RootTabView: View {
                 NavigationStack {
                     PicksView()
                 }
+                .background(LiquidGlassBackground())
                 .tabItem {
                     Label("Picks", systemImage: "checklist")
                 }
@@ -27,6 +27,7 @@ struct RootTabView: View {
                 NavigationStack {
                     ResultsView()
                 }
+                .background(LiquidGlassBackground())
                 .tabItem {
                     Label("Results", systemImage: "flag.checkered")
                 }
@@ -34,6 +35,7 @@ struct RootTabView: View {
                 NavigationStack {
                     ScoreboardView()
                 }
+                .background(LiquidGlassBackground())
                 .tabItem {
                     Label("Scoreboard", systemImage: "chart.bar.fill")
                 }
@@ -42,6 +44,7 @@ struct RootTabView: View {
                     NavigationStack {
                         NewsView()
                     }
+                    .background(LiquidGlassBackground())
                     .tabItem {
                         Label("Spoilers", systemImage: "newspaper.fill")
                     }
@@ -50,6 +53,7 @@ struct RootTabView: View {
                 NavigationStack {
                     SettingsView()
                 }
+                .background(LiquidGlassBackground())
                 .tabItem {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
@@ -63,7 +67,6 @@ struct RootTabView: View {
             }
             .padding(.top, 10)
         }
-        .preferredColorScheme(.dark)
         .task {
             await viewModel.loadIfNeeded()
         }
