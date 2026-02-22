@@ -37,32 +37,48 @@ enum ChicaneTheme {
 }
 
 struct LiquidGlassBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [ChicaneTheme.deepNavy, ChicaneTheme.dusk, Color.black.opacity(0.88)],
+                colors: backgroundGradientColors,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
             Circle()
-                .fill(ChicaneTheme.f1Red.opacity(0.36))
+                .fill(ChicaneTheme.f1Red.opacity(colorScheme == .dark ? 0.36 : 0.22))
                 .frame(width: 340)
                 .blur(radius: 95)
                 .offset(x: -170, y: -250)
 
             Circle()
-                .fill(ChicaneTheme.motoBlue.opacity(0.33))
+                .fill(ChicaneTheme.motoBlue.opacity(colorScheme == .dark ? 0.33 : 0.20))
                 .frame(width: 380)
                 .blur(radius: 100)
                 .offset(x: 180, y: 280)
 
             Capsule()
-                .fill(Color.white.opacity(0.12))
+                .fill(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.08))
                 .frame(width: 360, height: 110)
                 .blur(radius: 85)
                 .offset(x: 0, y: 340)
+        }
+    }
+
+    private var backgroundGradientColors: [Color] {
+        switch colorScheme {
+        case .dark:
+            return [ChicaneTheme.deepNavy, ChicaneTheme.dusk, Color.black.opacity(0.88)]
+        default:
+            // Keep the same overall character in Light mode, but lift values slightly for readability.
+            return [
+                ChicaneTheme.deepNavy.opacity(0.78),
+                ChicaneTheme.dusk.opacity(0.62),
+                Color.black.opacity(0.22)
+            ]
         }
     }
 }
@@ -94,7 +110,7 @@ struct GlassCardModifier: ViewModifier {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.55),
+                                Color.primary.opacity(0.35),
                                 ChicaneTheme.motoBlue.opacity(0.22),
                                 ChicaneTheme.f1Red.opacity(0.22)
                             ],

@@ -63,6 +63,7 @@ struct RootTabView: View {
             }
             .padding(.top, 10)
         }
+        .preferredColorScheme(.dark)
         .task {
             await viewModel.loadIfNeeded()
         }
