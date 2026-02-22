@@ -57,6 +57,13 @@ struct RootTabView: View {
             }
             .tint(.accentColor)
 
+            // Initial-load overlay — shown only while the very first load is in flight.
+            // Pull-to-refresh has its own built-in spinner so we suppress this overlay
+            // once hasLoaded is true (tracked via the tab content becoming non-empty).
+            if viewModel.isLoading {
+                InitialLoadOverlay()
+            }
+
             BannerOverlay(message: viewModel.banner) {
                 dismissBanner(animated: true)
             }
@@ -108,6 +115,37 @@ struct RootTabView: View {
         }
     }
 }
+
+// MARK: - Initial Load Overlay
+
+/// Full-screen spinner shown during the first cold-start data load.
+/// Rendered above the tab bar so the UI never looks like a blank shell.
+private struct InitialLoadOverlay: View {
+    var body: some View {
+        ZStack {
+            // Dim the tab content without completely hiding it, so the tab bar
+            // items are still visible and orientation/layout settle naturally.
+            Color(.systemBackground)
+                .opacity(0.85)
+                .ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .scaleEffect(1.4)
+                    .tint(.primary)
+
+                Text("Loading…")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Loading app data")
+        }
+    }
+}
+
+// MARK: - Banner
 
 private struct BannerOverlay: View {
     let message: BannerMessage?

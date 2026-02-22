@@ -51,6 +51,18 @@ actor FileStateStore {
 
 actor LocalSeasonRepository: SeasonRepository {
     private let store: FileStateStore
+
+    /// In-memory mirror of the last persisted state.
+    ///
+    /// **Known limitation — intentional for this use-case:**
+    /// `cachedState` is populated on first load and updated on every write that goes
+    /// through this actor.  It is *not* invalidated if the backing file is modified
+    /// externally (e.g. by iCloud Drive sync, a future Share Extension, or direct
+    /// file-system access in tests).  For the current single-process, no-cloud design
+    /// this is safe: all writes flow through `mutateState` which always refreshes the
+    /// cache.  If a background-sync or multi-process scenario is added in future, replace
+    /// this with a file-coordinator / NSFilePresenter based approach, or simply set
+    /// `cachedState = nil` before any load that must see external changes.
     private var cachedState: PersistedState?
 
     init(store: FileStateStore = FileStateStore()) {

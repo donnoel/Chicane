@@ -28,13 +28,18 @@ enum F1OfficialHTMLParser {
         ?? fallbackNeverMatchRegex
     }()
 
+    // Captures: (1) optional start-day, (3) optional start-month abbreviation,
+    //           (2) end-day, (4) end-month abbreviation.
+    // Examples: "27 - 29 Mar"  →  start=nil, end=29, endMonth="Mar"
+    //           "30 Dec - 1 Jan" → startDay=30, startMonth="Dec", endDay=1, endMonth="Jan"
     private static let dateRangeRegex: NSRegularExpression = {
-        (try? NSRegularExpression(pattern: #"(\d{1,2})(?:\s+[A-Za-z]{3})?\s*-\s*(\d{1,2})\s+([A-Za-z]{3})"#))
-        ?? fallbackNeverMatchRegex
+        (try? NSRegularExpression(
+            pattern: #"(\d{1,2})(?:\s+([A-Za-z]{3,4}))?\s*-\s*(\d{1,2})\s+([A-Za-z]{3,4})"#
+        )) ?? fallbackNeverMatchRegex
     }()
 
     private static let singleDateRegex: NSRegularExpression = {
-        (try? NSRegularExpression(pattern: #"(\d{1,2})\s+([A-Za-z]{3})"#))
+        (try? NSRegularExpression(pattern: #"(\d{1,2})\s+([A-Za-z]{3,4})"#))
         ?? fallbackNeverMatchRegex
     }()
 
@@ -144,25 +149,46 @@ enum F1OfficialHTMLParser {
         return round
     }
 
+    /// Parses the race date from a card's inner HTML.
+    ///
+    /// **Year-boundary handling:**
+    /// F1 seasons occasionally end with a late-December race whose weekend card shows
+    /// a date range that spans New Year's Eve into January of the following year
+    /// (e.g. "30 Dec – 1 Jan").  In that case the end date (race day) belongs to
+    /// `season + 1`, not `season`.  We detect this by checking whether the range
+    /// start-month is December while the end-month is January.
     private static func parseRaceDate(from cardHTML: String, season: Int) -> Date? {
-        if let match = dateRangeRegex.firstMatch(in: cardHTML, range: NSRange(cardHTML.startIndex..<cardHTML.endIndex, in: cardHTML)) {
+        let cardRange = NSRange(cardHTML.startIndex..<cardHTML.endIndex, in: cardHTML)
+
+        if let match = dateRangeRegex.firstMatch(in: cardHTML, range: cardRange) {
+            // Group indices for the updated regex:
+            // 1 = start day, 2 = start month (optional), 3 = end day, 4 = end month
             guard
-                let endDayRaw = cardHTML.substring(for: match.range(at: 2)),
-                let monthRaw = cardHTML.substring(for: match.range(at: 3)),
-                let day = Int(endDayRaw),
-                let month = monthMap[monthRaw.lowercased()]
+                let endDayRaw   = cardHTML.substring(for: match.range(at: 3)),
+                let endMonthRaw = cardHTML.substring(for: match.range(at: 4)),
+                let endDay      = Int(endDayRaw),
+                let endMonth    = monthMap[endMonthRaw.lowercased()]
             else {
                 return nil
             }
-            return makeDate(year: season, month: month, day: day)
+
+            // Detect year-boundary: start is December, end rolls into January.
+            var year = season
+            if endMonth == 1,
+               let startMonthRaw = cardHTML.substring(for: match.range(at: 2)),
+               monthMap[startMonthRaw.lowercased()] == 12 {
+                year = season + 1
+            }
+
+            return makeDate(year: year, month: endMonth, day: endDay)
         }
 
-        if let match = singleDateRegex.firstMatch(in: cardHTML, range: NSRange(cardHTML.startIndex..<cardHTML.endIndex, in: cardHTML)) {
+        if let match = singleDateRegex.firstMatch(in: cardHTML, range: cardRange) {
             guard
-                let dayRaw = cardHTML.substring(for: match.range(at: 1)),
+                let dayRaw   = cardHTML.substring(for: match.range(at: 1)),
                 let monthRaw = cardHTML.substring(for: match.range(at: 2)),
-                let day = Int(dayRaw),
-                let month = monthMap[monthRaw.lowercased()]
+                let day      = Int(dayRaw),
+                let month    = monthMap[monthRaw.lowercased()]
             else {
                 return nil
             }

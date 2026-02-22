@@ -155,3 +155,37 @@ struct LargeActionButtonStyle: ButtonStyle {
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
+
+// MARK: - Loading overlay
+
+/// A subtle full-screen overlay shown while the app is loading data.
+/// Applied once at the `RootTabView` level so all tabs share a single indicator.
+struct LoadingOverlayModifier: ViewModifier {
+    let isLoading: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if isLoading {
+                    ZStack {
+                        Color.black.opacity(0.25)
+                            .ignoresSafeArea()
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
+                            .scaleEffect(1.4)
+                            .padding(24)
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+                    .accessibilityLabel("Loading")
+                }
+            }
+    }
+}
+
+extension View {
+    func loadingOverlay(isLoading: Bool) -> some View {
+        modifier(LoadingOverlayModifier(isLoading: isLoading))
+    }
+}

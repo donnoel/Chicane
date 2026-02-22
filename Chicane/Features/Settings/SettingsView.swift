@@ -22,7 +22,6 @@ struct SettingsView: View {
             spoilerSection
             betSection
             resetSection
-            aboutSection
         }
         .tint(.accentColor)
         .navigationTitle("Settings")
@@ -126,14 +125,6 @@ struct SettingsView: View {
                 showResetConfirmation = true
             }
             .frame(minHeight: 44)
-        }
-    }
-
-    private var aboutSection: some View {
-        Section("About & Privacy") {
-            Text("No account. Data stored on device.")
-            Text("Offline-first MVP with bundled driver/rider lists and calendar placeholders.")
-                .foregroundStyle(.secondary)
         }
     }
 

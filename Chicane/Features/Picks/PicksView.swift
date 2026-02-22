@@ -10,10 +10,16 @@ struct PicksView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                pickerHeader
+                EventPickerHeader(
+                    title: "Create weekend podium picks",
+                    selectedSeries: $selectedSeries,
+                    selectedEventID: $selectedEventID,
+                    events: events,
+                    eventPickerLabel: "Race event"
+                )
 
                 if let selectedEvent {
-                    eventCard(selectedEvent)
+                    EventSummaryCard(event: selectedEvent, subtitleOpacity: 0.88)
                     playerCards
                 } else {
                     Text("Choose an event to enter picks")
@@ -62,59 +68,6 @@ struct PicksView: View {
 
     private var participantPlural: String {
         selectedSeries == .motoGP ? "riders" : "drivers"
-    }
-
-    private var pickerHeader: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Create weekend podium picks")
-                .font(.title2.weight(.bold))
-
-            Picker("Series", selection: $selectedSeries) {
-                ForEach(RaceSeries.allCases) { series in
-                    Text(series.title).tag(series)
-                }
-            }
-            .pickerStyle(.segmented)
-            .tint(ChicaneTheme.motoBlue)
-
-            Picker("Event", selection: $selectedEventID) {
-                Text("Choose event")
-                    .tag(Optional<String>.none)
-                ForEach(events) { event in
-                    Text("R\(event.round) \(event.title)")
-                        .tag(Optional(event.id))
-                }
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 48)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.regularMaterial)
-            )
-            .accessibilityLabel("Race event")
-        }
-    }
-
-    private func eventCard(_ event: RaceEvent) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(event.title)
-                    .font(.title3.weight(.semibold))
-                Spacer()
-                Text(event.series.shortTitle)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(ChicaneTheme.seriesColor(event.series), in: Capsule())
-            }
-            Text("Round \(event.round) · \(event.circuit)")
-                .font(.body)
-                .foregroundStyle(Color.white.opacity(0.88))
-            Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
-                .font(.body)
-        }
-        .glassCard()
     }
 
     private var playerCards: some View {
@@ -199,3 +152,4 @@ struct PicksView: View {
         }
     }
 }
+

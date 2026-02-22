@@ -12,10 +12,16 @@ struct ResultsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                pickerHeader
+                EventPickerHeader(
+                    title: "Update race result podium",
+                    selectedSeries: $selectedSeries,
+                    selectedEventID: $selectedEventID,
+                    events: events,
+                    eventPickerLabel: "Event result"
+                )
 
                 if let selectedEvent {
-                    eventHeader(event: selectedEvent)
+                    EventSummaryCard(event: selectedEvent)
                     resultEditorCard
                     pointsCard
                 } else {
@@ -73,58 +79,6 @@ struct ResultsView: View {
 
     private var participantPlural: String {
         selectedSeries == .motoGP ? "riders" : "drivers"
-    }
-
-    private var pickerHeader: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Update race result podium")
-                .font(.title2.weight(.bold))
-
-            Picker("Series", selection: $selectedSeries) {
-                ForEach(RaceSeries.allCases) { series in
-                    Text(series.title).tag(series)
-                }
-            }
-            .pickerStyle(.segmented)
-            .tint(ChicaneTheme.motoBlue)
-
-            Picker("Event", selection: $selectedEventID) {
-                Text("Choose event").tag(Optional<String>.none)
-                ForEach(events) { event in
-                    Text("R\(event.round) \(event.title)")
-                        .tag(Optional(event.id))
-                }
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 48)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.regularMaterial)
-            )
-            .accessibilityLabel("Event result")
-        }
-    }
-
-    private func eventHeader(event: RaceEvent) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(event.title)
-                    .font(.title3.weight(.semibold))
-                Spacer()
-                Text(event.series.shortTitle)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(ChicaneTheme.seriesColor(event.series), in: Capsule())
-            }
-            Text("Round \(event.round) · \(event.circuit)")
-                .font(.body)
-                .foregroundStyle(.secondary)
-            Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
-                .font(.body)
-        }
-        .glassCard()
     }
 
     private var resultEditorCard: some View {
@@ -227,12 +181,6 @@ struct ResultsView: View {
         draft = PodiumDraft(podium: existingResult.podium)
     }
 
-    private func showInfoOnce(_ message: String) {
-        if viewModel.banner?.text != message {
-            viewModel.showInfo(message)
-        }
-    }
-
     private func updateResults() async {
         guard let selectedEventID else { return }
         guard !isUpdatingResults else { return }
@@ -245,15 +193,19 @@ struct ResultsView: View {
                 eventID: selectedEventID,
                 lockResult: true
             )
-            showInfoOnce("Results updated and locked.")
+            // Always show the banner — the auto-dismiss timer in RootTabView ensures
+            // the old banner has been cleared well before the user can tap Update Results
+            // a second time, so duplicate suppression is unnecessary and was causing
+            // the banner to silently not appear after the first auto-dismiss.
+            viewModel.showInfo("Results updated and locked.")
             hydrateDraft()
         } catch {
             if let officialError = error as? OfficialResultRepositoryError {
                 switch officialError {
                 case .resultsUnavailable:
-                    showInfoOnce("Official results aren’t available yet. Try again later.")
+                    viewModel.showInfo("Official results aren't available yet. Try again later.")
                 @unknown default:
-                    showInfoOnce("We couldn’t pull official results right now. We’ll use local data for now.")
+                    viewModel.showInfo("We couldn't pull official results right now. We'll use local data for now.")
                 }
             } else {
                 viewModel.showError(error.localizedDescription)
@@ -272,3 +224,4 @@ struct ResultsView: View {
         }
     }
 }
+
