@@ -94,16 +94,16 @@ struct ScoreboardView: View {
                         }
 
                         Text(DateFormatter.dayMonthYear.string(from: row.event.raceDate))
-                            .font(.footnote)
+                            .font(.body)
                             .foregroundStyle(.secondary)
 
                         ForEach(viewModel.players) { player in
                             HStack {
                                 Text(player.name)
-                                    .font(.footnote)
+                                    .font(.body.weight(.medium))
                                 Spacer()
                                 Text("\(row.pointsByPlayerID[player.id, default: 0])")
-                                    .font(.footnote.weight(.bold))
+                                    .font(.body.weight(.bold))
                                     .monospacedDigit()
                             }
                         }
