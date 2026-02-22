@@ -7,7 +7,6 @@ struct SettingsView: View {
     @State private var newPlayerName = ""
     @State private var seasonBetText = ""
     @State private var showResetConfirmation = false
-    @State private var statusMessage: String?
 
     private enum FocusField: Hashable {
         case player(UUID)
@@ -24,14 +23,6 @@ struct SettingsView: View {
             betSection
             resetSection
             aboutSection
-
-            if let statusMessage {
-                Section {
-                    Text(statusMessage)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(ChicaneTheme.motoBlue)
-                }
-            }
         }
         .scrollContentBackground(.hidden)
         .background(LiquidGlassBackground())
@@ -217,9 +208,9 @@ struct SettingsView: View {
                 Player(id: player.id, name: playerNames[player.id, default: player.name])
             }
             try await viewModel.savePlayers(updatedPlayers)
-            statusMessage = "Player names saved"
+            viewModel.showInfo("Player names saved")
         } catch {
-            viewModel.errorMessage = error.localizedDescription
+            viewModel.showError(error.localizedDescription)
         }
     }
 
@@ -227,18 +218,18 @@ struct SettingsView: View {
         do {
             try await viewModel.addPlayer(named: newPlayerName)
             newPlayerName = ""
-            statusMessage = "Player added"
+            viewModel.showInfo("Player added")
         } catch {
-            viewModel.errorMessage = error.localizedDescription
+            viewModel.showError(error.localizedDescription)
         }
     }
 
     private func removePlayer(playerID: UUID) async {
         do {
             try await viewModel.removePlayers(withIDs: [playerID])
-            statusMessage = "Player removed"
+            viewModel.showInfo("Player removed")
         } catch {
-            viewModel.errorMessage = error.localizedDescription
+            viewModel.showError(error.localizedDescription)
         }
     }
 
@@ -246,7 +237,7 @@ struct SettingsView: View {
         await updateSettings { settings in
             settings.seasonBetText = seasonBetText.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        statusMessage = "Season bet saved"
+        viewModel.showInfo("Season bet saved")
     }
 
     private func updateSettings(_ mutate: (inout AppSettings) -> Void) async {
@@ -256,16 +247,16 @@ struct SettingsView: View {
         do {
             try await viewModel.saveSettings(updated)
         } catch {
-            viewModel.errorMessage = error.localizedDescription
+            viewModel.showError(error.localizedDescription)
         }
     }
 
     private func resetSeason() async {
         do {
             try await viewModel.resetSeason()
-            statusMessage = "Season reset"
+            viewModel.showInfo("Season reset")
         } catch {
-            viewModel.errorMessage = error.localizedDescription
+            viewModel.showError(error.localizedDescription)
         }
     }
 }
