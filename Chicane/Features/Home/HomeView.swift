@@ -24,8 +24,8 @@ struct HomeView: View {
             }
             .padding(20)
         }
-        .navigationTitle("Chicane")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await viewModel.reload()
             // If reload failed it will have shown an error banner already.
