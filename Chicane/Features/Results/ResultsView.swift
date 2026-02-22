@@ -243,7 +243,17 @@ struct ResultsView: View {
             statusMessage = "Results updated and locked."
             hydrateDraft()
         } catch {
-            viewModel.errorMessage = error.localizedDescription
+            if let officialError = error as? OfficialResultRepositoryError {
+                switch officialError {
+                case .resultsUnavailable:
+                    statusMessage = "Official results aren’t available yet. Try again later."
+                @unknown default:
+                    statusMessage = "We couldn’t pull official results right now. We’ll use local data for now."
+                }
+                viewModel.errorMessage = nil
+            } else {
+                viewModel.errorMessage = error.localizedDescription
+            }
         }
     }
 
