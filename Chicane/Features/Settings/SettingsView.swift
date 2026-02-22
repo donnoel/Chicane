@@ -9,6 +9,14 @@ struct SettingsView: View {
     @State private var showResetConfirmation = false
     @State private var statusMessage: String?
 
+    private enum FocusField: Hashable {
+        case player(UUID)
+        case newPlayer
+        case seasonBet
+    }
+
+    @FocusState private var focusedField: FocusField?
+
     var body: some View {
         Form {
             playerSection
@@ -58,6 +66,7 @@ struct SettingsView: View {
                     TextField("Player name", text: binding(for: player.id))
                         .textInputAutocapitalization(.words)
                         .disableAutocorrection(true)
+                        .focused($focusedField, equals: .player(player.id))
                         .accessibilityLabel("Name for \(player.name)")
 
                     if viewModel.players.count > 1 {
@@ -84,6 +93,7 @@ struct SettingsView: View {
                 TextField("Add player", text: $newPlayerName)
                     .textInputAutocapitalization(.words)
                     .disableAutocorrection(true)
+                    .focused($focusedField, equals: .newPlayer)
                 Button("Add") {
                     Task {
                         await addPlayer()
@@ -108,6 +118,7 @@ struct SettingsView: View {
     private var betSection: some View {
         Section("Season bet text") {
             TextField("Friendly bet", text: $seasonBetText, axis: .vertical)
+                .focused($focusedField, equals: .seasonBet)
                 .lineLimit(2...4)
 
             Button("Save bet text") {
@@ -167,8 +178,37 @@ struct SettingsView: View {
     }
 
     private func hydrateLocalState() {
-        playerNames = Dictionary(uniqueKeysWithValues: viewModel.players.map { ($0.id, $0.name) })
-        seasonBetText = viewModel.settings.seasonBetText
+        // Keep local edits stable while a field is focused, but still reflect external changes.
+        let focusedPlayerID: UUID? = {
+            if case let .player(id)? = focusedField { return id }
+            return nil
+        }()
+
+        // Start from existing names and merge in model values for non-focused players.
+        var mergedNames = playerNames
+
+        // Remove entries for players that no longer exist.
+        let currentIDs = Set(viewModel.players.map { $0.id })
+        mergedNames.keys
+            .filter { !currentIDs.contains($0) }
+            .forEach { mergedNames.removeValue(forKey: $0) }
+
+        // Add/update entries from the model for players not currently being edited.
+        for player in viewModel.players {
+            guard player.id != focusedPlayerID else {
+                // Ensure there's at least a value present while editing.
+                if mergedNames[player.id] == nil { mergedNames[player.id] = player.name }
+                continue
+            }
+            mergedNames[player.id] = player.name
+        }
+
+        playerNames = mergedNames
+
+        // Only refresh bet text if the user isn't actively editing it.
+        if focusedField != .seasonBet {
+            seasonBetText = viewModel.settings.seasonBetText
+        }
     }
 
     private func savePlayerNames() async {
