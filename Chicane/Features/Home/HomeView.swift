@@ -52,32 +52,21 @@ struct HomeView: View {
         }
     }
 
+    @ViewBuilder
     private var nextRaceCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Next race", systemImage: "calendar")
-                .font(.headline)
-
-            if let event = viewModel.nextEvent(for: selectedScope) {
-                Text(event.title)
-                    .font(.title2.weight(.semibold))
-                Text(event.circuit)
+        if let event = viewModel.nextEvent(for: selectedScope) {
+            RaceCountdownCard(event: event)
+                .accessibilityElement(children: .combine)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Next race", systemImage: "calendar")
+                    .font(.headline)
+                Text("No upcoming races in the calendar")
                     .font(.body)
                     .foregroundStyle(.secondary)
-                Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
-                    .font(.body)
-                Text(event.series.title)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .foregroundStyle(.white)
-                    .background(ChicaneTheme.seriesColor(event.series), in: Capsule())
-            } else {
-                Text("No upcoming race in the sample calendar")
-                    .font(.body)
             }
+            .glassCard()
         }
-        .glassCard()
-        .accessibilityElement(children: .combine)
     }
 
     private var standingsCard: some View {
