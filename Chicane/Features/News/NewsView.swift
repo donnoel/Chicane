@@ -46,7 +46,7 @@ struct NewsView: View {
 
             Text("This section may contain spoilers. Continue?")
                 .font(.title3)
-                .foregroundStyle(Color.white.opacity(0.9))
+                .foregroundStyle(.primary)
 
             Toggle("Don't show this warning again", isOn: $dontShowAgain)
                 .font(.body)
@@ -99,8 +99,9 @@ struct NewsView: View {
             updated.spoilersDontAskAgain = true
             do {
                 try await viewModel.saveSettings(updated)
+                viewModel.showInfo("Spoiler warning disabled")
             } catch {
-                viewModel.errorMessage = error.localizedDescription
+                viewModel.showError(error.localizedDescription)
             }
         }
         hasConfirmedSpoilerGate = true
