@@ -3,12 +3,12 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var viewModel: AppViewModel
     @State private var selectedScope: ScoreboardScope = .combined
-
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
-
+                
                 Picker("Series", selection: $selectedScope) {
                     ForEach(ScoreboardScope.allCases) { scope in
                         Text(scope.title).tag(scope)
@@ -17,7 +17,7 @@ struct HomeView: View {
                 .pickerStyle(.segmented)
                 .tint(ChicaneTheme.motoBlue)
                 .accessibilityLabel("Standings series")
-
+                
                 nextRaceCard
                 standingsCard
                 betCard
@@ -35,7 +35,7 @@ struct HomeView: View {
             }
         }
     }
-
+    
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
@@ -51,7 +51,7 @@ struct HomeView: View {
                 .foregroundStyle(.secondary)
         }
     }
-
+    
     @ViewBuilder
     private var nextRaceCard: some View {
         if let event = viewModel.nextEvent(for: selectedScope) {
@@ -68,14 +68,14 @@ struct HomeView: View {
             .glassCard()
         }
     }
-
+    
     private var standingsCard: some View {
         let standings = viewModel.standings(for: selectedScope)
-
+        
         return VStack(alignment: .leading, spacing: 12) {
             Label("Current standings", systemImage: "chart.bar")
                 .font(.headline)
-
+            
             if standings.isEmpty {
                 Text("No scores yet")
                     .font(.body)
@@ -93,15 +93,15 @@ struct HomeView: View {
                     .padding(.vertical, 4)
                 }
             }
-
+            
             Text(viewModel.leaderText(for: selectedScope))
                 .font(.body.weight(.semibold))
                 .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
         }
-        .glassCard()
+        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
         .accessibilityElement(children: .contain)
     }
-
+    
     private var betCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Season bet", systemImage: "sparkles")
@@ -111,6 +111,6 @@ struct HomeView: View {
                 .font(.body)
                 .foregroundStyle(.primary)
         }
-        .glassCard()
+        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 }

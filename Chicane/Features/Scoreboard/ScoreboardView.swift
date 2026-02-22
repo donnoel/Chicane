@@ -64,7 +64,7 @@ struct ScoreboardView: View {
                     .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
             }
         }
-        .glassCard()
+        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
     private var historyCard: some View {
@@ -116,6 +116,6 @@ struct ScoreboardView: View {
                 }
             }
         }
-        .glassCard()
+        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 }

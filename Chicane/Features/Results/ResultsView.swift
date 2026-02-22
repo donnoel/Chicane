@@ -117,7 +117,7 @@ struct ResultsView: View {
                 .accessibilityHint("Fetches official top three and locks this result")
             }
         }
-        .glassCard()
+        .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private func resultStatusLabel(_ result: RaceResult) -> some View {
@@ -158,7 +158,7 @@ struct ResultsView: View {
                 }
             }
         }
-        .glassCard()
+        .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private func initializeIfNeeded() {

@@ -79,6 +79,30 @@ struct LiquidGlassBackground: View {
 }
 
 struct GlassCardModifier: ViewModifier {
+    /// When non-nil the border stroke animates to reflect this colour —
+    /// e.g. the active series (F1 red / MotoGP blue) or scope (amber).
+    /// Pass `nil` (the default) to keep the neutral static border.
+    var accentColor: Color? = nil
+
+    /// Stroke gradient colours derived from the current accent.
+    /// Expressed as a computed property so SwiftUI diffs them on every render
+    /// and the `.animation` on the overlay handles the interpolation.
+    private var strokeColors: [Color] {
+        if let accent = accentColor {
+            return [
+                accent.opacity(0.70),
+                accent.opacity(0.38),
+                Color.white.opacity(0.18)
+            ]
+        } else {
+            return [
+                Color.primary.opacity(0.35),
+                ChicaneTheme.motoBlue.opacity(0.22),
+                ChicaneTheme.f1Red.opacity(0.22)
+            ]
+        }
+    }
+
     func body(content: Content) -> some View {
         content
             .padding(16)
@@ -104,24 +128,28 @@ struct GlassCardModifier: ViewModifier {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(
                         LinearGradient(
-                            colors: [
-                                Color.primary.opacity(0.35),
-                                ChicaneTheme.motoBlue.opacity(0.22),
-                                ChicaneTheme.f1Red.opacity(0.22)
-                            ],
+                            colors: strokeColors,
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
                         lineWidth: 1
                     )
+                    // Smooth spring transition whenever accentColor changes
+                    .animation(.spring(response: 0.45, dampingFraction: 0.85), value: accentColor)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, x: 0, y: 8)
     }
 }
 
 extension View {
+    /// Plain glass card — neutral border, unchanged call sites work without modification.
     func glassCard() -> some View {
         modifier(GlassCardModifier())
+    }
+
+    /// Reactive glass card — border stroke animates to reflect `accent`.
+    func glassCard(accent: Color) -> some View {
+        modifier(GlassCardModifier(accentColor: accent))
     }
 
     /// Applies the shared light-blue gradient behind any view, hiding the

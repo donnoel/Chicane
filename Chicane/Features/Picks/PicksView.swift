@@ -96,7 +96,7 @@ struct PicksView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .glassCard()
+            .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
         }
     }
 

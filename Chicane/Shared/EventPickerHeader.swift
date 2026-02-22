@@ -55,7 +55,7 @@ struct EventSummaryCard: View {
     /// Opacity for the round/circuit line. Picks uses `0.88` (on a dark glass card);
     /// Results uses `1.0` (standard `.secondary`).
     var subtitleOpacity: Double = 1.0
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -73,12 +73,12 @@ struct EventSummaryCard: View {
                 .font(.body)
                 .foregroundStyle(
                     subtitleOpacity < 1.0
-                        ? Color.white.opacity(subtitleOpacity)
-                        : Color.secondary
+                    ? Color.white.opacity(subtitleOpacity)
+                    : Color.secondary
                 )
             Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
                 .font(.body)
         }
-        .glassCard()
+        .glassCard(accent: ChicaneTheme.seriesColor(event.series))
     }
 }

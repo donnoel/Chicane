@@ -18,7 +18,7 @@ struct RaceCountdownCard: View {
             let isRaceWeekend = remaining > 0 && remaining < 3 * 24 * 3600
 
             cardContent(remaining: remaining, isRaceWeekend: isRaceWeekend)
-                .glassCard()
+                .glassCard(accent: seriesColor)
                 // Coloured glow that fades in as race weekend approaches
                 .shadow(
                     color: isRaceWeekend ? seriesColor.opacity(0.45) : .clear,
