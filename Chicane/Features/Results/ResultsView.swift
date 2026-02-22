@@ -7,6 +7,7 @@ struct ResultsView: View {
     @State private var selectedEventID: String?
     @State private var draft: PodiumDraft = .empty
     @State private var showUnlockConfirmation = false
+    @State private var isUpdatingResults = false
 
     var body: some View {
         ScrollView {
@@ -119,7 +120,7 @@ struct ResultsView: View {
             }
             Text("Round \(event.round) · \(event.circuit)")
                 .font(.body)
-                .foregroundStyle(Color.white.opacity(0.88))
+                .foregroundStyle(.secondary)
             Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
                 .font(.body)
         }
@@ -156,6 +157,7 @@ struct ResultsView: View {
                     }
                 }
                 .buttonStyle(LargeActionButtonStyle())
+                .disabled(isUpdatingResults)
                 .accessibilityLabel("Update results")
                 .accessibilityHint("Fetches official top three and locks this result")
             }
@@ -225,23 +227,33 @@ struct ResultsView: View {
         draft = PodiumDraft(podium: existingResult.podium)
     }
 
+    private func showInfoOnce(_ message: String) {
+        if viewModel.banner?.text != message {
+            viewModel.showInfo(message)
+        }
+    }
+
     private func updateResults() async {
         guard let selectedEventID else { return }
+        guard !isUpdatingResults else { return }
+        isUpdatingResults = true
+        defer { isUpdatingResults = false }
+
         do {
             try await viewModel.updateResultFromOfficialSource(
                 series: selectedSeries,
                 eventID: selectedEventID,
                 lockResult: true
             )
-            viewModel.showInfo("Results updated and locked.")
+            showInfoOnce("Results updated and locked.")
             hydrateDraft()
         } catch {
             if let officialError = error as? OfficialResultRepositoryError {
                 switch officialError {
                 case .resultsUnavailable:
-                    viewModel.showInfo("Official results aren’t available yet. Try again later.")
+                    showInfoOnce("Official results aren’t available yet. Try again later.")
                 @unknown default:
-                    viewModel.showInfo("We couldn’t pull official results right now. We’ll use local data for now.")
+                    showInfoOnce("We couldn’t pull official results right now. We’ll use local data for now.")
                 }
             } else {
                 viewModel.showError(error.localizedDescription)
