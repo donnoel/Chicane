@@ -1,21 +1,49 @@
 import Foundation
 
 enum F1OfficialHTMLParser {
-    private static let driverCardRegex = try! NSRegularExpression(
-        pattern: #"<a[^>]*data-f1rd-a7s-click="driver_card_click"[^>]*data-f1rd-a7s-context="([^"]+)"[^>]*href="(/en/drivers/[^"]+)"[^>]*>"#,
-        options: [.dotMatchesLineSeparators]
-    )
+    // NOTE: F1 markup changes periodically. Use multiple patterns and fail soft (empty results)
+    // rather than crashing or throwing from a static initializer.
+    private static let driverCardRegexes: [NSRegularExpression] = {
+        let patterns: [String] = [
+            // Current-ish: analytics attributes + base64url context
+            #"<a[^>]*data-f1rd-a7s-click=\"driver_card_click\"[^>]*data-f1rd-a7s-context=\"([^\"]+)\"[^>]*href=\"(/en/drivers/[^\"]+)\"[^>]*>"#,
+            // Fallback: some pages omit the click attr
+            #"<a[^>]*data-f1rd-a7s-context=\"([^\"]+)\"[^>]*href=\"(/en/drivers/[^\"]+)\"[^>]*>"#
+        ]
+        return patterns.compactMap { try? NSRegularExpression(pattern: $0, options: [.dotMatchesLineSeparators]) }
+    }()
 
-    private static let eventCardRegex = try! NSRegularExpression(
-        pattern: #"<a class="group"[^>]*data-f1rd-a7s-context="([^"]+)"[^>]*href="(/en/racing/(\d{4})/[^"]+)"[^>]*>(.*?)</a>"#,
-        options: [.dotMatchesLineSeparators]
-    )
+    private static let eventCardRegexes: [NSRegularExpression] = {
+        let patterns: [String] = [
+            // Current-ish: group card anchor with context
+            #"<a class=\"group\"[^>]*data-f1rd-a7s-context=\"([^\"]+)\"[^>]*href=\"(/en/racing/(\d{4})/[^\"]+)\"[^>]*>(.*?)</a>"#,
+            // Fallback: class may not be exactly "group"
+            #"<a[^>]*data-f1rd-a7s-context=\"([^\"]+)\"[^>]*href=\"(/en/racing/(\d{4})/[^\"]+)\"[^>]*>(.*?)</a>"#
+        ]
+        return patterns.compactMap { try? NSRegularExpression(pattern: $0, options: [.dotMatchesLineSeparators]) }
+    }()
 
-    private static let roundRegex = try! NSRegularExpression(pattern: #">ROUND\s*(\d+)<"#)
-    private static let dateRangeRegex = try! NSRegularExpression(
-        pattern: #"(\d{1,2})(?:\s+[A-Za-z]{3})?\s*-\s*(\d{1,2})\s+([A-Za-z]{3})"#
-    )
-    private static let singleDateRegex = try! NSRegularExpression(pattern: #"(\d{1,2})\s+([A-Za-z]{3})"#)
+    private static let roundRegex: NSRegularExpression = {
+        (try? NSRegularExpression(pattern: #">ROUND\s*(\d+)<"#))
+        ?? fallbackNeverMatchRegex
+    }()
+
+    private static let dateRangeRegex: NSRegularExpression = {
+        (try? NSRegularExpression(pattern: #"(\d{1,2})(?:\s+[A-Za-z]{3})?\s*-\s*(\d{1,2})\s+([A-Za-z]{3})"#))
+        ?? fallbackNeverMatchRegex
+    }()
+
+    private static let singleDateRegex: NSRegularExpression = {
+        (try? NSRegularExpression(pattern: #"(\d{1,2})\s+([A-Za-z]{3})"#))
+        ?? fallbackNeverMatchRegex
+    }()
+
+    private static let fallbackNeverMatchRegex: NSRegularExpression = {
+        // A guaranteed non-matching regex used as a safe fallback when compilation fails.
+        // Using an explicit pattern avoids defining an `init()` that would conflict with Obj-C.
+        (try? NSRegularExpression(pattern: "(?!x)x"))
+        ?? (try! NSRegularExpression(pattern: "(?!x)x"))
+    }()
 
     private static let monthMap: [String: Int] = [
         "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
@@ -24,7 +52,7 @@ enum F1OfficialHTMLParser {
 
     static func parseDrivers(from html: String) -> [Driver] {
         let range = NSRange(html.startIndex..<html.endIndex, in: html)
-        let matches = driverCardRegex.matches(in: html, range: range)
+        let matches = driverCardRegexes.flatMap { $0.matches(in: html, range: range) }
 
         var driversByID: [String: Driver] = [:]
         for match in matches {
@@ -58,7 +86,7 @@ enum F1OfficialHTMLParser {
 
     static func parseEvents(from html: String, expectedSeason: Int) -> [RaceEvent] {
         let range = NSRange(html.startIndex..<html.endIndex, in: html)
-        let matches = eventCardRegex.matches(in: html, range: range)
+        let matches = eventCardRegexes.flatMap { $0.matches(in: html, range: range) }
 
         var eventsByID: [String: RaceEvent] = [:]
         for match in matches {
@@ -177,6 +205,12 @@ enum F1OfficialHTMLParser {
     }
 
     private static func decodeContext<T: Decodable>(_ encoded: String) -> T? {
+        let encoded = encoded
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&#x2F;", with: "/")
+            .replacingOccurrences(of: "&#47;", with: "/")
+
         let normalized = encoded
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
@@ -188,6 +222,7 @@ enum F1OfficialHTMLParser {
         return try? JSONDecoder().decode(T.self, from: data)
     }
 }
+
 
 private struct F1DriverContext: Decodable {
     let driverName: String?

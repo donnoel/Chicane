@@ -194,7 +194,7 @@ struct OnlineResultRepository: ResultRepository {
     private func parseF1ResultLinks(from html: String) -> [F1ResultLink] {
         let normalizedHTML = html.replacingOccurrences(of: "\\/", with: "/")
         let range = NSRange(normalizedHTML.startIndex..<normalizedHTML.endIndex, in: normalizedHTML)
-        let matches = f1ResultLinkRegex.matches(in: normalizedHTML, range: range)
+        let matches = f1ResultLinkRegexes.flatMap { $0.matches(in: normalizedHTML, range: range) }
 
         var links: [F1ResultLink] = []
         var seenPaths = Set<String>()
@@ -319,20 +319,36 @@ private struct MotoGPResultRider: Decodable {
     }
 }
 
-private let f1ResultLinkRegex = try! NSRegularExpression(
-    pattern: #"/en/results/(\d{4})/races/(\d+)/([a-z0-9-]+)/race-result"#,
-    options: [.caseInsensitive]
-)
+private let f1ResultLinkRegexes: [NSRegularExpression] = {
+    // Formula1.com markup varies; keep multiple patterns.
+    let patterns: [String] = [
+        #"/en/results/(\d{4})/races/(\d+)/([a-z0-9-]+)/race-result"#,
+        // Sometimes the path omits the leading /en or includes an extra suffix.
+        #"/results/(\d{4})/races/(\d+)/([a-z0-9-]+)/race-result"#
+    ]
 
-private let f1TableRowRegex = try! NSRegularExpression(
-    pattern: #"<tr[^>]*>(.*?)</tr>"#,
-    options: [.dotMatchesLineSeparators, .caseInsensitive]
-)
+    return patterns.compactMap { try? NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
+}()
 
-private let f1TableCellRegex = try! NSRegularExpression(
-    pattern: #"<td[^>]*>(.*?)</td>"#,
-    options: [.dotMatchesLineSeparators, .caseInsensitive]
-)
+private let f1TableRowRegex: NSRegularExpression = {
+    (try? NSRegularExpression(
+        pattern: #"<tr[^>]*>(.*?)</tr>"#,
+        options: [.dotMatchesLineSeparators, .caseInsensitive]
+    )) ?? fallbackNeverMatchRegex
+}()
+
+private let f1TableCellRegex: NSRegularExpression = {
+    (try? NSRegularExpression(
+        pattern: #"<td[^>]*>(.*?)</td>"#,
+        options: [.dotMatchesLineSeparators, .caseInsensitive]
+    )) ?? fallbackNeverMatchRegex
+}()
+
+private let fallbackNeverMatchRegex: NSRegularExpression = {
+    // Guaranteed non-matching regex used as a safe fallback.
+    (try? NSRegularExpression(pattern: "(?!x)x"))
+    ?? (try! NSRegularExpression(pattern: "(?!x)x"))
+}()
 
 private func parseF1DriverName(from driverCellHTML: String) -> String {
     let stripped = stripHTML(driverCellHTML)
