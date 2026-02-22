@@ -26,6 +26,13 @@ struct HomeView: View {
         }
         .navigationTitle("Chicane")
         .navigationBarTitleDisplayMode(.large)
+        .refreshable {
+            await viewModel.reload()
+            // If reload failed it will have shown an error banner already.
+            if viewModel.banner == nil {
+                viewModel.showInfo("Updated")
+            }
+        }
     }
 
     private var header: some View {
