@@ -58,15 +58,22 @@ final class AppViewModel: ObservableObject {
             let state = try await seasonRepository.loadState()
             apply(state: state)
 
+            // Fan out all four network fetches concurrently, then assign atomically.
+            // If any single fetch throws, none of the four assignments are committed,
+            // so we never leave driversBySeries / eventsBySeries in a partially-updated state.
             async let f1Drivers = driverRepository.drivers(for: .formula1)
             async let motoGPDrivers = driverRepository.drivers(for: .motoGP)
             async let f1Events = calendarRepository.events(for: .formula1)
             async let motoGPEvents = calendarRepository.events(for: .motoGP)
 
-            driversBySeries[.formula1] = try await f1Drivers
-            driversBySeries[.motoGP] = try await motoGPDrivers
-            eventsBySeries[.formula1] = try await f1Events
-            eventsBySeries[.motoGP] = try await motoGPEvents
+            let (resolvedF1Drivers, resolvedMotoGPDrivers, resolvedF1Events, resolvedMotoGPEvents) =
+                try await (f1Drivers, motoGPDrivers, f1Events, motoGPEvents)
+
+            // All four succeeded — apply as a single synchronous batch.
+            driversBySeries[.formula1] = resolvedF1Drivers
+            driversBySeries[.motoGP]   = resolvedMotoGPDrivers
+            eventsBySeries[.formula1]  = resolvedF1Events
+            eventsBySeries[.motoGP]    = resolvedMotoGPEvents
             hasLoaded = true
         } catch {
             logger.error("Failed loading app data: \(error.localizedDescription, privacy: .public)")
@@ -271,31 +278,60 @@ final class AppViewModel: ObservableObject {
         settings = state.settings
     }
 
+    // MARK: - Participant Name Matching
+
+    /// Resolves an official result name (from the F1/MotoGP website) to a local
+    /// driver ID using a three-tier strategy:
+    ///
+    /// - **Tier 1 – Exact:** Diacritic/case-folded full-name equality.
+    /// - **Tier 2 – Surname:** The result name is a surname-only token (≥ 4 characters)
+    ///   that matches exactly one token in a candidate's normalised name.  The 4-character
+    ///   minimum prevents short tokens like "de", "van", or "al" from producing false
+    ///   positives against multi-part surnames.
+    /// - **Tier 3 – Token set:** Two or more tokens from the result name overlap with
+    ///   tokens in the candidate name.  Requires both sides to contribute ≥ 2 tokens so
+    ///   a single-word result name never triggers this tier.
     private func matchingParticipantID(for name: String, series: RaceSeries) -> String? {
         let normalizedTarget = normalizedParticipantName(name)
         guard !normalizedTarget.isEmpty else { return nil }
 
         let participants = drivers(for: series)
 
+        // Tier 1: exact normalised match.
         if let exact = participants.first(where: { normalizedParticipantName($0.name) == normalizedTarget }) {
             return exact.id
         }
 
-        if let partial = participants.first(where: {
-            let candidate = normalizedParticipantName($0.name)
-            return candidate.contains(normalizedTarget) || normalizedTarget.contains(candidate)
-        }) {
-            return partial.id
+        // Tier 2: surname-only match.
+        // Split the result name into tokens and consider each token a potential surname,
+        // but only if it is long enough to be unambiguous (>= 4 characters).
+        let targetTokens = normalizedTarget.split(separator: " ").map(String.init)
+        let surnameCandidates = targetTokens.filter { $0.count >= 4 }
+
+        if !surnameCandidates.isEmpty {
+            // Find a participant whose normalised name contains at least one of the
+            // surname candidates as an exact token — not just a substring.
+            if let surnameMatch = participants.first(where: { participant in
+                let participantTokens = Set(normalizedParticipantName(participant.name).split(separator: " ").map(String.init))
+                return surnameCandidates.contains(where: { participantTokens.contains($0) })
+            }) {
+                return surnameMatch.id
+            }
         }
 
-        let targetTokens = Set(normalizedTarget.split(separator: " ").map(String.init))
-        if let tokenMatch = participants.first(where: {
-            let candidateTokens = Set(normalizedParticipantName($0.name).split(separator: " ").map(String.init))
-            return candidateTokens.intersection(targetTokens).count >= 2
-        }) {
-            return tokenMatch.id
+        // Tier 3: token-set intersection (at least 2 shared tokens, both sides must be multi-token).
+        let targetTokenSet = Set(targetTokens)
+        if targetTokenSet.count >= 2 {
+            if let tokenMatch = participants.first(where: { participant in
+                let candidateTokens = Set(normalizedParticipantName(participant.name).split(separator: " ").map(String.init))
+                guard candidateTokens.count >= 2 else { return false }
+                return candidateTokens.intersection(targetTokenSet).count >= 2
+            }) {
+                return tokenMatch.id
+            }
         }
 
+        logger.debug("Name matching failed for '\(name, privacy: .public)' in \(series.rawValue, privacy: .public)")
         return nil
     }
 
@@ -336,7 +372,6 @@ enum AppViewModelError: LocalizedError {
         }
     }
 }
-
 
 struct BannerMessage: Identifiable, Equatable {
     enum Style: Equatable {

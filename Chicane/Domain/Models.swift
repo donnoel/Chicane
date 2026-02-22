@@ -112,6 +112,8 @@ struct AppSettings: Codable, Hashable, Sendable {
 }
 
 struct PersistedState: Codable, Sendable {
+    // Increment this when the stored data format changes and add a migration
+    // case in migratedToCurrentVersion() below.
     static let currentSchemaVersion = 1
 
     var schemaVersion: Int
@@ -120,29 +122,55 @@ struct PersistedState: Codable, Sendable {
     var results: [RaceResult]
     var settings: AppSettings
 
+    /// Fresh-install default: no hardcoded players so Settings is the canonical
+    /// way to add players, rather than shipping personal names in the binary.
     static let `default` = PersistedState(
         schemaVersion: PersistedState.currentSchemaVersion,
-        players: [
-            Player(id: UUID(uuidString: "6B366E1E-2E99-4BEE-B294-D2AE5A26FB6A") ?? UUID(), name: "Mom"),
-            Player(id: UUID(uuidString: "0FA60E6D-AB20-4D50-A4B9-B37CFA5F7F58") ?? UUID(), name: "Don")
-        ],
+        players: [],
         picks: [],
         results: [],
         settings: .default
     )
 
+    // MARK: - Normalisation & Migration
+
+    /// Returns a copy of this state fully migrated to the current schema version
+    /// with player names sanitised.
     func normalized() -> PersistedState {
-        var normalized = self
-        if normalized.schemaVersion != PersistedState.currentSchemaVersion {
-            normalized.schemaVersion = PersistedState.currentSchemaVersion
-        }
-        normalized.players = normalized.players.map { player in
+        var state = migratedToCurrentVersion()
+
+        state.players = state.players.map { player in
             var copy = player
             copy.name = copy.name.trimmingCharacters(in: .whitespacesAndNewlines)
             return copy
         }
         .filter { !$0.name.isEmpty }
-        return normalized
+
+        return state
+    }
+
+    /// Walks the schema version forward one step at a time so no migration is
+    /// ever skipped, regardless of how old the on-disk data is.
+    ///
+    /// How to add a migration when bumping `currentSchemaVersion` to N:
+    ///   1. Increment `currentSchemaVersion` to N.
+    ///   2. Add `case N - 1:` here, apply the transform, set `state.schemaVersion = N`.
+    private func migratedToCurrentVersion() -> PersistedState {
+        var state = self
+
+        while state.schemaVersion < PersistedState.currentSchemaVersion {
+            switch state.schemaVersion {
+            // Template for the next migration — uncomment and fill in:
+            // case 1:
+            //     // v1 → v2: describe the structural change here.
+            //     state.schemaVersion = 2
+            default:
+                // Unrecognised old version: jump to current to avoid an infinite loop.
+                state.schemaVersion = PersistedState.currentSchemaVersion
+            }
+        }
+
+        return state
     }
 }
 
