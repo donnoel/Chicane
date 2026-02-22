@@ -24,8 +24,10 @@ struct SettingsView: View {
             resetSection
         }
         .tint(.accentColor)
+        .scrollContentBackground(.hidden)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .chicaneBackground()
         .task {
             hydrateLocalState()
         }

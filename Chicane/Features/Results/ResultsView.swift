@@ -34,6 +34,7 @@ struct ResultsView: View {
         }
         .navigationTitle("Results")
         .navigationBarTitleDisplayMode(.inline)
+        .chicaneBackground()
         .task {
             initializeIfNeeded()
         }

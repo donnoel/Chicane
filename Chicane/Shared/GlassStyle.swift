@@ -7,6 +7,13 @@ enum ChicaneTheme {
     static let dusk = Color(red: 0.11, green: 0.14, blue: 0.27)
     static let glowAmber = Color(red: 0.99, green: 0.61, blue: 0.28)
 
+    // Light gradient palette
+    static let skyBlue    = Color(red: 0.76, green: 0.90, blue: 1.00)  // top – bright sky blue
+    static let pearlBlue  = Color(red: 0.85, green: 0.92, blue: 1.00)  // mid – soft blue-white
+    static let iceBlue    = Color(red: 0.93, green: 0.96, blue: 1.00)  // bottom – barely-there blue
+    static let periwinkle = Color(red: 0.74, green: 0.76, blue: 1.00)  // accent orb – soft violet-blue
+    static let seafoam    = Color(red: 0.58, green: 0.88, blue: 0.96)  // accent orb – light teal
+
     static var actionGradient: LinearGradient {
         LinearGradient(
             colors: [f1Red, motoBlue],
@@ -37,48 +44,36 @@ enum ChicaneTheme {
 }
 
 struct LiquidGlassBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
         ZStack {
+            // Base gradient: sky blue → pearl blue → ice blue
             LinearGradient(
-                colors: backgroundGradientColors,
+                colors: [ChicaneTheme.skyBlue, ChicaneTheme.pearlBlue, ChicaneTheme.iceBlue],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
+            // Subtle periwinkle bloom — upper-right
             Circle()
-                .fill(ChicaneTheme.f1Red.opacity(colorScheme == .dark ? 0.36 : 0.22))
+                .fill(ChicaneTheme.periwinkle.opacity(0.28))
+                .frame(width: 360)
+                .blur(radius: 90)
+                .offset(x: 170, y: -230)
+
+            // Subtle seafoam bloom — lower-left
+            Circle()
+                .fill(ChicaneTheme.seafoam.opacity(0.22))
                 .frame(width: 340)
                 .blur(radius: 95)
-                .offset(x: -170, y: -250)
+                .offset(x: -160, y: 300)
 
-            Circle()
-                .fill(ChicaneTheme.motoBlue.opacity(colorScheme == .dark ? 0.33 : 0.20))
-                .frame(width: 380)
-                .blur(radius: 100)
-                .offset(x: 180, y: 280)
-
+            // Soft white highlight — centre
             Capsule()
-                .fill(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.08))
-                .frame(width: 360, height: 110)
-                .blur(radius: 85)
-                .offset(x: 0, y: 340)
-        }
-    }
-
-    private var backgroundGradientColors: [Color] {
-        switch colorScheme {
-        case .dark:
-            return [ChicaneTheme.deepNavy, ChicaneTheme.dusk, Color.black.opacity(0.88)]
-        default:
-            // Keep the same overall character in Light mode, but lift values slightly for readability.
-            return [
-                ChicaneTheme.deepNavy.opacity(0.78),
-                ChicaneTheme.dusk.opacity(0.62),
-                Color.black.opacity(0.22)
-            ]
+                .fill(Color.white.opacity(0.30))
+                .frame(width: 320, height: 90)
+                .blur(radius: 70)
+                .offset(x: 20, y: 80)
         }
     }
 }
@@ -127,6 +122,14 @@ struct GlassCardModifier: ViewModifier {
 extension View {
     func glassCard() -> some View {
         modifier(GlassCardModifier())
+    }
+
+    /// Applies the shared light-blue gradient behind any view, hiding the
+    /// system navigation-bar tint so the gradient shows through edge-to-edge.
+    func chicaneBackground() -> some View {
+        self
+            .background(LiquidGlassBackground().ignoresSafeArea())
+            .toolbarBackground(.hidden, for: .navigationBar)
     }
 }
 

@@ -22,6 +22,7 @@ struct NewsView: View {
         .padding(20)
         .navigationTitle("Spoilers")
         .navigationBarTitleDisplayMode(.inline)
+        .chicaneBackground()
         .task {
             dontShowAgain = viewModel.settings.spoilersDontAskAgain
             if !isGateEnabled {

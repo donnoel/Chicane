@@ -31,6 +31,7 @@ struct PicksView: View {
         }
         .navigationTitle("Picks")
         .navigationBarTitleDisplayMode(.inline)
+        .chicaneBackground()
         .task {
             initializeIfNeeded()
         }

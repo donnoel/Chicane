@@ -26,6 +26,7 @@ struct ScoreboardView: View {
         }
         .navigationTitle("Scoreboard")
         .navigationBarTitleDisplayMode(.inline)
+        .chicaneBackground()
         .refreshable {
             await viewModel.reload()
             // If reload failed it will have shown an error banner already.
