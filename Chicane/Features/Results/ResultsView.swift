@@ -6,7 +6,6 @@ struct ResultsView: View {
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
     @State private var draft: PodiumDraft = .empty
-    @State private var statusMessage: String?
     @State private var showUnlockConfirmation = false
 
     var body: some View {
@@ -22,12 +21,6 @@ struct ResultsView: View {
                     Text("Choose an event to enter the podium result")
                         .font(.body)
                         .foregroundStyle(.secondary)
-                }
-
-                if let statusMessage {
-                    Text(statusMessage)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(ChicaneTheme.motoBlue)
                 }
             }
             .padding(20)
@@ -240,19 +233,18 @@ struct ResultsView: View {
                 eventID: selectedEventID,
                 lockResult: true
             )
-            statusMessage = "Results updated and locked."
+            viewModel.showInfo("Results updated and locked.")
             hydrateDraft()
         } catch {
             if let officialError = error as? OfficialResultRepositoryError {
                 switch officialError {
                 case .resultsUnavailable:
-                    statusMessage = "Official results aren’t available yet. Try again later."
+                    viewModel.showInfo("Official results aren’t available yet. Try again later.")
                 @unknown default:
-                    statusMessage = "We couldn’t pull official results right now. We’ll use local data for now."
+                    viewModel.showInfo("We couldn’t pull official results right now. We’ll use local data for now.")
                 }
-                viewModel.errorMessage = nil
             } else {
-                viewModel.errorMessage = error.localizedDescription
+                viewModel.showError(error.localizedDescription)
             }
         }
     }
@@ -261,10 +253,10 @@ struct ResultsView: View {
         guard let selectedEventID else { return }
         do {
             try await viewModel.unlockResult(series: selectedSeries, eventID: selectedEventID)
-            statusMessage = "Result unlocked. Tap Update Results to refresh official podium."
+            viewModel.showInfo("Result unlocked. Tap Update Results to refresh official podium.")
             hydrateDraft()
         } catch {
-            viewModel.errorMessage = error.localizedDescription
+            viewModel.showError(error.localizedDescription)
         }
     }
 }
