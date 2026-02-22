@@ -26,6 +26,13 @@ struct ScoreboardView: View {
         }
         .navigationTitle("Scoreboard")
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await viewModel.reload()
+            // If reload failed it will have shown an error banner already.
+            if viewModel.banner == nil {
+                viewModel.showInfo("Updated")
+            }
+        }
     }
 
     private var standingsCard: some View {
