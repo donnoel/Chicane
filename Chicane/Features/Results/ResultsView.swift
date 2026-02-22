@@ -139,7 +139,7 @@ struct ResultsView: View {
                 participantSingular: participantSingular,
                 participantPlural: participantPlural,
                 draft: $draft,
-                isDisabled: true
+                isDisabled: currentResult?.isLocked ?? false
             )
 
             if currentResult?.isLocked == true {
