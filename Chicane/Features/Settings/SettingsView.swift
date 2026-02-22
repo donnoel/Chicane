@@ -24,9 +24,7 @@ struct SettingsView: View {
             resetSection
             aboutSection
         }
-        .scrollContentBackground(.hidden)
-        .background(LiquidGlassBackground())
-        .tint(ChicaneTheme.motoBlue)
+        .tint(.accentColor)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .task {
