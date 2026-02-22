@@ -49,10 +49,14 @@ struct PodiumPickerSection: View {
         position: Int,
         selection: Binding<String?>
     ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.body.weight(.semibold))
+        HStack(spacing: 12) {
+            // Medal — glows when a driver is assigned to this slot
+            PodiumMedalView(
+                position: position,
+                isSelected: selection.wrappedValue != nil
+            )
 
+            // Picker pill — fills remaining width
             Picker(title, selection: selection) {
                 Text("Choose \(participantSingular)")
                     .tag(Optional<String>.none)
@@ -64,7 +68,7 @@ struct PodiumPickerSection: View {
             }
             .pickerStyle(.navigationLink)
             .padding(.horizontal, 12)
-            .frame(minHeight: 48, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(Color.white.opacity(0.1))
