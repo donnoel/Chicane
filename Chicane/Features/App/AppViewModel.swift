@@ -12,6 +12,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var eventsBySeries: [RaceSeries: [RaceEvent]] = [:]
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
+    @Published var banner: BannerMessage?
 
     private let driverRepository: DriverRepository
     private let calendarRepository: CalendarRepository
@@ -33,6 +34,15 @@ final class AppViewModel: ObservableObject {
         self.calendarRepository = calendarRepository
         self.resultRepository = resultRepository
         self.seasonRepository = seasonRepository
+    }
+
+    func showInfo(_ message: String) {
+        banner = BannerMessage(style: .info, text: message)
+    }
+
+    func showError(_ message: String) {
+        banner = BannerMessage(style: .error, text: message)
+        errorMessage = message
     }
 
     func loadIfNeeded() async {
@@ -60,7 +70,7 @@ final class AppViewModel: ObservableObject {
             hasLoaded = true
         } catch {
             logger.error("Failed loading app data: \(error.localizedDescription, privacy: .public)")
-            errorMessage = error.localizedDescription
+            showError(error.localizedDescription)
         }
     }
 
@@ -324,5 +334,23 @@ enum AppViewModelError: LocalizedError {
         case let .participantNotFound(name):
             return "Could not match \(name) with the current participant list."
         }
+    }
+}
+
+
+struct BannerMessage: Identifiable, Equatable {
+    enum Style: Equatable {
+        case info
+        case error
+    }
+
+    let id: UUID
+    let style: Style
+    let text: String
+
+    init(id: UUID = UUID(), style: Style, text: String) {
+        self.id = id
+        self.style = style
+        self.text = text
     }
 }
