@@ -6,7 +6,6 @@ struct PicksView: View {
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
-    @State private var statusMessage: String?
 
     var body: some View {
         ScrollView {
@@ -20,13 +19,6 @@ struct PicksView: View {
                     Text("Choose an event to enter picks")
                         .font(.body)
                         .foregroundStyle(.secondary)
-                }
-
-                if let statusMessage {
-                    Text(statusMessage)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(ChicaneTheme.motoBlue)
-                        .padding(.top, 4)
                 }
             }
             .padding(20)
@@ -200,10 +192,10 @@ struct PicksView: View {
                 playerID: player.id,
                 draft: draft
             )
-            statusMessage = "Saved \(player.name)'s picks for this event."
+            viewModel.showInfo("Saved \(player.name)'s picks for this event.")
             hydrateDrafts()
         } catch {
-            viewModel.errorMessage = error.localizedDescription
+            viewModel.showError(error.localizedDescription)
         }
     }
 }
