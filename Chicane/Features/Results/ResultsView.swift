@@ -8,6 +8,7 @@ struct ResultsView: View {
     @State private var draft: PodiumDraft = .empty
     @State private var showUnlockConfirmation = false
     @State private var isUpdatingResults = false
+    @State private var scrollOffset: CGFloat = 0
 
     var body: some View {
         ScrollView {
@@ -31,10 +32,11 @@ struct ResultsView: View {
                 }
             }
             .padding(20)
+            .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Results")
         .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground()
+        .chicaneBackground(scrollOffset: scrollOffset)
         .task {
             initializeIfNeeded()
         }

@@ -6,6 +6,7 @@ struct PicksView: View {
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
+    @State private var scrollOffset: CGFloat = 0
 
     var body: some View {
         ScrollView {
@@ -28,10 +29,11 @@ struct PicksView: View {
                 }
             }
             .padding(20)
+            .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Picks")
         .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground()
+        .chicaneBackground(scrollOffset: scrollOffset)
         .task {
             initializeIfNeeded()
         }

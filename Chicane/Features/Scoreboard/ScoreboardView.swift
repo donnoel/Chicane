@@ -3,6 +3,7 @@ import SwiftUI
 struct ScoreboardView: View {
     @EnvironmentObject private var viewModel: AppViewModel
     @State private var selectedScope: ScoreboardScope = .combined
+    @State private var scrollOffset: CGFloat = 0
 
     var body: some View {
         ScrollView {
@@ -23,10 +24,11 @@ struct ScoreboardView: View {
                 historyCard
             }
             .padding(20)
+            .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Scoreboard")
         .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground()
+        .chicaneBackground(scrollOffset: scrollOffset)
         .refreshable {
             await viewModel.reload()
             // If reload failed it will have shown an error banner already.

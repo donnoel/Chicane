@@ -43,10 +43,47 @@ enum ChicaneTheme {
     }
 }
 
+// MARK: - Scroll offset tracking
+
+/// Bubbles the scroll position of a ScrollView's content up through the
+/// preference system so the background can react to it.
+struct ScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+extension View {
+    /// Attach this to the *content* VStack inside a ScrollView.
+    /// It reads the VStack's minY in global space (which is 0 at rest and goes
+    /// negative as the user scrolls down) and fires `onChange` with that value.
+    func trackingScrollOffset(onChange: @escaping (CGFloat) -> Void) -> some View {
+        self.background(
+            GeometryReader { geo in
+                Color.clear
+                    .preference(
+                        key: ScrollOffsetKey.self,
+                        // minY is 0 at rest, negative when scrolled down.
+                        // We negate it so callers receive positive values when scrolled down.
+                        value: -geo.frame(in: .global).minY
+                    )
+            }
+        )
+        .onPreferenceChange(ScrollOffsetKey.self, perform: onChange)
+    }
+}
+
+// MARK: - Parallax background
+
 struct LiquidGlassBackground: View {
+    /// Current scroll position — positive = user has scrolled down.
+    /// Each orb moves at a different fraction of this offset, creating depth.
+    var scrollOffset: CGFloat = 0
+
     var body: some View {
         ZStack {
-            // Base gradient: sky blue → pearl blue → ice blue
+            // Base gradient — static, full bleed
             LinearGradient(
                 colors: [ChicaneTheme.skyBlue, ChicaneTheme.pearlBlue, ChicaneTheme.iceBlue],
                 startPoint: .topLeading,
@@ -54,26 +91,32 @@ struct LiquidGlassBackground: View {
             )
             .ignoresSafeArea()
 
-            // Subtle periwinkle bloom — upper-right
+            // Periwinkle bloom — upper-right.
+            // Moves at 0.18x scroll speed, drifting upward as content scrolls down.
+            // Being furthest "back" in the scene it moves the least.
             Circle()
                 .fill(ChicaneTheme.periwinkle.opacity(0.28))
                 .frame(width: 360)
                 .blur(radius: 90)
-                .offset(x: 170, y: -230)
+                .offset(x: 170, y: -230 - scrollOffset * 0.18)
 
-            // Subtle seafoam bloom — lower-left
+            // Seafoam bloom — lower-left.
+            // Moves at 0.12x in the opposite vertical direction, increasing
+            // the perceived separation between the two orbs as you scroll.
             Circle()
                 .fill(ChicaneTheme.seafoam.opacity(0.22))
                 .frame(width: 340)
                 .blur(radius: 95)
-                .offset(x: -160, y: 300)
+                .offset(x: -160, y: 300 + scrollOffset * 0.12)
 
-            // Soft white highlight — centre
+            // White highlight capsule — centre.
+            // Barely moves (0.06x) — it's the "closest" layer so has the
+            // largest parallax but we keep it gentle so it stays centred.
             Capsule()
                 .fill(Color.white.opacity(0.30))
                 .frame(width: 320, height: 90)
                 .blur(radius: 70)
-                .offset(x: 20, y: 80)
+                .offset(x: 20, y: 80 - scrollOffset * 0.06)
         }
     }
 }
@@ -157,6 +200,14 @@ extension View {
     func chicaneBackground() -> some View {
         self
             .background(LiquidGlassBackground().ignoresSafeArea())
+            .toolbarBackground(.hidden, for: .navigationBar)
+    }
+
+    /// Parallax variant — orbs drift at different rates relative to `scrollOffset`.
+    /// Pass the value captured by `.trackingScrollOffset` on the scroll content.
+    func chicaneBackground(scrollOffset: CGFloat) -> some View {
+        self
+            .background(LiquidGlassBackground(scrollOffset: scrollOffset).ignoresSafeArea())
             .toolbarBackground(.hidden, for: .navigationBar)
     }
 }
