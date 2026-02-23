@@ -7,6 +7,7 @@ struct PicksView: View {
     @State private var selectedEventID: String?
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
     @State private var scrollOffset: CGFloat = 0
+    @State private var hasInitialized = false
 
     var body: some View {
         ScrollView {
@@ -23,9 +24,14 @@ struct PicksView: View {
                     EventSummaryCard(event: selectedEvent, subtitleOpacity: 0.88)
                     playerCards
                 } else {
-                    Text("Choose an event to enter picks")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("No event selected", systemImage: "calendar")
+                            .font(.headline)
+                        Text("Choose an event above to enter picks.")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                    .glassCard()
                 }
             }
             .padding(20)
@@ -35,6 +41,8 @@ struct PicksView: View {
         .navigationBarTitleDisplayMode(.inline)
         .chicaneBackground(scrollOffset: scrollOffset)
         .task {
+            guard !hasInitialized else { return }
+            hasInitialized = true
             initializeIfNeeded()
         }
         .onChange(of: selectedSeries) {

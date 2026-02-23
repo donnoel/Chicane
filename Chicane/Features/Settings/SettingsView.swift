@@ -84,6 +84,9 @@ struct SettingsView: View {
                     .textInputAutocapitalization(.words)
                     .disableAutocorrection(true)
                     .focused($focusedField, equals: .newPlayer)
+                    .onSubmit {
+                        Task { await addPlayer() }
+                    }
                 Button("Add") {
                     Task {
                         await addPlayer()

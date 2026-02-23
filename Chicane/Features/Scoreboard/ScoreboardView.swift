@@ -80,7 +80,10 @@ struct ScoreboardView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(history) { row in
+                ForEach(Array(history.enumerated()), id: \.element.id) { index, row in
+                    if index > 0 {
+                        Divider().opacity(0.3)
+                    }
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Text(row.event.title)

@@ -216,7 +216,6 @@ struct LargeActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .padding(.horizontal, 18)
             .frame(minHeight: 48)
             .frame(maxWidth: .infinity)
             .background(

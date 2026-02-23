@@ -9,6 +9,7 @@ struct ResultsView: View {
     @State private var showUnlockConfirmation = false
     @State private var isUpdatingResults = false
     @State private var scrollOffset: CGFloat = 0
+    @State private var hasInitialized = false
 
     var body: some View {
         ScrollView {
@@ -26,9 +27,14 @@ struct ResultsView: View {
                     resultEditorCard
                     pointsCard
                 } else {
-                    Text("Choose an event to enter the podium result")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("No event selected", systemImage: "calendar")
+                            .font(.headline)
+                        Text("Choose an event above to enter the result.")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                    .glassCard()
                 }
             }
             .padding(20)
@@ -38,6 +44,8 @@ struct ResultsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .chicaneBackground(scrollOffset: scrollOffset)
         .task {
+            guard !hasInitialized else { return }
+            hasInitialized = true
             initializeIfNeeded()
         }
         .onChange(of: selectedSeries) {
