@@ -86,9 +86,8 @@ struct HomeView: View {
                         Text("\(index + 1). \(standing.player.name)")
                             .font(.title3.weight(.semibold))
                         Spacer()
-                        Text("\(standing.points)")
+                        AnimatedScoreText(value: standing.points)
                             .font(.title3.weight(.bold))
-                            .monospacedDigit()
                     }
                     .padding(.vertical, 4)
                 }

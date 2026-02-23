@@ -53,9 +53,8 @@ struct ScoreboardView: View {
                         Text("\(index + 1). \(standing.player.name)")
                             .font(.title3.weight(.semibold))
                         Spacer()
-                        Text("\(standing.points)")
+                        AnimatedScoreText(value: standing.points)
                             .font(.title3.weight(.bold))
-                            .monospacedDigit()
                     }
                 }
 
@@ -102,9 +101,8 @@ struct ScoreboardView: View {
                                 Text(player.name)
                                     .font(.body.weight(.medium))
                                 Spacer()
-                                Text("\(row.pointsByPlayerID[player.id, default: 0])")
+                                AnimatedScoreText(value: row.pointsByPlayerID[player.id, default: 0], entryDelay: 0.22)
                                     .font(.body.weight(.bold))
-                                    .monospacedDigit()
                             }
                         }
                     }

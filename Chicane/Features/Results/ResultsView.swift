@@ -151,9 +151,8 @@ struct ResultsView: View {
                         Text(player.name)
                             .font(.body.weight(.medium))
                         Spacer()
-                        Text("\(points[player.id, default: 0])")
+                        AnimatedScoreText(value: points[player.id, default: 0])
                             .font(.body.weight(.bold))
-                            .monospacedDigit()
                     }
                 }
             }
