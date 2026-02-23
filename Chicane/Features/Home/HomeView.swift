@@ -7,7 +7,7 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 32) {
                 header
                 
                 Picker("Series", selection: $selectedScope) {
@@ -23,7 +23,7 @@ struct HomeView: View {
                 standingsCard
                 betCard
             }
-            .padding(20)
+            .padding(24)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("")
@@ -61,7 +61,7 @@ struct HomeView: View {
                 .accessibilityElement(children: .combine)
         } else {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Next race", systemImage: "calendar")
+                Label("Next Race", systemImage: "calendar")
                     .font(.headline)
                 Text("No upcoming races in the calendar")
                     .font(.body)
@@ -74,8 +74,8 @@ struct HomeView: View {
     private var standingsCard: some View {
         let standings = viewModel.standings(for: selectedScope)
         
-        return VStack(alignment: .leading, spacing: 16) {
-            Label("Current standings", systemImage: "chart.bar")
+        return VStack(alignment: .leading, spacing: 20) {
+            Label("Current Standings", systemImage: "chart.bar")
                 .font(.headline)
             
             if standings.isEmpty {
@@ -105,7 +105,7 @@ struct HomeView: View {
     
     private var betCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Season bet", systemImage: "sparkles")
+            Label("Season Bet", systemImage: "sparkles")
                 .font(.headline)
                 .foregroundStyle(ChicaneTheme.actionGradient)
             Text(viewModel.settings.seasonBetText)

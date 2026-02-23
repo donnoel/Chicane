@@ -1,98 +1,192 @@
 import SwiftUI
+import SafariServices
+
+// MARK: - NewsView
 
 struct NewsView: View {
     @EnvironmentObject private var viewModel: AppViewModel
-    @State private var hasConfirmedSpoilerGate = false
-    @State private var dontShowAgain = false
+    @State private var hasConfirmedSpoilerGate  = false
+    @State private var dontShowAgain            = false
+    @State private var selectedSeries: RaceSeries = .formula1
+    @State private var articlesBySeriesF1:      [NewsArticle] = []
+    @State private var articlesBySeriesMotoGP:  [NewsArticle] = []
+    @State private var isLoading  = false
+    @State private var loadError: String?
+    @State private var scrollOffset: CGFloat = 0
+    @State private var selectedArticle: NewsArticle?
 
-    private let placeholderArticles: [SpoilerArticle] = [
-        SpoilerArticle(id: "1", title: "Weekend recap placeholder", subtitle: "Connect RSS feeds in a future phase", publishedAt: "Updated after race"),
-        SpoilerArticle(id: "2", title: "Driver interviews placeholder", subtitle: "No live network calls in MVP", publishedAt: "When manually added"),
-        SpoilerArticle(id: "3", title: "Team strategy analysis placeholder", subtitle: "Architecture ready for a feed service", publishedAt: "Future data source")
-    ]
+    private let repository: NewsRepository = RSSNewsRepository()
+
+    private var currentArticles: [NewsArticle] {
+        selectedSeries == .formula1 ? articlesBySeriesF1 : articlesBySeriesMotoGP
+    }
 
     var body: some View {
         Group {
             if shouldShowGate {
-                spoilerGate
+                ScrollView {
+                    spoilerGate
+                        .padding(24)
+                }
+                .chicaneBackground()
             } else {
-                spoilerList
+                newsFeed
             }
         }
-        .padding(20)
-        .navigationTitle("Spoilers")
+        .navigationTitle("News")
         .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground()
+        .sheet(item: $selectedArticle) { article in
+            SafariView(url: article.url)
+                .ignoresSafeArea()
+        }
         .task {
             dontShowAgain = viewModel.settings.spoilersDontAskAgain
-            if !isGateEnabled {
-                hasConfirmedSpoilerGate = true
-            }
+            if !isGateEnabled { hasConfirmedSpoilerGate = true }
         }
     }
 
-    private var shouldShowGate: Bool {
-        isGateEnabled && !hasConfirmedSpoilerGate
-    }
+    // MARK: Spoiler gate
+
+    private var shouldShowGate: Bool { isGateEnabled && !hasConfirmedSpoilerGate }
 
     private var isGateEnabled: Bool {
         viewModel.settings.spoilerGateEnabled && !viewModel.settings.spoilersDontAskAgain
     }
 
     private var spoilerGate: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 24) {
             Label("Spoiler warning", systemImage: "exclamationmark.triangle.fill")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(ChicaneTheme.glowAmber)
 
-            Text("This section may contain spoilers. Continue?")
-                .font(.title3)
+            Text("This section contains the latest race news and may spoil recent results.")
+                .font(.body)
                 .foregroundStyle(.primary)
 
             Toggle("Don't show this warning again", isOn: $dontShowAgain)
                 .font(.body)
 
             Button("Continue") {
-                Task {
-                    await confirmSpoilerGate()
-                }
+                Task { await confirmSpoilerGate() }
             }
             .buttonStyle(LargeActionButtonStyle())
-            .accessibilityHint("Opens spoiler content")
+            .accessibilityHint("Opens the news feed")
         }
         .glassCard()
     }
 
-    private var spoilerList: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Label("Latest News", systemImage: "newspaper")
-                .font(.title2.weight(.bold))
+    // MARK: News feed
 
-            Text("Live articles will appear here in a future update.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-
-            ForEach(placeholderArticles) { article in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(article.title)
-                        .font(.body.weight(.semibold))
-                    Text(article.subtitle)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Text(article.publishedAt)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+    private var newsFeed: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 32) {
+                Picker("Series", selection: $selectedSeries) {
+                    ForEach(RaceSeries.allCases) { series in
+                        Text(series.title).tag(series)
+                    }
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
-                )
+                .pickerStyle(.segmented)
+
+                if isLoading && currentArticles.isEmpty {
+                    loadingCard
+                } else if let error = loadError, currentArticles.isEmpty {
+                    errorCard(message: error)
+                } else if currentArticles.isEmpty {
+                    emptyCard
+                } else {
+                    articleList
+                }
+            }
+            .padding(24)
+            .trackingScrollOffset { scrollOffset = $0 }
+        }
+        .chicaneBackground(scrollOffset: scrollOffset)
+        .refreshable { await loadArticles() }
+        .task {
+            if articlesBySeriesF1.isEmpty && articlesBySeriesMotoGP.isEmpty {
+                await loadArticles()
             }
         }
+        .onChange(of: selectedSeries) {
+            if currentArticles.isEmpty { Task { await loadArticles() } }
+        }
+    }
+
+    // MARK: Article list
+
+    private var articleList: some View {
+        VStack(spacing: 16) {
+            ForEach(currentArticles) { article in
+                ArticleRowView(article: article)
+                    .onTapGesture { selectedArticle = article }
+            }
+        }
+    }
+
+    // MARK: State cards
+
+    private var loadingCard: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .progressViewStyle(.circular)
+                .scaleEffect(1.2)
+                .tint(ChicaneTheme.seriesColor(selectedSeries))
+            Text("Loading latest news…")
+                .font(.body)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
         .glassCard()
     }
+
+    private func errorCard(message: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Could not load news", systemImage: "wifi.exclamationmark")
+                .font(.headline)
+                .foregroundStyle(ChicaneTheme.glowAmber)
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button("Try again") {
+                Task { await loadArticles() }
+            }
+            .buttonStyle(LargeActionButtonStyle())
+        }
+        .glassCard()
+    }
+
+    private var emptyCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("No articles found", systemImage: "newspaper")
+                .font(.headline)
+            Text("Pull down to refresh.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+        }
+        .glassCard()
+    }
+
+    // MARK: Data loading
+
+    private func loadArticles() async {
+        isLoading = true
+        loadError = nil
+        defer { isLoading = false }
+
+        async let f1Task   = repository.articles(for: .formula1)
+        async let motoTask = repository.articles(for: .motoGP)
+
+        do {
+            let (f1, moto) = try await (f1Task, motoTask)
+            articlesBySeriesF1    = f1
+            articlesBySeriesMotoGP = moto
+        } catch {
+            loadError = error.localizedDescription
+        }
+    }
+
+    // MARK: Gate confirmation
 
     private func confirmSpoilerGate() async {
         if dontShowAgain {
@@ -100,7 +194,6 @@ struct NewsView: View {
             updated.spoilersDontAskAgain = true
             do {
                 try await viewModel.saveSettings(updated)
-                viewModel.showInfo("Spoiler warning disabled")
             } catch {
                 viewModel.showError(error.localizedDescription)
             }
@@ -109,9 +202,73 @@ struct NewsView: View {
     }
 }
 
-private struct SpoilerArticle: Identifiable {
-    let id: String
-    let title: String
-    let subtitle: String
-    let publishedAt: String
+// MARK: - Article Row
+
+private struct ArticleRowView: View {
+    let article: NewsArticle
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(article.series.shortTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(ChicaneTheme.seriesColor(article.series), in: Capsule())
+                Spacer()
+                Text(article.formattedDate)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Text(article.title)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(3)
+
+            if !article.description.isEmpty {
+                Text(article.description)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            HStack {
+                Spacer()
+                Label("Read more", systemImage: "arrow.up.right")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(ChicaneTheme.seriesColor(article.series))
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(
+                            ChicaneTheme.seriesColor(article.series).opacity(0.25),
+                            lineWidth: 1
+                        )
+                )
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 3)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - In-app Safari
+
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        let vc = SFSafariViewController(url: url)
+        vc.preferredControlTintColor = UIColor(ChicaneTheme.motoBlue)
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }

@@ -11,7 +11,7 @@ struct PicksView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 32) {
                 EventPickerHeader(
                     title: "Podium Picks",
                     selectedSeries: $selectedSeries,
@@ -34,7 +34,7 @@ struct PicksView: View {
                     .glassCard()
                 }
             }
-            .padding(20)
+            .padding(24)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Picks")
@@ -83,7 +83,7 @@ struct PicksView: View {
 
     private var playerCards: some View {
         ForEach(viewModel.players) { player in
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 24) {
                 PodiumPickerSection(
                     title: "\(player.name)'s Podium",
                     drivers: drivers,

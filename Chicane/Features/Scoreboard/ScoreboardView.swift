@@ -7,7 +7,7 @@ struct ScoreboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 32) {
                 Text("Season Scoreboard")
                     .font(.title2.weight(.bold))
 
@@ -23,7 +23,7 @@ struct ScoreboardView: View {
                 standingsCard
                 historyCard
             }
-            .padding(20)
+            .padding(24)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Scoreboard")
@@ -41,8 +41,8 @@ struct ScoreboardView: View {
     private var standingsCard: some View {
         let standings = viewModel.standings(for: selectedScope)
 
-        return VStack(alignment: .leading, spacing: 14) {
-            Label("Season totals", systemImage: "trophy")
+        return VStack(alignment: .leading, spacing: 18) {
+            Label("Season Totals", systemImage: "trophy")
                 .font(.headline)
 
             if standings.isEmpty {
@@ -71,8 +71,8 @@ struct ScoreboardView: View {
     private var historyCard: some View {
         let history = viewModel.history(for: selectedScope)
 
-        return VStack(alignment: .leading, spacing: 14) {
-            Label("Event history", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+        return VStack(alignment: .leading, spacing: 18) {
+            Label("Event History", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                 .font(.headline)
 
             if history.isEmpty {
@@ -84,7 +84,7 @@ struct ScoreboardView: View {
                     if index > 0 {
                         Divider().opacity(0.3)
                     }
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 14) {
                         HStack {
                             Text(row.event.title)
                                 .font(.body.weight(.semibold))

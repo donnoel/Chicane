@@ -71,7 +71,7 @@ struct SettingsView: View {
                 }
             }
 
-            Button("Save player names") {
+            Button("Save Player Names") {
                 Task {
                     await savePlayerNames()
                 }
@@ -80,7 +80,7 @@ struct SettingsView: View {
             .frame(minHeight: 44)
 
             HStack(spacing: 10) {
-                TextField("Add player", text: $newPlayerName)
+                TextField("Add Player", text: $newPlayerName)
                     .textInputAutocapitalization(.words)
                     .disableAutocorrection(true)
                     .focused($focusedField, equals: .newPlayer)
@@ -101,17 +101,17 @@ struct SettingsView: View {
 
     private var spoilerSection: some View {
         Section("Spoilers") {
-            Toggle("Require spoiler confirmation", isOn: spoilerGateBinding)
+            Toggle("Require Spoiler Confirmation", isOn: spoilerGateBinding)
                 .accessibilityHint("Shows a warning before opening spoilers")
 
-            Toggle("Show Spoilers tab", isOn: spoilersSectionBinding)
+            Toggle("Show Spoilers Tab", isOn: spoilersSectionBinding)
                 .accessibilityHint("Adds the Spoilers tab to the app")
         }
     }
 
     private var betSection: some View {
-        Section("Season bet text") {
-            TextField("Friendly bet", text: $seasonBetText, axis: .vertical)
+        Section("Season Bet Text") {
+            TextField("Friendly Bet", text: $seasonBetText, axis: .vertical)
                 .focused($focusedField, equals: .seasonBet)
                 .lineLimit(2...4)
 
@@ -127,7 +127,7 @@ struct SettingsView: View {
 
     private var resetSection: some View {
         Section("Season") {
-            Button("Reset season", role: .destructive) {
+            Button("Reset Season", role: .destructive) {
                 showResetConfirmation = true
             }
             .frame(minHeight: 44)
@@ -203,7 +203,7 @@ struct SettingsView: View {
                 Player(id: player.id, name: playerNames[player.id, default: player.name])
             }
             try await viewModel.savePlayers(updatedPlayers)
-            viewModel.showInfo("Player names saved")
+            viewModel.showInfo("Player Names Saved")
         } catch {
             viewModel.showError(error.localizedDescription)
         }
@@ -213,7 +213,7 @@ struct SettingsView: View {
         do {
             try await viewModel.addPlayer(named: newPlayerName)
             newPlayerName = ""
-            viewModel.showInfo("Player added")
+            viewModel.showInfo("Player Added")
         } catch {
             viewModel.showError(error.localizedDescription)
         }
@@ -222,7 +222,7 @@ struct SettingsView: View {
     private func removePlayer(playerID: UUID) async {
         do {
             try await viewModel.removePlayers(withIDs: [playerID])
-            viewModel.showInfo("Player removed")
+            viewModel.showInfo("Player Removed")
         } catch {
             viewModel.showError(error.localizedDescription)
         }
@@ -249,7 +249,7 @@ struct SettingsView: View {
     private func resetSeason() async {
         do {
             try await viewModel.resetSeason()
-            viewModel.showInfo("Season reset")
+            viewModel.showInfo("Season Reset")
         } catch {
             viewModel.showError(error.localizedDescription)
         }

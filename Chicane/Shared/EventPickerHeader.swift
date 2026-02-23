@@ -14,7 +14,7 @@ struct EventPickerHeader: View {
     var eventPickerLabel: String = "Race event"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             Text(title)
                 .font(.title2.weight(.bold))
 
@@ -57,7 +57,7 @@ struct EventSummaryCard: View {
     var subtitleOpacity: Double = 1.0
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(event.title)
                     .font(.title3.weight(.semibold))

@@ -33,11 +33,11 @@ struct RaceCountdownCard: View {
 
     @ViewBuilder
     private func cardContent(remaining: TimeInterval, isRaceWeekend: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
 
             // Header row with label + series badge
             HStack {
-                Label("Next race", systemImage: "calendar")
+                Label("Next Race", systemImage: "calendar")
                     .font(.headline)
                 Spacer()
                 Text(event.series.shortTitle)
@@ -75,7 +75,7 @@ struct RaceCountdownCard: View {
         let minutes = (Int(remaining) % 3600) / 60
         let seconds = Int(remaining) % 60
 
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
                 if !showSeconds {
                     CountdownUnitView(

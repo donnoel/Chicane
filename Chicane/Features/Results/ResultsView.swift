@@ -13,7 +13,7 @@ struct ResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 32) {
                 EventPickerHeader(
                     title: "Race Results Podium",
                     selectedSeries: $selectedSeries,
@@ -37,7 +37,7 @@ struct ResultsView: View {
                     .glassCard()
                 }
             }
-            .padding(20)
+            .padding(24)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Results")
@@ -93,13 +93,13 @@ struct ResultsView: View {
     }
 
     private var resultEditorCard: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 24) {
             if let currentResult {
                 resultStatusLabel(currentResult)
             }
 
             PodiumPickerSection(
-                title: "Actual podium",
+                title: "Actual Podium",
                 drivers: viewModel.drivers(for: selectedSeries),
                 participantSingular: participantSingular,
                 participantPlural: participantPlural,
@@ -145,8 +145,8 @@ struct ResultsView: View {
     private var pointsCard: some View {
         let points = selectedEventID.map { viewModel.eventPoints(series: selectedSeries, eventID: $0) } ?? [:]
 
-        return VStack(alignment: .leading, spacing: 14) {
-            Text("Event points")
+        return VStack(alignment: .leading, spacing: 18) {
+            Text("Event Points")
                 .font(.headline)
 
             if points.isEmpty {
