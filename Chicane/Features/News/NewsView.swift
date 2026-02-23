@@ -65,15 +65,15 @@ struct NewsView: View {
 
     private var spoilerList: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("News (placeholder)")
+            Label("Latest News", systemImage: "newspaper")
                 .font(.title2.weight(.bold))
 
-            Text("Future feed integration can plug into a `NewsRepository` without changing this screen.")
+            Text("Live articles will appear here in a future update.")
                 .font(.body)
                 .foregroundStyle(.secondary)
 
             ForEach(placeholderArticles) { article in
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text(article.title)
                         .font(.body.weight(.semibold))
                     Text(article.subtitle)

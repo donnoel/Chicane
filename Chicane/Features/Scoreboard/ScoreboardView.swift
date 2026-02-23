@@ -8,7 +8,7 @@ struct ScoreboardView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Season scoreboard")
+                Text("Season Scoreboard")
                     .font(.title2.weight(.bold))
 
                 Picker("Scope", selection: $selectedScope) {
@@ -42,7 +42,7 @@ struct ScoreboardView: View {
         let standings = viewModel.standings(for: selectedScope)
 
         return VStack(alignment: .leading, spacing: 14) {
-            Text("Totals")
+            Label("Season totals", systemImage: "trophy")
                 .font(.headline)
 
             if standings.isEmpty {
@@ -72,7 +72,7 @@ struct ScoreboardView: View {
         let history = viewModel.history(for: selectedScope)
 
         return VStack(alignment: .leading, spacing: 14) {
-            Text("Event history")
+            Label("Event history", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                 .font(.headline)
 
             if history.isEmpty {

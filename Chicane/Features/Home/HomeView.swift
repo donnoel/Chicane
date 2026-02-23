@@ -49,7 +49,7 @@ struct HomeView: View {
                     .minimumScaleFactor(0.8)
             }
             Text("Friendly picks for Formula 1 and MotoGP")
-                .font(.title3)
+                .font(.callout)
                 .foregroundStyle(.secondary)
         }
     }
@@ -104,7 +104,7 @@ struct HomeView: View {
     }
     
     private var betCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Label("Season bet", systemImage: "sparkles")
                 .font(.headline)
                 .foregroundStyle(ChicaneTheme.actionGradient)

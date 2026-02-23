@@ -94,6 +94,7 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .frame(minHeight: 44)
+                .disabled(newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
     }

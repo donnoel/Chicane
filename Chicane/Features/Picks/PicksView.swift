@@ -13,7 +13,7 @@ struct PicksView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 EventPickerHeader(
-                    title: "Create weekend podium picks",
+                    title: "Podium Picks",
                     selectedSeries: $selectedSeries,
                     selectedEventID: $selectedEventID,
                     events: events,
@@ -85,7 +85,7 @@ struct PicksView: View {
         ForEach(viewModel.players) { player in
             VStack(alignment: .leading, spacing: 20) {
                 PodiumPickerSection(
-                    title: "\(player.name)'s podium",
+                    title: "\(player.name)'s Podium",
                     drivers: drivers,
                     participantSingular: participantSingular,
                     participantPlural: participantPlural,
@@ -98,10 +98,11 @@ struct PicksView: View {
                     }
                 }
                 .buttonStyle(LargeActionButtonStyle())
+                .disabled(!(draftsByPlayer[player.id] ?? .empty).isComplete)
                 .accessibilityLabel("Save picks for \(player.name)")
 
                 if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
-                    Text("Saved. You can edit and save again anytime before results are locked.")
+                    Label("Saved. Edit and save again anytime before results are locked.", systemImage: "checkmark.circle.fill")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

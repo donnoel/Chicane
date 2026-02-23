@@ -213,26 +213,32 @@ extension View {
 }
 
 struct LargeActionButtonStyle: ButtonStyle {
+    /// Override the default F1-red→MotoGP-blue gradient with a solid tint.
+    var tint: Color? = nil
+
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        let opacity = configuration.isPressed ? 0.88 : 1.0
+        let fill: AnyShapeStyle = if let tint {
+            AnyShapeStyle(tint.opacity(opacity))
+        } else {
+            AnyShapeStyle(LinearGradient(
+                colors: [ChicaneTheme.f1Red.opacity(opacity), ChicaneTheme.motoBlue.opacity(opacity)],
+                startPoint: .leading,
+                endPoint: .trailing
+            ))
+        }
+
+        return configuration.label
             .font(.headline)
             .frame(minHeight: 48)
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: configuration.isPressed
-                                ? [ChicaneTheme.f1Red.opacity(0.88), ChicaneTheme.motoBlue.opacity(0.88)]
-                                : [ChicaneTheme.f1Red, ChicaneTheme.motoBlue],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
+                    .fill(fill)
             )
             .foregroundStyle(.white)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .shadow(color: ChicaneTheme.motoBlue.opacity(0.35), radius: 8, x: 0, y: 4)
+            .shadow(color: (tint ?? ChicaneTheme.motoBlue).opacity(0.35), radius: 8, x: 0, y: 4)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

@@ -15,7 +15,7 @@ struct ResultsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 EventPickerHeader(
-                    title: "Update race result podium",
+                    title: "Race Results Podium",
                     selectedSeries: $selectedSeries,
                     selectedEventID: $selectedEventID,
                     events: events,
@@ -108,12 +108,10 @@ struct ResultsView: View {
             )
 
             if currentResult?.isLocked == true {
-                Button("Unlock result") {
+                Button("Unlock Result") {
                     showUnlockConfirmation = true
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .frame(minHeight: 44)
+                .buttonStyle(LargeActionButtonStyle(tint: .orange))
                 .accessibilityHint("Confirm to edit this locked result")
             } else {
                 Button("Update Results") {
@@ -122,7 +120,7 @@ struct ResultsView: View {
                     }
                 }
                 .buttonStyle(LargeActionButtonStyle())
-                .disabled(isUpdatingResults)
+                .disabled(isUpdatingResults || !draft.isComplete)
                 .accessibilityLabel("Update results")
                 .accessibilityHint("Fetches official top three and locks this result")
             }
