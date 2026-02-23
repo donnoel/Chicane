@@ -114,13 +114,23 @@ struct ResultsView: View {
                 .buttonStyle(LargeActionButtonStyle(tint: .orange))
                 .accessibilityHint("Confirm to edit this locked result")
             } else {
-                Button("Update Results") {
+                Button {
                     Task {
                         await updateResults()
                     }
+                } label: {
+                    if isUpdatingResults {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .tint(.white)
+                            Text("Updating…")
+                        }
+                    } else {
+                        Text("Update Results")
+                    }
                 }
                 .buttonStyle(LargeActionButtonStyle())
-                .disabled(isUpdatingResults || !draft.isComplete)
+                .disabled(isUpdatingResults)
                 .accessibilityLabel("Update results")
                 .accessibilityHint("Fetches official top three and locks this result")
             }
@@ -176,7 +186,14 @@ struct ResultsView: View {
     }
 
     private func initializeSelectionForSeries() {
-        selectedEventID = events.first?.id
+        let now = Date()
+        // Default to the most recently completed event (most likely needs results entered).
+        if let recent = events.filter({ $0.raceDate < now }).max(by: { $0.raceDate < $1.raceDate }) {
+            selectedEventID = recent.id
+        } else {
+            // No past events — pick the earliest upcoming.
+            selectedEventID = events.min(by: { $0.raceDate < $1.raceDate })?.id
+        }
     }
 
     private func hydrateDraft() {
@@ -208,13 +225,8 @@ struct ResultsView: View {
             viewModel.showInfo("Results updated and locked.")
             hydrateDraft()
         } catch {
-            if let officialError = error as? OfficialResultRepositoryError {
-                switch officialError {
-                case .resultsUnavailable:
-                    viewModel.showInfo("Official results aren't available yet. Try again later.")
-                @unknown default:
-                    viewModel.showInfo("We couldn't pull official results right now. We'll use local data for now.")
-                }
+            if error is OfficialResultRepositoryError {
+                viewModel.showInfo("Official results aren't available yet. Try again later.")
             } else {
                 viewModel.showError(error.localizedDescription)
             }

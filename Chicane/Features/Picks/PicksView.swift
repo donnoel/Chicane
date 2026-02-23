@@ -126,7 +126,14 @@ struct PicksView: View {
     }
 
     private func initializeSelectionForSeries() {
-        selectedEventID = events.first?.id
+        let now = Date()
+        // Default to the next upcoming event (most likely needs picks entered).
+        if let next = events.filter({ $0.raceDate >= now }).min(by: { $0.raceDate < $1.raceDate }) {
+            selectedEventID = next.id
+        } else {
+            // Season is over — pick the most recent event.
+            selectedEventID = events.max(by: { $0.raceDate < $1.raceDate })?.id
+        }
     }
 
     private func hydrateDrafts() {

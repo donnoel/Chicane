@@ -7,7 +7,7 @@ DerivedData/
 
 # SwiftPM
 .build/
-
+.claude
 # macOS
 .DS_Store
 
