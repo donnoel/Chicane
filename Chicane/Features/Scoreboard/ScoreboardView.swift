@@ -7,7 +7,7 @@ struct ScoreboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 24) {
                 Text("Season scoreboard")
                     .font(.title2.weight(.bold))
 
@@ -41,7 +41,7 @@ struct ScoreboardView: View {
     private var standingsCard: some View {
         let standings = viewModel.standings(for: selectedScope)
 
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 14) {
             Text("Totals")
                 .font(.headline)
 
@@ -71,7 +71,7 @@ struct ScoreboardView: View {
     private var historyCard: some View {
         let history = viewModel.history(for: selectedScope)
 
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 14) {
             Text("Event history")
                 .font(.headline)
 
@@ -81,7 +81,7 @@ struct ScoreboardView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(history) { row in
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Text(row.event.title)
                                 .font(.body.weight(.semibold))
@@ -108,7 +108,7 @@ struct ScoreboardView: View {
                             }
                         }
                     }
-                    .padding(12)
+                    .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(Color.white.opacity(0.1))

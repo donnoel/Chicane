@@ -7,7 +7,7 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 24) {
                 header
                 
                 Picker("Series", selection: $selectedScope) {
@@ -74,7 +74,7 @@ struct HomeView: View {
     private var standingsCard: some View {
         let standings = viewModel.standings(for: selectedScope)
         
-        return VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 16) {
             Label("Current standings", systemImage: "chart.bar")
                 .font(.headline)
             
@@ -91,7 +91,7 @@ struct HomeView: View {
                         AnimatedScoreText(value: standing.points)
                             .font(.title3.weight(.bold))
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 8)
                 }
             }
             

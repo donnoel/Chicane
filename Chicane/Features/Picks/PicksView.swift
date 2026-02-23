@@ -10,7 +10,7 @@ struct PicksView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 24) {
                 EventPickerHeader(
                     title: "Create weekend podium picks",
                     selectedSeries: $selectedSeries,
@@ -75,7 +75,7 @@ struct PicksView: View {
 
     private var playerCards: some View {
         ForEach(viewModel.players) { player in
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 20) {
                 PodiumPickerSection(
                     title: "\(player.name)'s podium",
                     drivers: drivers,

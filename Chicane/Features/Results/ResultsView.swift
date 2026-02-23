@@ -12,7 +12,7 @@ struct ResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 24) {
                 EventPickerHeader(
                     title: "Update race result podium",
                     selectedSeries: $selectedSeries,
@@ -85,7 +85,7 @@ struct ResultsView: View {
     }
 
     private var resultEditorCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 20) {
             if let currentResult {
                 resultStatusLabel(currentResult)
             }
@@ -139,7 +139,7 @@ struct ResultsView: View {
     private var pointsCard: some View {
         let points = selectedEventID.map { viewModel.eventPoints(series: selectedSeries, eventID: $0) } ?? [:]
 
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 14) {
             Text("Event points")
                 .font(.headline)
 

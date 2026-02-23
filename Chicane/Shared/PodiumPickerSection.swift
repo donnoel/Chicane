@@ -25,7 +25,7 @@ struct PodiumPickerSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text(title)
                 .font(.title3.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
@@ -49,7 +49,7 @@ struct PodiumPickerSection: View {
         position: Int,
         selection: Binding<String?>
     ) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             // Medal — glows when a driver is assigned to this slot
             PodiumMedalView(
                 position: position,

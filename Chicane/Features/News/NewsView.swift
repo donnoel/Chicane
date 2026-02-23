@@ -40,7 +40,7 @@ struct NewsView: View {
     }
 
     private var spoilerGate: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             Label("Spoiler warning", systemImage: "exclamationmark.triangle.fill")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(ChicaneTheme.glowAmber)
@@ -64,7 +64,7 @@ struct NewsView: View {
     }
 
     private var spoilerList: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("News (placeholder)")
                 .font(.title2.weight(.bold))
 
@@ -83,7 +83,7 @@ struct NewsView: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
-                .padding(12)
+                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
