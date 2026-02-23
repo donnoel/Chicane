@@ -33,7 +33,6 @@
 		5A63FFEC2F44E19C00885BD6 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				AppIntentsShim.swift,
 				Info.plist,
 			);
 			target = 5A63FFC82F44E19C00885BD6 /* Chicane */;
