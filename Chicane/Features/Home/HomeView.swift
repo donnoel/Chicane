@@ -44,7 +44,7 @@ struct HomeView: View {
                 Image(systemName: "flag.checkered.2.crossed")
                     .font(.title2.weight(.bold))
                     .foregroundStyle(ChicaneTheme.actionGradient)
-                Text("Weekend Podium Bets")
+                Text("The Podium")
                     .font(.largeTitle.weight(.bold))
                     .minimumScaleFactor(0.8)
             }

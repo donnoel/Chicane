@@ -84,7 +84,7 @@ struct PicksView: View {
                     draft: binding(for: player.id)
                 )
 
-                Button("Save \(player.name)'s picks") {
+                Button("Save \(player.name)'s Picks") {
                     Task {
                         await savePick(for: player)
                     }
