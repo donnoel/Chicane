@@ -36,8 +36,7 @@ struct NewsView: View {
         .navigationTitle("News")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedArticle) { article in
-            SafariView(url: article.url)
-                .ignoresSafeArea()
+            ArticleReaderView(article: article)
         }
         .task {
             dontShowAgain = viewModel.settings.spoilersDontAskAgain
@@ -259,12 +258,67 @@ private struct ArticleRowView: View {
     }
 }
 
+// MARK: - Article reader sheet
+
+/// Full-screen sheet that shows a branded loading card while the article and
+/// Reader mode finish loading, then cross-fades to the clean Safari content.
+private struct ArticleReaderView: View {
+    let article: NewsArticle
+    @State private var isLoaded = false
+
+    var body: some View {
+        ZStack {
+            SafariView(url: article.url, onLoaded: {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    isLoaded = true
+                }
+            })
+            .ignoresSafeArea()
+
+            if !isLoaded {
+                articleLoadingCard
+                    .transition(.opacity)
+                    // Touches pass through so Safari's Done button stays reachable.
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private var articleLoadingCard: some View {
+        ZStack {
+            Rectangle()
+                .fill(.regularMaterial)
+                .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                Text(article.series.shortTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(ChicaneTheme.seriesColor(article.series), in: Capsule())
+
+                Text(article.title)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 32)
+
+                ProgressView()
+                    .tint(ChicaneTheme.seriesColor(article.series))
+                    .padding(.top, 4)
+            }
+        }
+    }
+}
+
 // MARK: - In-app Safari
 
-struct SafariView: UIViewControllerRepresentable {
+private struct SafariView: UIViewControllerRepresentable {
     let url: URL
+    let onLoaded: () -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator { Coordinator(onLoaded: onLoaded) }
 
     func makeUIViewController(context: Context) -> SFSafariViewController {
         let configuration = SFSafariViewController.Configuration()
@@ -272,38 +326,21 @@ struct SafariView: UIViewControllerRepresentable {
         let vc = SFSafariViewController(url: url, configuration: configuration)
         vc.preferredControlTintColor = UIColor(ChicaneTheme.motoBlue)
         vc.delegate = context.coordinator
-
-        // Cover the web content until Reader mode has rendered.
-        // isUserInteractionEnabled = false lets all touches pass through to Safari's
-        // own controls (Done button, toolbar, etc.) so the app stays fully interactive.
-        let overlay = UIView()
-        overlay.tag = 0xCAFE
-        overlay.backgroundColor = .systemBackground
-        overlay.isUserInteractionEnabled = false
-        overlay.translatesAutoresizingMaskIntoConstraints = false
-        vc.view.addSubview(overlay)
-        NSLayoutConstraint.activate([
-            overlay.topAnchor.constraint(equalTo: vc.view.topAnchor),
-            overlay.bottomAnchor.constraint(equalTo: vc.view.bottomAnchor),
-            overlay.leadingAnchor.constraint(equalTo: vc.view.leadingAnchor),
-            overlay.trailingAnchor.constraint(equalTo: vc.view.trailingAnchor),
-        ])
-
         return vc
     }
 
     func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 
-    /// Fades the overlay out once the page (and Reader mode) have finished loading.
     final class Coordinator: NSObject, SFSafariViewControllerDelegate {
+        private let onLoaded: () -> Void
+
+        init(onLoaded: @escaping () -> Void) {
+            self.onLoaded = onLoaded
+        }
+
         func safariViewController(_ controller: SFSafariViewController,
                                   didCompleteInitialLoad didLoadSuccessfully: Bool) {
-            guard let overlay = controller.view.viewWithTag(0xCAFE) else { return }
-            UIView.animate(withDuration: 0.25, animations: {
-                overlay.alpha = 0
-            }, completion: { _ in
-                overlay.removeFromSuperview()
-            })
+            onLoaded()
         }
     }
 }
