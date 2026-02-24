@@ -35,7 +35,7 @@ struct NewsView: View {
         }
         .navigationTitle("News")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $selectedArticle) { article in
+        .fullScreenCover(item: $selectedArticle) { article in
             ArticleReaderView(article: article)
         }
         .task {
@@ -265,21 +265,59 @@ private struct ArticleRowView: View {
 private struct ArticleReaderView: View {
     let article: NewsArticle
     @State private var isLoaded = false
+    @State private var didFailToLoad = false
+    @State private var loadStart = Date()
+    @State private var hasTriggeredLoadedTransition = false
 
     var body: some View {
         ZStack {
-            SafariView(url: article.url, onLoaded: {
-                withAnimation(.easeInOut(duration: 0.35)) {
-                    isLoaded = true
+            SafariView(url: article.url, onLoaded: { didLoadSuccessfully in
+                guard !hasTriggeredLoadedTransition else { return }
+                hasTriggeredLoadedTransition = true
+
+                if !didLoadSuccessfully {
+                    didFailToLoad = true
+                    return
+                }
+
+                // Safari Reader mode often does a second-stage transition after the initial load.
+                // Keep the branded overlay up for a minimum duration and a small settle delay
+                // to avoid a blank/flash during the Reader handoff.
+                let elapsed = Date().timeIntervalSince(loadStart)
+                let minimumOverlay: TimeInterval = 0.65
+                let settleDelay: TimeInterval = 0.30
+                let remaining = max(0, minimumOverlay - elapsed)
+                let totalDelay = remaining + settleDelay
+
+                Task { @MainActor in
+                    if totalDelay > 0 {
+                        try? await Task.sleep(nanoseconds: UInt64(totalDelay * 1_000_000_000))
+                    }
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        isLoaded = true
+                    }
                 }
             })
             .ignoresSafeArea()
+            .onAppear {
+                loadStart = Date()
+                isLoaded = false
+                didFailToLoad = false
+                hasTriggeredLoadedTransition = false
+            }
 
             if !isLoaded {
-                articleLoadingCard
-                    .transition(.opacity)
-                    // Touches pass through so Safari's Done button stays reachable.
-                    .allowsHitTesting(false)
+                if didFailToLoad {
+                    articleLoadFailedCard
+                        .transition(.opacity)
+                        // Touches pass through so Safari's Done button stays reachable.
+                        .allowsHitTesting(false)
+                } else {
+                    articleLoadingCard
+                        .transition(.opacity)
+                        // Touches pass through so Safari's Done button stays reachable.
+                        .allowsHitTesting(false)
+                }
             }
         }
     }
@@ -310,13 +348,42 @@ private struct ArticleReaderView: View {
             }
         }
     }
+
+    private var articleLoadFailedCard: some View {
+        ZStack {
+            Rectangle()
+                .fill(.regularMaterial)
+                .ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                Label("Couldn't load article", systemImage: "wifi.exclamationmark")
+                    .font(.headline)
+                    .foregroundStyle(ChicaneTheme.glowAmber)
+
+                Text(article.title)
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 32)
+
+                Link(destination: article.url) {
+                    Label("Open in Safari", systemImage: "safari")
+                        .font(.body.weight(.semibold))
+                }
+                .buttonStyle(LargeActionButtonStyle())
+            }
+            .padding(24)
+            .glassCard()
+            .padding(.horizontal, 24)
+        }
+    }
 }
 
 // MARK: - In-app Safari
 
 private struct SafariView: UIViewControllerRepresentable {
     let url: URL
-    let onLoaded: () -> Void
+    let onLoaded: (Bool) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(onLoaded: onLoaded) }
 
@@ -332,15 +399,15 @@ private struct SafariView: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 
     final class Coordinator: NSObject, SFSafariViewControllerDelegate {
-        private let onLoaded: () -> Void
+        private let onLoaded: (Bool) -> Void
 
-        init(onLoaded: @escaping () -> Void) {
+        init(onLoaded: @escaping (Bool) -> Void) {
             self.onLoaded = onLoaded
         }
 
         func safariViewController(_ controller: SFSafariViewController,
                                   didCompleteInitialLoad didLoadSuccessfully: Bool) {
-            onLoaded()
+            onLoaded(didLoadSuccessfully)
         }
     }
 }
