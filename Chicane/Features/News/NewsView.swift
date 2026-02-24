@@ -264,13 +264,46 @@ private struct ArticleRowView: View {
 struct SafariView: UIViewControllerRepresentable {
     let url: URL
 
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeUIViewController(context: Context) -> SFSafariViewController {
         let configuration = SFSafariViewController.Configuration()
         configuration.entersReaderIfAvailable = true
         let vc = SFSafariViewController(url: url, configuration: configuration)
         vc.preferredControlTintColor = UIColor(ChicaneTheme.motoBlue)
+        vc.delegate = context.coordinator
+
+        // Cover the web content until Reader mode has rendered.
+        // isUserInteractionEnabled = false lets all touches pass through to Safari's
+        // own controls (Done button, toolbar, etc.) so the app stays fully interactive.
+        let overlay = UIView()
+        overlay.tag = 0xCAFE
+        overlay.backgroundColor = .systemBackground
+        overlay.isUserInteractionEnabled = false
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        vc.view.addSubview(overlay)
+        NSLayoutConstraint.activate([
+            overlay.topAnchor.constraint(equalTo: vc.view.topAnchor),
+            overlay.bottomAnchor.constraint(equalTo: vc.view.bottomAnchor),
+            overlay.leadingAnchor.constraint(equalTo: vc.view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: vc.view.trailingAnchor),
+        ])
+
         return vc
     }
 
     func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
+
+    /// Fades the overlay out once the page (and Reader mode) have finished loading.
+    final class Coordinator: NSObject, SFSafariViewControllerDelegate {
+        func safariViewController(_ controller: SFSafariViewController,
+                                  didCompleteInitialLoad didLoadSuccessfully: Bool) {
+            guard let overlay = controller.view.viewWithTag(0xCAFE) else { return }
+            UIView.animate(withDuration: 0.25, animations: {
+                overlay.alpha = 0
+            }, completion: { _ in
+                overlay.removeFromSuperview()
+            })
+        }
+    }
 }
