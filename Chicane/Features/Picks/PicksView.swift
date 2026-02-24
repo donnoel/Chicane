@@ -56,7 +56,7 @@ struct PicksView: View {
             hydrateDrafts()
         }
         .onChange(of: viewModel.picks) {
-            hydrateDrafts()
+            hydrateAvailablePicks()
         }
     }
 
@@ -153,6 +153,27 @@ struct PicksView: View {
         draftsByPlayer = updated
     }
 
+    /// Called when `viewModel.picks` changes (e.g. after initial async load or after a save).
+    /// Only updates a player's draft if they have no in-progress edits, so concurrent edits
+    /// for other players are never clobbered.
+    private func hydrateAvailablePicks() {
+        guard let selectedEventID else { return }
+        for player in viewModel.players {
+            let savedDraft: PodiumDraft
+            if let pick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
+                savedDraft = PodiumDraft(podium: pick.podium)
+            } else {
+                savedDraft = .empty
+            }
+            let currentDraft = draftsByPlayer[player.id] ?? .empty
+            // Only overwrite if the draft is blank or already reflects the saved pick.
+            // If it differs, the player has unsaved edits in progress — leave them alone.
+            if currentDraft == .empty || currentDraft == savedDraft {
+                draftsByPlayer[player.id] = savedDraft
+            }
+        }
+    }
+
     private func savePick(for player: Player) async {
         guard let selectedEventID else { return }
         guard let draft = draftsByPlayer[player.id] else { return }
@@ -165,7 +186,10 @@ struct PicksView: View {
                 draft: draft
             )
             viewModel.showInfo("Saved \(player.name)'s picks for this event.")
-            hydrateDrafts()
+            // Only refresh this player's draft to avoid clobbering in-progress edits for others.
+            if let savedPick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
+                draftsByPlayer[player.id] = PodiumDraft(podium: savedPick.podium)
+            }
         } catch {
             viewModel.showError(error.localizedDescription)
         }
