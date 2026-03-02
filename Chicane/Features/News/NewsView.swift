@@ -3,10 +3,8 @@ import SwiftUI
 // MARK: - NewsView
 
 struct NewsView: View {
-    @EnvironmentObject private var viewModel: AppViewModel
     @Environment(\.openURL) private var openURL
-    @State private var hasConfirmedSpoilerGate  = false
-    @State private var dontShowAgain            = false
+    @State private var showsEntryGate = true
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var articlesBySeriesF1:      [NewsArticle] = []
     @State private var articlesBySeriesMotoGP:  [NewsArticle] = []
@@ -21,53 +19,49 @@ struct NewsView: View {
     }
 
     var body: some View {
-        Group {
-            if shouldShowGate {
-                ScrollView {
-                    spoilerGate
-                        .padding(24)
-                }
-                .chicaneBackground()
-            } else {
-                newsFeed
+        ZStack {
+            newsFeed
+                .blur(radius: showsEntryGate ? 22 : 0)
+                .allowsHitTesting(!showsEntryGate)
+
+            if showsEntryGate {
+                entryGateOverlay
             }
         }
         .navigationTitle("News")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            dontShowAgain = viewModel.settings.spoilersDontAskAgain
-            if !isGateEnabled { hasConfirmedSpoilerGate = true }
+        .onAppear {
+            showsEntryGate = true
         }
     }
 
-    // MARK: Spoiler gate
+    private var entryGateOverlay: some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea()
 
-    private var shouldShowGate: Bool { isGateEnabled && !hasConfirmedSpoilerGate }
+            VStack(alignment: .leading, spacing: 24) {
+                Label("News may contain spoilers", systemImage: "exclamationmark.triangle.fill")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(ChicaneTheme.glowAmber)
 
-    private var isGateEnabled: Bool {
-        viewModel.settings.spoilerGateEnabled && !viewModel.settings.spoilersDontAskAgain
-    }
+                Text("Latest stories can reveal recent race results. Tap below when you're ready to continue.")
+                    .font(.body)
+                    .foregroundStyle(.primary)
 
-    private var spoilerGate: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Label("Spoiler warning", systemImage: "exclamationmark.triangle.fill")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(ChicaneTheme.glowAmber)
-
-            Text("This section contains the latest race news and may spoil recent results.")
-                .font(.body)
-                .foregroundStyle(.primary)
-
-            Toggle("Don't show this warning again", isOn: $dontShowAgain)
-                .font(.body)
-
-            Button("Continue") {
-                Task { await confirmSpoilerGate() }
+                Button("OK to Continue") {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        showsEntryGate = false
+                    }
+                }
+                .buttonStyle(LargeActionButtonStyle())
+                .accessibilityHint("Opens the news feed")
             }
-            .buttonStyle(LargeActionButtonStyle())
-            .accessibilityHint("Opens the news feed")
+            .glassCard(accent: ChicaneTheme.glowAmber)
+            .padding(24)
         }
-        .glassCard()
+        .transition(.opacity)
     }
 
     // MARK: News feed
@@ -179,21 +173,6 @@ struct NewsView: View {
         } catch {
             loadError = error.localizedDescription
         }
-    }
-
-    // MARK: Gate confirmation
-
-    private func confirmSpoilerGate() async {
-        if dontShowAgain {
-            var updated = viewModel.settings
-            updated.spoilersDontAskAgain = true
-            do {
-                try await viewModel.saveSettings(updated)
-            } catch {
-                viewModel.showError(error.localizedDescription)
-            }
-        }
-        hasConfirmedSpoilerGate = true
     }
 }
 

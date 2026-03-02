@@ -19,7 +19,6 @@ struct SettingsView: View {
     var body: some View {
         Form {
             playerSection
-            spoilerSection
             betSection
             resetSection
         }
@@ -99,16 +98,6 @@ struct SettingsView: View {
         }
     }
 
-    private var spoilerSection: some View {
-        Section("Spoilers") {
-            Toggle("Require Spoiler Confirmation", isOn: spoilerGateBinding)
-                .accessibilityHint("Shows a warning before opening spoilers")
-
-            Toggle("Show Spoilers Tab", isOn: spoilersSectionBinding)
-                .accessibilityHint("Adds the Spoilers tab to the app")
-        }
-    }
-
     private var betSection: some View {
         Section("Season Bet Text") {
             TextField("Friendly Bet", text: $seasonBetText, axis: .vertical)
@@ -132,28 +121,6 @@ struct SettingsView: View {
             }
             .frame(minHeight: 44)
         }
-    }
-
-    private var spoilerGateBinding: Binding<Bool> {
-        Binding(
-            get: { viewModel.settings.spoilerGateEnabled },
-            set: { newValue in
-                Task {
-                    await updateSettings { $0.spoilerGateEnabled = newValue }
-                }
-            }
-        )
-    }
-
-    private var spoilersSectionBinding: Binding<Bool> {
-        Binding(
-            get: { viewModel.settings.showSpoilersSection },
-            set: { newValue in
-                Task {
-                    await updateSettings { $0.showSpoilersSection = newValue }
-                }
-            }
-        )
     }
 
     private func binding(for playerID: UUID) -> Binding<String> {

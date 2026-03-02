@@ -154,6 +154,11 @@ struct ResultsView: View {
 
     private var pointsCard: some View {
         let points = selectedEventID.map { viewModel.eventPoints(series: selectedSeries, eventID: $0) } ?? [:]
+        let hasAnySavedPickForEvent = selectedEventID.map { eventID in
+            viewModel.players.contains { player in
+                viewModel.pick(for: selectedSeries, eventID: eventID, playerID: player.id) != nil
+            }
+        } ?? false
 
         return VStack(alignment: .leading, spacing: 18) {
             Text("Event Points")
@@ -161,6 +166,10 @@ struct ResultsView: View {
 
             if points.isEmpty {
                 Text("Update results to compute points.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            } else if !hasAnySavedPickForEvent {
+                Text("No saved picks for this event.")
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else {
@@ -244,4 +253,3 @@ struct ResultsView: View {
         }
     }
 }
-

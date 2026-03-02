@@ -36,13 +36,11 @@ struct RootTabView: View {
                     Label("Scoreboard", systemImage: "chart.bar.fill")
                 }
 
-                if viewModel.settings.showSpoilersSection {
-                    NavigationStack {
-                        NewsView()
-                    }
-                    .tabItem {
-                        Label("Spoilers", systemImage: "newspaper.fill")
-                    }
+                NavigationStack {
+                    NewsView()
+                }
+                .tabItem {
+                    Label("News", systemImage: "newspaper.fill")
                 }
 
                 NavigationStack {

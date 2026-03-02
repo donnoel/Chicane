@@ -108,17 +108,18 @@ final class AppViewModel: ObservableObject {
     }
 
     func pick(for series: RaceSeries, eventID: String, playerID: UUID) -> RacePick? {
-        picks.first {
-            $0.series == series &&
-            $0.eventID == eventID &&
-            $0.playerID == playerID
-        }
+        identityResolver(for: series).matchingPick(
+            for: playerID,
+            targetEventID: eventID,
+            in: picks
+        )
     }
 
     func result(for series: RaceSeries, eventID: String) -> RaceResult? {
-        results.first {
-            $0.series == series && $0.eventID == eventID
-        }
+        identityResolver(for: series).matchingResult(
+            targetEventID: eventID,
+            in: results
+        )
     }
 
     func savePick(
@@ -131,11 +132,12 @@ final class AppViewModel: ObservableObject {
             throw RepositoryError.invalidPodium
         }
 
-        let existingID = pick(for: series, eventID: eventID, playerID: playerID)?.id ?? UUID()
+        let existingPick = pick(for: series, eventID: eventID, playerID: playerID)
+        let existingID = existingPick?.id ?? UUID()
         let newPick = RacePick(
             id: existingID,
             series: series,
-            eventID: eventID,
+            eventID: existingPick?.eventID ?? eventID,
             playerID: playerID,
             podium: podium,
             updatedAt: Date()
@@ -159,9 +161,10 @@ final class AppViewModel: ObservableObject {
             throw AppViewModelError.resultLocked
         }
 
+        let existingResult = result(for: series, eventID: eventID)
         let result = RaceResult(
             series: series,
-            eventID: eventID,
+            eventID: existingResult?.eventID ?? eventID,
             podium: podium,
             isLocked: lockResult,
             updatedAt: Date()
@@ -211,7 +214,8 @@ final class AppViewModel: ObservableObject {
             picks: picks,
             results: results,
             events: allEvents(),
-            scope: scope
+            scope: scope,
+            driversBySeries: driversBySeries
         )
     }
 
@@ -221,7 +225,8 @@ final class AppViewModel: ObservableObject {
             picks: picks,
             results: results,
             events: allEvents(),
-            scope: scope
+            scope: scope,
+            driversBySeries: driversBySeries
         )
     }
 
@@ -234,7 +239,9 @@ final class AppViewModel: ObservableObject {
             picks: picks,
             result: result,
             series: series,
-            eventID: eventID
+            eventID: eventID,
+            events: events(for: series),
+            participants: drivers(for: series)
         )
     }
 
@@ -276,6 +283,14 @@ final class AppViewModel: ObservableObject {
         picks = state.picks
         results = state.results
         settings = state.settings
+    }
+
+    private func identityResolver(for series: RaceSeries) -> StoredIdentityResolver {
+        StoredIdentityResolver(
+            series: series,
+            events: events(for: series),
+            participants: drivers(for: series)
+        )
     }
 
     // MARK: - Participant Name Matching

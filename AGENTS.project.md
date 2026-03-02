@@ -8,7 +8,7 @@
 - Success criteria: simple flow for older users (large controls, clear labels), deterministic scoring, reliable offline persistence.
 
 ## Current product phase (MVP implemented)
-1) MVP scope: Home, Picks, Results, Scoreboard, Spoilers, Settings.
+1) MVP scope: Home, Picks, Results, Scoreboard, News, Settings.
 2) Architecture boundaries: SwiftUI views + single app-level `AppViewModel`, repository layer, scoring services.
 3) Reliability/UX goals: no default spoilers, locked results protection, atomic file writes, online data with bundled fallback.
 4) Testing priorities: scoring rule correctness and standings aggregation.
@@ -16,7 +16,7 @@
 ## Architecture snapshot (current)
 - App entry/navigation:
   - `ChicaneApp` injects `AppViewModel`.
-  - `RootTabView` hosts tabs for Home, Picks, Results, Scoreboard, optional Spoilers tab, Settings.
+  - `RootTabView` hosts tabs for Home, Picks, Results, Scoreboard, News, Settings.
 - Core view models/services:
   - `AppViewModel` (main-actor UI state orchestration)
   - `ScoringService` and `ScoreboardCalculator` (pure logic)
@@ -35,7 +35,7 @@
 - Default actor isolation is configured to `nonisolated`; do not rely on broad global actor defaults.
 
 ## Behavior invariants (do not regress)
-- No spoilers shown unless user explicitly enters results or confirms spoiler gate.
+- No spoilers shown unless user explicitly enters results or confirms the News entry gate.
 - Podium picks/results must contain 3 unique participants (drivers for F1, riders for MotoGP).
 - Scoring is position-exact only (P1/P2/P3 exact matches only, 0-3 points per event).
 - Locked results must not be editable until explicit unlock confirmation.
@@ -44,7 +44,7 @@
 ## UX rules
 - Large controls and readable typography by default.
 - Keep interactions short and explicit with clear confirmation/error copy.
-- Spoilers tab hidden by default; warning gate must appear when enabled and configured.
+- News tab is always available; warning gate must appear on entry before articles are shown.
 
 ## Coding conventions
 - Prefer small, focused types in `Domain`, `Data`, `Features`, `Shared`.

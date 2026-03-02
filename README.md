@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/SwiftUI-MVVM-orange?logo=swift" alt="SwiftUI MVVM">
   <img src="https://img.shields.io/badge/Platform-iOS%20%2B%20iPadOS-blue" alt="iOS and iPadOS">
   <img src="https://img.shields.io/badge/Persistence-Local%20JSON-lightgrey" alt="Local JSON">
-  <img src="https://img.shields.io/badge/Spoilers-Hidden%20by%20default-critical" alt="Spoilers hidden by default">
+  <img src="https://img.shields.io/badge/News-Gated%20on%20entry-critical" alt="News gated on entry">
 </p>
 
 ---
@@ -41,7 +41,7 @@ Chicane tracks standings across:
 | Exact Scoring | Position-only scoring (no points for correct driver/rider in wrong position). |
 | Scoreboard | Series and combined standings, plus per-event score history. |
 | In-App News Reader | Motorsport.com RSS news feed with Safari Reader mode — loads clean, ad-free articles in-app. |
-| Spoiler Safety | No race spoilers by default; Spoilers/News tab is optional and gated behind a confirmation prompt. |
+| Spoiler Safety | No race spoilers by default; the News tab is blurred on entry until the user explicitly continues. |
 | Offline Fallback | Works with bundled seed data if network sources are unavailable. |
 | Accessibility | Large tap targets, Dynamic Type, VoiceOver labels, high-contrast friendly UI. |
 | Premium UI | Apple-material based "Liquid Glass" visual design with themed motorsport color accents. |
@@ -54,8 +54,8 @@ Chicane tracks standings across:
 - **Picks** — Enter and edit each player's P1/P2/P3 predictions per event
 - **Results** — Enter official results and lock events
 - **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)
-- **Spoilers** *(optional)* — Latest F1 and MotoGP news via RSS, read in-app with Reader mode
-- **Settings** — Manage players, season bet text, spoiler preferences, season reset
+- **News** — Latest F1 and MotoGP news via RSS, read in-app with Reader mode after an entry confirmation
+- **Settings** — Manage players, season bet text, and season reset
 
 ---
 
@@ -129,7 +129,7 @@ Chicane/
 │   │   ├── Picks/
 │   │   ├── Results/
 │   │   ├── Scoreboard/
-│   │   ├── News/                # Spoilers tab — RSS feed + in-app Safari reader
+│   │   ├── News/                # News tab — RSS feed + in-app Safari reader
 │   │   └── Settings/
 │   ├── Shared/                  # Reusable views and components
 │   └── Resources/
@@ -166,7 +166,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
   - Location: `~/Library/Application Support/Chicane/season_state_v1.json`
 - State is written atomically for crash-safety.
 - Schema versioning is in place for future migrations.
-- Spoilers are hidden by default and only shown after explicit opt-in.
+- News is blurred on entry and only shown after explicit confirmation.
 
 ---
 
@@ -174,7 +174,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 
 - MotoGP participants are labeled as Riders throughout the app.
 - Season reset clears picks and results while preserving players and settings.
-- The Spoilers tab is hidden by default and can be enabled in Settings.
+- The News tab is always visible and opens behind a spoiler-confirmation gate.
 
 ---
 
