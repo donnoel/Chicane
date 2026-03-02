@@ -170,6 +170,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 - All picks, results, players, and settings are stored on-device first.
   - Location: `~/Library/Application Support/Chicane/season_state_v1.json`
 - When a shared league code is enabled, the same season state is mirrored to iCloud CloudKit so other phones can pull it automatically.
+- Shared sync now merges picks and results by event/player timestamp before writing, so one stale phone does not wipe out a newer pick from another phone.
 - State is written atomically for crash-safety.
 - Schema versioning is in place for future migrations.
 - News is blurred on entry and only shown after explicit confirmation.

@@ -75,15 +75,17 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                 return localState
             }
 
-            if remoteState.updatedAt > localState.updatedAt {
-                return try await localRepository.replaceState(remoteState)
+            let mergedState = mergedState(local: localState, remote: remoteState, leagueCode: code)
+
+            if mergedState != remoteState {
+                try await cloudStore.pushState(mergedState, for: code)
             }
 
-            if localState.updatedAt > remoteState.updatedAt {
-                try await cloudStore.pushState(localState, for: code)
+            if mergedState != localState {
+                return try await localRepository.replaceState(mergedState)
             }
 
-            return localState
+            return mergedState
         } catch {
             logger.error("Cloud sync failed: \(error.localizedDescription, privacy: .public)")
             if surfaceCloudErrors {
@@ -99,7 +101,20 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         }
 
         do {
-            try await cloudStore.pushState(state, for: code)
+            let remoteState = try await cloudStore.fetchState(for: code)
+            let mergedState = mergedState(
+                local: state,
+                remote: remoteState,
+                leagueCode: code
+            )
+
+            if remoteState != .some(mergedState) {
+                try await cloudStore.pushState(mergedState, for: code)
+            }
+
+            if mergedState != state {
+                return try await localRepository.replaceState(mergedState)
+            }
         } catch {
             logger.error("Deferred cloud push failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -115,5 +130,118 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             return nil
         }
         return trimmed
+    }
+
+    private func mergedState(
+        local: PersistedState,
+        remote: PersistedState?,
+        leagueCode: String
+    ) -> PersistedState {
+        guard let remote else {
+            var state = local
+            state.settings.leagueCode = leagueCode
+            return state.normalized()
+        }
+
+        let resetCutoff = [local.seasonResetAt, remote.seasonResetAt]
+            .compactMap { $0 }
+            .max()
+
+        var merged = PersistedState(
+            schemaVersion: PersistedState.currentSchemaVersion,
+            updatedAt: max(local.updatedAt, remote.updatedAt),
+            playersUpdatedAt: max(local.playersUpdatedAt, remote.playersUpdatedAt),
+            settingsUpdatedAt: max(local.settingsUpdatedAt, remote.settingsUpdatedAt),
+            seasonResetAt: resetCutoff,
+            players: local.playersUpdatedAt >= remote.playersUpdatedAt ? local.players : remote.players,
+            picks: mergePicks(local.picks, remote.picks, resetCutoff: resetCutoff),
+            results: mergeResults(local.results, remote.results, resetCutoff: resetCutoff),
+            settings: local.settingsUpdatedAt >= remote.settingsUpdatedAt ? local.settings : remote.settings
+        )
+
+        merged.settings.leagueCode = leagueCode
+
+        let validPlayerIDs = Set(merged.players.map(\.id))
+        merged.picks = merged.picks.filter { validPlayerIDs.contains($0.playerID) }
+        return merged.normalized()
+    }
+
+    private func mergePicks(
+        _ local: [RacePick],
+        _ remote: [RacePick],
+        resetCutoff: Date?
+    ) -> [RacePick] {
+        let filtered = (local + remote).filter { pick in
+            guard let resetCutoff else { return true }
+            return pick.updatedAt >= resetCutoff
+        }
+
+        var picksByKey: [PickKey: RacePick] = [:]
+        for pick in filtered {
+            let key = PickKey(pick: pick)
+            if let existing = picksByKey[key], existing.updatedAt > pick.updatedAt {
+                continue
+            }
+            picksByKey[key] = pick
+        }
+
+        return Array(picksByKey.values).sorted { lhs, rhs in
+            if lhs.series != rhs.series {
+                return lhs.series.rawValue < rhs.series.rawValue
+            }
+            if lhs.eventID != rhs.eventID {
+                return lhs.eventID < rhs.eventID
+            }
+            return lhs.playerID.uuidString < rhs.playerID.uuidString
+        }
+    }
+
+    private func mergeResults(
+        _ local: [RaceResult],
+        _ remote: [RaceResult],
+        resetCutoff: Date?
+    ) -> [RaceResult] {
+        let filtered = (local + remote).filter { result in
+            guard let resetCutoff else { return true }
+            return result.updatedAt >= resetCutoff
+        }
+
+        var resultsByKey: [ResultKey: RaceResult] = [:]
+        for result in filtered {
+            let key = ResultKey(result: result)
+            if let existing = resultsByKey[key], existing.updatedAt > result.updatedAt {
+                continue
+            }
+            resultsByKey[key] = result
+        }
+
+        return Array(resultsByKey.values).sorted { lhs, rhs in
+            if lhs.series != rhs.series {
+                return lhs.series.rawValue < rhs.series.rawValue
+            }
+            return lhs.eventID < rhs.eventID
+        }
+    }
+}
+
+private struct PickKey: Hashable {
+    let series: RaceSeries
+    let eventID: String
+    let playerID: UUID
+
+    init(pick: RacePick) {
+        self.series = pick.series
+        self.eventID = pick.eventID
+        self.playerID = pick.playerID
+    }
+}
+
+private struct ResultKey: Hashable {
+    let series: RaceSeries
+    let eventID: String
+
+    init(result: RaceResult) {
+        self.series = result.series
+        self.eventID = result.eventID
     }
 }

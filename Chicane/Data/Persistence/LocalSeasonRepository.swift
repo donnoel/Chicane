@@ -50,6 +50,14 @@ actor FileStateStore {
 }
 
 actor LocalSeasonRepository: SeasonRepository {
+    private enum MutationKind {
+        case players
+        case settings
+        case picks
+        case results
+        case reset
+    }
+
     private let store: FileStateStore
 
     /// In-memory mirror of the last persisted state.
@@ -84,7 +92,7 @@ actor LocalSeasonRepository: SeasonRepository {
     }
 
     func savePlayers(_ players: [Player]) async throws -> PersistedState {
-        try await mutateState { state in
+        try await mutateState(kind: .players) { state in
             state.players = players
                 .map { player in
                     var copy = player
@@ -99,7 +107,7 @@ actor LocalSeasonRepository: SeasonRepository {
     }
 
     func saveSettings(_ settings: AppSettings) async throws -> PersistedState {
-        try await mutateState { state in
+        try await mutateState(kind: .settings) { state in
             state.settings = settings
         }
     }
@@ -109,7 +117,7 @@ actor LocalSeasonRepository: SeasonRepository {
             throw RepositoryError.invalidPodium
         }
 
-        return try await mutateState { state in
+        return try await mutateState(kind: .picks) { state in
             state.picks.removeAll {
                 $0.series == pick.series &&
                 $0.eventID == pick.eventID &&
@@ -124,7 +132,7 @@ actor LocalSeasonRepository: SeasonRepository {
             throw RepositoryError.invalidPodium
         }
 
-        return try await mutateState { state in
+        return try await mutateState(kind: .results) { state in
             state.results.removeAll {
                 $0.series == result.series && $0.eventID == result.eventID
             }
@@ -133,7 +141,7 @@ actor LocalSeasonRepository: SeasonRepository {
     }
 
     func resetSeason() async throws -> PersistedState {
-        try await mutateState { state in
+        try await mutateState(kind: .reset) { state in
             state.picks = []
             state.results = []
         }
@@ -154,10 +162,24 @@ actor LocalSeasonRepository: SeasonRepository {
         return normalized
     }
 
-    private func mutateState(_ body: (inout PersistedState) -> Void) async throws -> PersistedState {
+    private func mutateState(
+        kind: MutationKind,
+        _ body: (inout PersistedState) -> Void
+    ) async throws -> PersistedState {
         var state = try await loadState()
+        let mutationDate = Date()
         body(&state)
-        state.updatedAt = Date()
+        switch kind {
+        case .players:
+            state.playersUpdatedAt = mutationDate
+        case .settings:
+            state.settingsUpdatedAt = mutationDate
+        case .picks, .results:
+            break
+        case .reset:
+            state.seasonResetAt = mutationDate
+        }
+        state.updatedAt = mutationDate
         state = state.normalized()
         try await store.save(state)
         cachedState = state

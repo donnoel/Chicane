@@ -2,7 +2,7 @@ import XCTest
 @testable import Chicane
 
 final class PersistedStateMigrationTests: XCTestCase {
-    func testVersionOnePayloadDecodesAndBackfillsUpdatedAt() throws {
+    func testVersionOnePayloadDecodesAndBackfillsMergeTimestamps() throws {
         let payload = """
         {
           "schemaVersion" : 1,
@@ -41,12 +41,15 @@ final class PersistedStateMigrationTests: XCTestCase {
         let decoded = try decoder.decode(PersistedState.self, from: Data(payload.utf8))
         let normalized = decoded.normalized()
 
-        XCTAssertEqual(normalized.schemaVersion, 2)
+        XCTAssertEqual(normalized.schemaVersion, 3)
         XCTAssertEqual(normalized.players.first?.name, "Mom")
         XCTAssertEqual(
             normalized.updatedAt,
             ISO8601DateFormatter().date(from: "2026-03-01T12:00:00Z")
         )
+        XCTAssertEqual(normalized.playersUpdatedAt, normalized.updatedAt)
+        XCTAssertEqual(normalized.settingsUpdatedAt, normalized.updatedAt)
+        XCTAssertNil(normalized.seasonResetAt)
         XCTAssertNil(normalized.settings.leagueCode)
     }
 }
@@ -107,6 +110,102 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(remote?.players.map(\.name), ["Mom"])
         XCTAssertEqual(remote?.settings.leagueCode, "ABC123")
     }
+
+    func testSavingLocalPickDoesNotOverwriteNewerRemotePickForAnotherPlayer() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let mom = Player(id: UUID(), name: "Mom")
+        let son = Player(id: UUID(), name: "Son")
+
+        var sharedState = PersistedState.default
+        sharedState.settings.leagueCode = "ABC123"
+        sharedState.players = [mom, son]
+        sharedState.playersUpdatedAt = date("2026-03-01T08:00:00Z")
+        sharedState.updatedAt = date("2026-03-01T08:00:00Z")
+        sharedState.picks = [
+            TestFixtures.pick(
+                series: .motoGP,
+                eventID: "mgp-r1",
+                playerID: mom.id,
+                p1: "a", p2: "b", p3: "c"
+            )
+        ]
+        await cloudStore.seed(sharedState, for: "ABC123")
+        _ = try await localRepo.replaceState(sharedState)
+
+        let remoteSonPick = TestFixtures.pick(
+            series: .motoGP,
+            eventID: "mgp-r1",
+            playerID: son.id,
+            p1: "x", p2: "y", p3: "z"
+        )
+        var newerRemote = sharedState
+        newerRemote.updatedAt = date("2026-03-01T09:05:00Z")
+        newerRemote.picks.append(
+            RacePick(
+                id: remoteSonPick.id,
+                series: remoteSonPick.series,
+                eventID: remoteSonPick.eventID,
+                playerID: remoteSonPick.playerID,
+                podium: remoteSonPick.podium,
+                updatedAt: date("2026-03-01T09:05:00Z")
+            )
+        )
+        await cloudStore.seed(newerRemote, for: "ABC123")
+
+        let localUpdatedPick = RacePick(
+            id: sharedState.picks[0].id,
+            series: .motoGP,
+            eventID: "mgp-r1",
+            playerID: mom.id,
+            podium: Podium(p1: "c", p2: "b", p3: "a"),
+            updatedAt: date("2026-03-01T09:10:00Z")
+        )
+
+        let saved = try await repo.upsertPick(localUpdatedPick)
+
+        XCTAssertEqual(saved.picks.count, 2)
+        XCTAssertTrue(saved.picks.contains(where: { $0.playerID == mom.id && $0.podium.p1 == "c" }))
+        XCTAssertTrue(saved.picks.contains(where: { $0.playerID == son.id && $0.podium.p1 == "x" }))
+
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertEqual(remote?.picks.count, 2)
+    }
+
+    func testResetKeepsOlderRemotePicksFromReappearing() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let player = Player(id: UUID(), name: "Mom")
+        var linkedState = PersistedState.default
+        linkedState.settings.leagueCode = "ABC123"
+        linkedState.players = [player]
+        linkedState.playersUpdatedAt = date("2026-03-01T08:00:00Z")
+        linkedState.updatedAt = date("2026-03-01T08:00:00Z")
+        let oldPick = RacePick(
+            id: UUID(),
+            series: .motoGP,
+            eventID: "mgp-r1",
+            playerID: player.id,
+            podium: Podium(p1: "a", p2: "b", p3: "c"),
+            updatedAt: date("2026-03-01T08:30:00Z")
+        )
+        linkedState.picks = [oldPick]
+        await cloudStore.seed(linkedState, for: "ABC123")
+        _ = try await localRepo.replaceState(linkedState)
+
+        let resetState = try await repo.resetSeason()
+
+        XCTAssertTrue(resetState.picks.isEmpty)
+        XCTAssertNotNil(resetState.seasonResetAt)
+
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertTrue(remote?.picks.isEmpty ?? false)
+        XCTAssertNotNil(remote?.seasonResetAt)
+    }
 }
 
 private actor MemoryLeagueSyncStore: LeagueSyncStore {
@@ -149,4 +248,8 @@ private actor MemoryLeagueSyncStore: LeagueSyncStore {
     private func normalize(_ code: String) -> String {
         code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
+}
+
+private func date(_ raw: String) -> Date {
+    ISO8601DateFormatter().date(from: raw)!
 }

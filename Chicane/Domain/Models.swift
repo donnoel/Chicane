@@ -127,13 +127,16 @@ struct AppSettings: Codable, Hashable, Sendable {
     )
 }
 
-struct PersistedState: Codable, Sendable {
+struct PersistedState: Codable, Hashable, Sendable {
     // Increment this when the stored data format changes and add a migration
     // case in migratedToCurrentVersion() below.
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 3
 
     var schemaVersion: Int
     var updatedAt: Date
+    var playersUpdatedAt: Date
+    var settingsUpdatedAt: Date
+    var seasonResetAt: Date?
     var players: [Player]
     var picks: [RacePick]
     var results: [RaceResult]
@@ -142,6 +145,9 @@ struct PersistedState: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion
         case updatedAt
+        case playersUpdatedAt
+        case settingsUpdatedAt
+        case seasonResetAt
         case players
         case picks
         case results
@@ -151,6 +157,9 @@ struct PersistedState: Codable, Sendable {
     init(
         schemaVersion: Int,
         updatedAt: Date,
+        playersUpdatedAt: Date,
+        settingsUpdatedAt: Date,
+        seasonResetAt: Date?,
         players: [Player],
         picks: [RacePick],
         results: [RaceResult],
@@ -158,6 +167,9 @@ struct PersistedState: Codable, Sendable {
     ) {
         self.schemaVersion = schemaVersion
         self.updatedAt = updatedAt
+        self.playersUpdatedAt = playersUpdatedAt
+        self.settingsUpdatedAt = settingsUpdatedAt
+        self.seasonResetAt = seasonResetAt
         self.players = players
         self.picks = picks
         self.results = results
@@ -169,6 +181,9 @@ struct PersistedState: Codable, Sendable {
     static let `default` = PersistedState(
         schemaVersion: PersistedState.currentSchemaVersion,
         updatedAt: .distantPast,
+        playersUpdatedAt: .distantPast,
+        settingsUpdatedAt: .distantPast,
+        seasonResetAt: nil,
         players: [],
         picks: [],
         results: [],
@@ -179,6 +194,9 @@ struct PersistedState: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? .distantPast
+        playersUpdatedAt = try container.decodeIfPresent(Date.self, forKey: .playersUpdatedAt) ?? .distantPast
+        settingsUpdatedAt = try container.decodeIfPresent(Date.self, forKey: .settingsUpdatedAt) ?? .distantPast
+        seasonResetAt = try container.decodeIfPresent(Date.self, forKey: .seasonResetAt)
         players = try container.decodeIfPresent([Player].self, forKey: .players) ?? []
         picks = try container.decodeIfPresent([RacePick].self, forKey: .picks) ?? []
         results = try container.decodeIfPresent([RaceResult].self, forKey: .results) ?? []
@@ -218,6 +236,11 @@ struct PersistedState: Codable, Sendable {
                     .chain(state.results.map(\.updatedAt))
                     .max() ?? .distantPast
                 state.schemaVersion = 2
+            case 2:
+                state.playersUpdatedAt = state.updatedAt
+                state.settingsUpdatedAt = state.updatedAt
+                state.seasonResetAt = nil
+                state.schemaVersion = 3
             default:
                 // Unrecognised old version: jump to current to avoid an infinite loop.
                 state.schemaVersion = PersistedState.currentSchemaVersion
