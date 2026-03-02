@@ -4,8 +4,8 @@
 
 ## Product intent
 - Audience: two or more family/friend viewers tracking F1 and MotoGP weekend podium bets.
-- Problem solved: fast, spoiler-safe pick entry and season-long scoring without accounts or cloud setup.
-- Success criteria: simple flow for older users (large controls, clear labels), deterministic scoring, reliable offline persistence.
+- Problem solved: fast, spoiler-safe pick entry and season-long scoring with optional iCloud league sync.
+- Success criteria: simple flow for older users (large controls, clear labels), deterministic scoring, reliable offline persistence, and low-friction shared-state sync.
 
 ## Current product phase (MVP implemented)
 1) MVP scope: Home, Picks, Results, Scoreboard, News, Settings.
@@ -21,10 +21,13 @@
   - `AppViewModel` (main-actor UI state orchestration)
   - `ScoringService` and `ScoreboardCalculator` (pure logic)
   - `LocalSeasonRepository` + `FileStateStore` (actor-based persistence)
+  - `CloudSyncSeasonRepository` + `PublicCloudLeagueStore` (optional iCloud-backed shared league sync)
   - `OnlineDriverRepository` / `OnlineCalendarRepository` (official source fetchers)
   - `FallbackDriverRepository` / `FallbackCalendarRepository` (automatic offline fallback)
   - `BundledDriverRepository` / `BundledCalendarRepository` (seed JSON loaders)
 - Data flow/persistence:
+  - Local state remains the offline source on disk and is saved atomically first.
+  - If a shared league code is configured, the full season state is mirrored through CloudKit and refreshed on launch / foreground.
   - Online refresh for calendars/drivers from official sources when reachable.
   - Seed data from bundled JSON in `Chicane/Resources/Seed` when online fetch fails.
   - User state persisted to application-support JSON file with atomic writes.

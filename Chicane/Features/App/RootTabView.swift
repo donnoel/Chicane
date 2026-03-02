@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootTabView: View {
     @EnvironmentObject private var viewModel: AppViewModel
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var dismissBannerTask: Task<Void, Never>?
 
@@ -66,6 +67,12 @@ struct RootTabView: View {
         }
         .task {
             await viewModel.loadIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, newValue in
+            guard newValue == .active else { return }
+            Task {
+                await viewModel.syncLeagueIfNeeded()
+            }
         }
         .onChange(of: viewModel.errorMessage) { _, newValue in
             guard let message = newValue, !message.isEmpty else { return }

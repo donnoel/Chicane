@@ -11,6 +11,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var driversBySeries: [RaceSeries: [Driver]] = [:]
     @Published private(set) var eventsBySeries: [RaceSeries: [RaceEvent]] = [:]
     @Published private(set) var isLoading = false
+    @Published private(set) var isSyncing = false
     @Published var errorMessage: String?
     @Published var banner: BannerMessage?
 
@@ -78,6 +79,28 @@ final class AppViewModel: ObservableObject {
         } catch {
             logger.error("Failed loading app data: \(error.localizedDescription, privacy: .public)")
             showError(error.localizedDescription)
+        }
+    }
+
+    func syncLeagueIfNeeded(showBannerOnSuccess: Bool = false) async {
+        guard activeLeagueCode != nil else { return }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            let state = try await (showBannerOnSuccess
+                ? seasonRepository.refreshState()
+                : seasonRepository.loadState())
+            apply(state: state)
+            if showBannerOnSuccess {
+                showInfo("League Synced")
+            }
+        } catch {
+            logger.error("Failed syncing league: \(error.localizedDescription, privacy: .public)")
+            if showBannerOnSuccess {
+                showError(error.localizedDescription)
+            }
         }
     }
 
@@ -278,6 +301,42 @@ final class AppViewModel: ObservableObject {
         apply(state: state)
     }
 
+    func createLeague() async {
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            let state = try await seasonRepository.createLeague()
+            apply(state: state)
+            if let code = state.settings.leagueCode {
+                showInfo("League ready: \(code)")
+            } else {
+                showInfo("League created")
+            }
+        } catch {
+            logger.error("Failed creating league: \(error.localizedDescription, privacy: .public)")
+            showError(error.localizedDescription)
+        }
+    }
+
+    func joinLeague(code: String) async {
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            let state = try await seasonRepository.joinLeague(code: code)
+            apply(state: state)
+            if let joinedCode = state.settings.leagueCode {
+                showInfo("Joined league \(joinedCode)")
+            } else {
+                showInfo("Joined league")
+            }
+        } catch {
+            logger.error("Failed joining league: \(error.localizedDescription, privacy: .public)")
+            showError(error.localizedDescription)
+        }
+    }
+
     private func apply(state: PersistedState) {
         players = state.players
         picks = state.picks
@@ -291,6 +350,14 @@ final class AppViewModel: ObservableObject {
             events: events(for: series),
             participants: drivers(for: series)
         )
+    }
+
+    private var activeLeagueCode: String? {
+        let trimmed = settings.leagueCode?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let trimmed, !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
     }
 
     // MARK: - Participant Name Matching

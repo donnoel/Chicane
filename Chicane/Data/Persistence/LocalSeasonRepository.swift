@@ -79,6 +79,10 @@ actor LocalSeasonRepository: SeasonRepository {
         return normalized
     }
 
+    func refreshState() async throws -> PersistedState {
+        try await loadState()
+    }
+
     func savePlayers(_ players: [Player]) async throws -> PersistedState {
         try await mutateState { state in
             state.players = players
@@ -135,9 +139,25 @@ actor LocalSeasonRepository: SeasonRepository {
         }
     }
 
+    func createLeague() async throws -> PersistedState {
+        throw RepositoryError.cloudSyncUnavailable
+    }
+
+    func joinLeague(code _: String) async throws -> PersistedState {
+        throw RepositoryError.cloudSyncUnavailable
+    }
+
+    func replaceState(_ state: PersistedState) async throws -> PersistedState {
+        let normalized = state.normalized()
+        try await store.save(normalized)
+        cachedState = normalized
+        return normalized
+    }
+
     private func mutateState(_ body: (inout PersistedState) -> Void) async throws -> PersistedState {
         var state = try await loadState()
         body(&state)
+        state.updatedAt = Date()
         state = state.normalized()
         try await store.save(state)
         cachedState = state

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject private var viewModel: AppViewModel
@@ -6,6 +7,7 @@ struct SettingsView: View {
     @State private var playerNames: [UUID: String] = [:]
     @State private var newPlayerName = ""
     @State private var seasonBetText = ""
+    @State private var joinLeagueCode = ""
     @State private var showResetConfirmation = false
 
     private enum FocusField: Hashable {
@@ -19,6 +21,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             playerSection
+            syncSection
             betSection
             resetSection
         }
@@ -114,6 +117,74 @@ struct SettingsView: View {
         }
     }
 
+    private var syncSection: some View {
+        Section("Shared League") {
+            if let code = activeLeagueCode {
+                if viewModel.isSyncing {
+                    ProgressView("Syncing league…")
+                }
+
+                LabeledContent("League Code") {
+                    Text(code)
+                        .font(.headline.monospaced())
+                        .textSelection(.enabled)
+                }
+
+                Text("Use this same code on every phone so picks and results sync through iCloud.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Button("Copy League Code") {
+                    UIPasteboard.general.string = code
+                    viewModel.showInfo("League Code Copied")
+                }
+                .frame(minHeight: 44)
+
+                Button("Sync Now") {
+                    Task {
+                        await viewModel.syncLeagueIfNeeded(showBannerOnSuccess: true)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(minHeight: 44)
+            } else {
+                if viewModel.isSyncing {
+                    ProgressView("Connecting to league…")
+                }
+
+                Button("Create Shared League") {
+                    Task {
+                        await viewModel.createLeague()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(minHeight: 44)
+
+                Text("Create a shared league on one phone, then enter that code on the other phones.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 10) {
+                    TextField("Enter League Code", text: $joinLeagueCode)
+                        .textInputAutocapitalization(.characters)
+                        .disableAutocorrection(true)
+                        .onSubmit {
+                            Task { await joinLeague() }
+                        }
+
+                    Button("Join") {
+                        Task {
+                            await joinLeague()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .frame(minHeight: 44)
+                    .disabled(joinLeagueCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
     private var resetSection: some View {
         Section("Season") {
             Button("Reset Season", role: .destructive) {
@@ -161,6 +232,10 @@ struct SettingsView: View {
         // Only refresh bet text if the user isn't actively editing it.
         if focusedField != .seasonBet {
             seasonBetText = viewModel.settings.seasonBetText
+        }
+
+        if activeLeagueCode != nil {
+            joinLeagueCode = ""
         }
     }
 
@@ -219,6 +294,25 @@ struct SettingsView: View {
             viewModel.showInfo("Season Reset")
         } catch {
             viewModel.showError(error.localizedDescription)
+        }
+    }
+
+    private var activeLeagueCode: String? {
+        let trimmed = viewModel.settings.leagueCode?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        guard let trimmed, !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
+    private func joinLeague() async {
+        let code = joinLeagueCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !code.isEmpty else { return }
+        await viewModel.joinLeague(code: code)
+        if activeLeagueCode != nil {
+            joinLeagueCode = ""
         }
     }
 }

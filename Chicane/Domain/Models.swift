@@ -102,35 +102,88 @@ struct AppSettings: Codable, Hashable, Sendable {
     var spoilerGateEnabled: Bool
     var spoilersDontAskAgain: Bool
     var showSpoilersSection: Bool
+    var leagueCode: String?
+
+    init(
+        seasonBetText: String,
+        spoilerGateEnabled: Bool,
+        spoilersDontAskAgain: Bool,
+        showSpoilersSection: Bool,
+        leagueCode: String? = nil
+    ) {
+        self.seasonBetText = seasonBetText
+        self.spoilerGateEnabled = spoilerGateEnabled
+        self.spoilersDontAskAgain = spoilersDontAskAgain
+        self.showSpoilersSection = showSpoilersSection
+        self.leagueCode = leagueCode
+    }
 
     static let `default` = AppSettings(
         seasonBetText: "Winner determines.",
         spoilerGateEnabled: true,
         spoilersDontAskAgain: false,
-        showSpoilersSection: false
+        showSpoilersSection: false,
+        leagueCode: nil
     )
 }
 
 struct PersistedState: Codable, Sendable {
     // Increment this when the stored data format changes and add a migration
     // case in migratedToCurrentVersion() below.
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     var schemaVersion: Int
+    var updatedAt: Date
     var players: [Player]
     var picks: [RacePick]
     var results: [RaceResult]
     var settings: AppSettings
 
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case updatedAt
+        case players
+        case picks
+        case results
+        case settings
+    }
+
+    init(
+        schemaVersion: Int,
+        updatedAt: Date,
+        players: [Player],
+        picks: [RacePick],
+        results: [RaceResult],
+        settings: AppSettings
+    ) {
+        self.schemaVersion = schemaVersion
+        self.updatedAt = updatedAt
+        self.players = players
+        self.picks = picks
+        self.results = results
+        self.settings = settings
+    }
+
     /// Fresh-install default: no hardcoded players so Settings is the canonical
     /// way to add players, rather than shipping personal names in the binary.
     static let `default` = PersistedState(
         schemaVersion: PersistedState.currentSchemaVersion,
+        updatedAt: .distantPast,
         players: [],
         picks: [],
         results: [],
         settings: .default
     )
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? .distantPast
+        players = try container.decodeIfPresent([Player].self, forKey: .players) ?? []
+        picks = try container.decodeIfPresent([RacePick].self, forKey: .picks) ?? []
+        results = try container.decodeIfPresent([RaceResult].self, forKey: .results) ?? []
+        settings = try container.decodeIfPresent(AppSettings.self, forKey: .settings) ?? .default
+    }
 
     // MARK: - Normalisation & Migration
 
@@ -160,10 +213,11 @@ struct PersistedState: Codable, Sendable {
 
         while state.schemaVersion < PersistedState.currentSchemaVersion {
             switch state.schemaVersion {
-            // Template for the next migration — uncomment and fill in:
-            // case 1:
-            //     // v1 → v2: describe the structural change here.
-            //     state.schemaVersion = 2
+            case 1:
+                state.updatedAt = state.picks.map(\.updatedAt)
+                    .chain(state.results.map(\.updatedAt))
+                    .max() ?? .distantPast
+                state.schemaVersion = 2
             default:
                 // Unrecognised old version: jump to current to avoid an infinite loop.
                 state.schemaVersion = PersistedState.currentSchemaVersion
@@ -171,6 +225,12 @@ struct PersistedState: Codable, Sendable {
         }
 
         return state
+    }
+}
+
+private extension Sequence where Element == Date {
+    func chain(_ other: [Date]) -> [Date] {
+        Array(self) + other
     }
 }
 

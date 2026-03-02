@@ -4,7 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/SwiftUI-MVVM-orange?logo=swift" alt="SwiftUI MVVM">
   <img src="https://img.shields.io/badge/Platform-iOS%20%2B%20iPadOS-blue" alt="iOS and iPadOS">
-  <img src="https://img.shields.io/badge/Persistence-Local%20JSON-lightgrey" alt="Local JSON">
+  <img src="https://img.shields.io/badge/Persistence-Local%20JSON%20%2B%20iCloud-lightgrey" alt="Local JSON and iCloud">
   <img src="https://img.shields.io/badge/News-Gated%20on%20entry-critical" alt="News gated on entry">
 </p>
 
@@ -42,6 +42,7 @@ Chicane tracks standings across:
 | Scoreboard | Series and combined standings, plus per-event score history. |
 | In-App News Reader | Motorsport.com RSS news feed with Safari Reader mode — loads clean, ad-free articles in-app. |
 | Spoiler Safety | No race spoilers by default; the News tab is blurred on entry until the user explicitly continues. |
+| Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. |
 | Offline Fallback | Works with bundled seed data if network sources are unavailable. |
 | Accessibility | Large tap targets, Dynamic Type, VoiceOver labels, high-contrast friendly UI. |
 | Premium UI | Apple-material based "Liquid Glass" visual design with themed motorsport color accents. |
@@ -55,18 +56,20 @@ Chicane tracks standings across:
 - **Results** — Enter official results and lock events
 - **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)
 - **News** — Latest F1 and MotoGP news via RSS, read in-app with Reader mode after an entry confirmation
-- **Settings** — Manage players, season bet text, and season reset
+- **Settings** — Manage players, shared league sync, season bet text, and season reset
 
 ---
 
 ## How it works
 
 1. App launches and loads local season state.
-2. Driver/rider lists and calendars refresh from online sources when available.
-3. If network fetch fails, bundled seed JSON is used automatically.
-4. Users enter picks for each event per player.
-5. Users tap `Update Results` to pull official podium results and lock the event.
-6. Standings are computed deterministically from stored picks and results.
+2. If a shared league code is configured, it syncs the latest shared state from iCloud.
+3. Driver/rider lists and calendars refresh from online sources when available.
+4. If network fetch fails, bundled seed JSON is used automatically.
+5. Users enter picks for each event per player.
+6. Local changes save immediately, then sync back to the shared iCloud league in the background.
+7. Users tap `Update Results` to pull official podium results and lock the event.
+8. Standings are computed deterministically from stored picks and results.
 
 ---
 
@@ -88,11 +91,13 @@ Chicane follows SwiftUI + MVVM with focused repositories and services.
 - `RSSNewsRepository` — fetches and parses Motorsport.com RSS news feeds
 - `FallbackDriverRepository` / `FallbackCalendarRepository` — online-first with bundled seed fallback
 - `LocalSeasonRepository` — actor-isolated persistence for picks, results, players, and settings
+- `CloudSyncSeasonRepository` — local-first repository wrapper that syncs shared league state through CloudKit
 
 ### Services
 - `ScoringService` — per-event points calculation
 - `ScoreboardCalculator` — season standings and event history aggregation
 - `FileStateStore` — actor-based atomic JSON file I/O
+- `PublicCloudLeagueStore` — CloudKit public-database store for shared league state
 - `F1OfficialHTMLParser` — parses formula1.com for drivers, calendar, and results
 - `RSSParser` — parses Motorsport.com RSS feeds into `NewsArticle` models
 - `RemoteDataClient` — shared URLSession HTTP client with encoding fallback
@@ -161,9 +166,10 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 
 ## Persistence and Privacy
 
-- No account required.
-- All picks, results, players, and settings are stored on-device.
+- Local use still works without a shared league code.
+- All picks, results, players, and settings are stored on-device first.
   - Location: `~/Library/Application Support/Chicane/season_state_v1.json`
+- When a shared league code is enabled, the same season state is mirrored to iCloud CloudKit so other phones can pull it automatically.
 - State is written atomically for crash-safety.
 - Schema versioning is in place for future migrations.
 - News is blurred on entry and only shown after explicit confirmation.

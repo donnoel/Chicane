@@ -10,6 +10,7 @@ struct ChicaneApp: App {
         let onlineDrivers = OnlineDriverRepository()
         let onlineCalendar = OnlineCalendarRepository()
         let onlineResults = OnlineResultRepository()
+        let localSeasonRepository = LocalSeasonRepository()
 
         let viewModel = AppViewModel(
             driverRepository: FallbackDriverRepository(
@@ -21,7 +22,9 @@ struct ChicaneApp: App {
                 fallback: bundledCalendar
             ),
             resultRepository: onlineResults,
-            seasonRepository: LocalSeasonRepository()
+            seasonRepository: CloudSyncSeasonRepository(
+                localRepository: localSeasonRepository
+            )
         )
         _viewModel = StateObject(wrappedValue: viewModel)
     }

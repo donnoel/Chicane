@@ -252,6 +252,12 @@ extension RepositoryError: Equatable {
         switch (lhs, rhs) {
         case (.invalidPodium, .invalidPodium):
             return true
+        case (.cloudSyncUnavailable, .cloudSyncUnavailable):
+            return true
+        case (.leagueNotConfigured, .leagueNotConfigured):
+            return true
+        case let (.leagueNotFound(a), .leagueNotFound(b)):
+            return a == b
         case let (.missingBundleResource(a), .missingBundleResource(b)):
             return a == b
         default:
