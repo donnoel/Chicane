@@ -125,11 +125,13 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         sharedState.playersUpdatedAt = date("2026-03-01T08:00:00Z")
         sharedState.updatedAt = date("2026-03-01T08:00:00Z")
         sharedState.picks = [
-            TestFixtures.pick(
+            RacePick(
+                id: UUID(),
                 series: .motoGP,
                 eventID: "mgp-r1",
                 playerID: mom.id,
-                p1: "a", p2: "b", p3: "c"
+                podium: Podium(p1: "a", p2: "b", p3: "c"),
+                updatedAt: date("2026-03-01T08:30:00Z")
             )
         ]
         await cloudStore.seed(sharedState, for: "ABC123")
@@ -206,6 +208,38 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertTrue(remote?.picks.isEmpty ?? false)
         XCTAssertNotNil(remote?.seasonResetAt)
     }
+
+    func testUpsertPickThrowsLocalSaveWarningWhenSharedLeagueSyncFails() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = FailingMemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let player = Player(id: UUID(), name: "Mom")
+        var linkedState = PersistedState.default
+        linkedState.settings.leagueCode = "ABC123"
+        linkedState.players = [player]
+        _ = try await localRepo.replaceState(linkedState)
+
+        let pick = TestFixtures.pick(
+            series: .formula1,
+            eventID: "f1-r1",
+            playerID: player.id,
+            p1: "a", p2: "b", p3: "c"
+        )
+
+        do {
+            _ = try await repo.upsertPick(pick)
+            XCTFail("Expected a local-save warning")
+        } catch let warning as DeferredCloudSyncWarning {
+            XCTAssertEqual(warning.errorDescription, "Saved locally, but shared league sync failed. Try Sync Now.")
+            XCTAssertEqual(warning.state.picks.count, 1)
+            XCTAssertEqual(warning.state.picks.first?.playerID, player.id)
+        }
+
+        let stored = try await localRepo.loadState()
+        XCTAssertEqual(stored.picks.count, 1)
+        XCTAssertEqual(stored.picks.first?.playerID, player.id)
+    }
 }
 
 private actor MemoryLeagueSyncStore: LeagueSyncStore {
@@ -247,6 +281,26 @@ private actor MemoryLeagueSyncStore: LeagueSyncStore {
 
     private func normalize(_ code: String) -> String {
         code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    }
+}
+
+private actor FailingMemoryLeagueSyncStore: LeagueSyncStore {
+    func createLeague(from state: PersistedState) async throws -> PersistedState {
+        var sharedState = state
+        sharedState.settings.leagueCode = "ABC123"
+        return sharedState
+    }
+
+    func joinLeague(code: String) async throws -> PersistedState {
+        throw MockError.simulated
+    }
+
+    func fetchState(for code: String) async throws -> PersistedState? {
+        throw MockError.simulated
+    }
+
+    func pushState(_ state: PersistedState, for code: String) async throws {
+        throw MockError.simulated
     }
 }
 

@@ -16,6 +16,12 @@ struct SettingsView: View {
         case seasonBet
     }
 
+    private enum SettingsSaveOutcome {
+        case success
+        case warning(String)
+        case failure
+    }
+
     @FocusState private var focusedField: FocusField?
 
     var body: some View {
@@ -244,8 +250,8 @@ struct SettingsView: View {
             let updatedPlayers = viewModel.players.map { player in
                 Player(id: player.id, name: playerNames[player.id, default: player.name])
             }
-            try await viewModel.savePlayers(updatedPlayers)
-            viewModel.showInfo("Player Names Saved")
+            let warning = try await viewModel.savePlayers(updatedPlayers)
+            viewModel.showInfo(warning ?? "Player Names Saved")
         } catch {
             viewModel.showError(error.localizedDescription)
         }
@@ -253,9 +259,9 @@ struct SettingsView: View {
 
     private func addPlayer() async {
         do {
-            try await viewModel.addPlayer(named: newPlayerName)
+            let warning = try await viewModel.addPlayer(named: newPlayerName)
             newPlayerName = ""
-            viewModel.showInfo("Player Added")
+            viewModel.showInfo(warning ?? "Player Added")
         } catch {
             viewModel.showError(error.localizedDescription)
         }
@@ -263,39 +269,45 @@ struct SettingsView: View {
 
     private func removePlayer(playerID: UUID) async {
         do {
-            try await viewModel.removePlayers(withIDs: [playerID])
-            viewModel.showInfo("Player Removed")
+            let warning = try await viewModel.removePlayers(withIDs: [playerID])
+            viewModel.showInfo(warning ?? "Player Removed")
         } catch {
             viewModel.showError(error.localizedDescription)
         }
     }
 
     private func saveBetText() async {
-        let didSave = await updateSettings { settings in
+        switch await updateSettings({ settings in
             settings.seasonBetText = seasonBetText.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        if didSave {
+        }) {
+        case .success:
             viewModel.showInfo("Season bet saved")
+        case let .warning(warning):
+            viewModel.showInfo(warning)
+        case .failure:
+            break
         }
     }
 
-    private func updateSettings(_ mutate: (inout AppSettings) -> Void) async -> Bool {
+    private func updateSettings(_ mutate: (inout AppSettings) -> Void) async -> SettingsSaveOutcome {
         var updated = viewModel.settings
         mutate(&updated)
 
         do {
-            try await viewModel.saveSettings(updated)
-            return true
+            if let warning = try await viewModel.saveSettings(updated) {
+                return .warning(warning)
+            }
+            return .success
         } catch {
             viewModel.showError(error.localizedDescription)
-            return false
+            return .failure
         }
     }
 
     private func resetSeason() async {
         do {
-            try await viewModel.resetSeason()
-            viewModel.showInfo("Season Reset")
+            let warning = try await viewModel.resetSeason()
+            viewModel.showInfo(warning ?? "Season Reset")
         } catch {
             viewModel.showError(error.localizedDescription)
         }

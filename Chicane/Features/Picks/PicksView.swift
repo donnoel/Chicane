@@ -280,12 +280,12 @@ struct PicksView: View {
         guard let driverID = championDraftsByPlayer[player.id] else { return }
 
         do {
-            try await viewModel.saveChampionPick(
+            let warning = try await viewModel.saveChampionPick(
                 series: selectedSeries,
                 playerID: player.id,
                 driverID: driverID
             )
-            viewModel.showInfo("Saved \(player.name)'s world champion pick.")
+            viewModel.showInfo(warning ?? "Saved \(player.name)'s world champion pick.")
             championDraftsByPlayer[player.id] = viewModel.championPick(
                 for: selectedSeries,
                 playerID: player.id
@@ -300,13 +300,13 @@ struct PicksView: View {
         guard let draft = draftsByPlayer[player.id] else { return }
 
         do {
-            try await viewModel.savePick(
+            let warning = try await viewModel.savePick(
                 series: selectedSeries,
                 eventID: selectedEventID,
                 playerID: player.id,
                 draft: draft
             )
-            viewModel.showInfo("Saved \(player.name)'s picks for this event.")
+            viewModel.showInfo(warning ?? "Saved \(player.name)'s picks for this event.")
             // Only refresh this player's draft to avoid clobbering in-progress edits for others.
             if let savedPick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
                 draftsByPlayer[player.id] = PodiumDraft(podium: savedPick.podium)

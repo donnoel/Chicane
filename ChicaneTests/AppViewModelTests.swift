@@ -128,10 +128,50 @@ final class AppViewModelTests: XCTestCase {
         )
     }
 
+    func testSavePickReturnsWarningAndAppliesLocalStateWhenCloudSyncFails() async throws {
+        let event = TestFixtures.event(id: "f1-2026-local-only", series: .formula1)
+        let drivers = [
+            TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
+            TestFixtures.driver(id: "f1-lando", series: .formula1, name: "Lando Norris", team: "McLaren"),
+            TestFixtures.driver(id: "f1-charles", series: .formula1, name: "Charles Leclerc", team: "Ferrari")
+        ]
+        let player = Player(id: UUID(), name: "Don")
+        let localRepository = LocalSeasonRepository(
+            store: FileStateStore(baseDirectoryURL: tempDir)
+        )
+        var localState = PersistedState.default
+        localState.players = [player]
+        localState.settings.leagueCode = "ABC123"
+        _ = try await localRepository.replaceState(localState)
+
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: drivers,
+            podiumNames: drivers.map(\.name),
+            seasonRepository: CloudSyncSeasonRepository(
+                localRepository: localRepository,
+                cloudStore: FailingLeagueSyncStore()
+            )
+        )
+
+        await viewModel.reload()
+
+        let warning = try await viewModel.savePick(
+            series: .formula1,
+            eventID: event.id,
+            playerID: player.id,
+            draft: PodiumDraft(p1: drivers[0].id, p2: drivers[1].id, p3: drivers[2].id)
+        )
+
+        XCTAssertEqual(warning, "Saved locally, but shared league sync failed. Try Sync Now.")
+        XCTAssertNotNil(viewModel.pick(for: .formula1, eventID: event.id, playerID: player.id))
+    }
+
     private func makeViewModel(
         event: RaceEvent,
         drivers: [Driver],
-        podiumNames: [String]
+        podiumNames: [String],
+        seasonRepository: (any SeasonRepository)? = nil
     ) -> AppViewModel {
         let driverRepository = MockDriverRepository()
         driverRepository.stubbedDrivers[.formula1] = drivers
@@ -142,7 +182,7 @@ final class AppViewModelTests: XCTestCase {
         let resultRepository = MockResultRepository()
         resultRepository.stubbedPodiums[event.id] = podiumNames
 
-        let seasonRepository = LocalSeasonRepository(
+        let resolvedSeasonRepository = seasonRepository ?? LocalSeasonRepository(
             store: FileStateStore(baseDirectoryURL: tempDir)
         )
 
@@ -150,7 +190,27 @@ final class AppViewModelTests: XCTestCase {
             driverRepository: driverRepository,
             calendarRepository: calendarRepository,
             resultRepository: resultRepository,
-            seasonRepository: seasonRepository
+            seasonRepository: resolvedSeasonRepository
         )
+    }
+}
+
+private actor FailingLeagueSyncStore: LeagueSyncStore {
+    func createLeague(from state: PersistedState) async throws -> PersistedState {
+        var sharedState = state
+        sharedState.settings.leagueCode = "ABC123"
+        return sharedState
+    }
+
+    func joinLeague(code: String) async throws -> PersistedState {
+        throw MockError.simulated
+    }
+
+    func fetchState(for code: String) async throws -> PersistedState? {
+        throw MockError.simulated
+    }
+
+    func pushState(_ state: PersistedState, for code: String) async throws {
+        throw MockError.simulated
     }
 }

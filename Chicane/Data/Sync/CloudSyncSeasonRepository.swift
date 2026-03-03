@@ -1,6 +1,15 @@
 import Foundation
 import OSLog
 
+struct DeferredCloudSyncWarning: LocalizedError {
+    let state: PersistedState
+    let underlyingError: Error
+
+    var errorDescription: String? {
+        "Saved locally, but shared league sync failed. Try Sync Now."
+    }
+}
+
 actor CloudSyncSeasonRepository: SeasonRepository {
     private let localRepository: LocalSeasonRepository
     private let cloudStore: any LeagueSyncStore
@@ -26,37 +35,37 @@ actor CloudSyncSeasonRepository: SeasonRepository {
 
     func savePlayers(_ players: [Player]) async throws -> PersistedState {
         let state = try await localRepository.savePlayers(players)
-        return await pushIfNeeded(state)
+        return try await pushIfNeeded(state)
     }
 
     func saveSettings(_ settings: AppSettings) async throws -> PersistedState {
         let state = try await localRepository.saveSettings(settings)
-        return await pushIfNeeded(state)
+        return try await pushIfNeeded(state)
     }
 
     func upsertPick(_ pick: RacePick) async throws -> PersistedState {
         let state = try await localRepository.upsertPick(pick)
-        return await pushIfNeeded(state)
+        return try await pushIfNeeded(state)
     }
 
     func upsertResult(_ result: RaceResult) async throws -> PersistedState {
         let state = try await localRepository.upsertResult(result)
-        return await pushIfNeeded(state)
+        return try await pushIfNeeded(state)
     }
 
     func upsertChampionPick(_ pick: SeasonChampionPick) async throws -> PersistedState {
         let state = try await localRepository.upsertChampionPick(pick)
-        return await pushIfNeeded(state)
+        return try await pushIfNeeded(state)
     }
 
     func upsertChampionResult(_ result: SeasonChampionResult) async throws -> PersistedState {
         let state = try await localRepository.upsertChampionResult(result)
-        return await pushIfNeeded(state)
+        return try await pushIfNeeded(state)
     }
 
     func resetSeason() async throws -> PersistedState {
         let state = try await localRepository.resetSeason()
-        return await pushIfNeeded(state)
+        return try await pushIfNeeded(state)
     }
 
     func createLeague() async throws -> PersistedState {
@@ -105,7 +114,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         }
     }
 
-    private func pushIfNeeded(_ state: PersistedState) async -> PersistedState {
+    private func pushIfNeeded(_ state: PersistedState) async throws -> PersistedState {
         guard let code = normalizedLeagueCode(from: state) else {
             return state
         }
@@ -127,6 +136,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             }
         } catch {
             logger.error("Deferred cloud push failed: \(error.localizedDescription, privacy: .public)")
+            throw DeferredCloudSyncWarning(state: state, underlyingError: error)
         }
 
         return state
@@ -163,12 +173,26 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             playersUpdatedAt: max(local.playersUpdatedAt, remote.playersUpdatedAt),
             settingsUpdatedAt: max(local.settingsUpdatedAt, remote.settingsUpdatedAt),
             seasonResetAt: resetCutoff,
-            players: local.playersUpdatedAt >= remote.playersUpdatedAt ? local.players : remote.players,
+            players: mergedSectionValue(
+                localValue: local.players,
+                localSectionUpdatedAt: local.playersUpdatedAt,
+                remoteValue: remote.players,
+                remoteSectionUpdatedAt: remote.playersUpdatedAt,
+                localStateUpdatedAt: local.updatedAt,
+                remoteStateUpdatedAt: remote.updatedAt
+            ),
             picks: mergePicks(local.picks, remote.picks, resetCutoff: resetCutoff),
             results: mergeResults(local.results, remote.results, resetCutoff: resetCutoff),
             championPicks: mergeChampionPicks(local.championPicks, remote.championPicks, resetCutoff: resetCutoff),
             championResults: mergeChampionResults(local.championResults, remote.championResults, resetCutoff: resetCutoff),
-            settings: local.settingsUpdatedAt >= remote.settingsUpdatedAt ? local.settings : remote.settings
+            settings: mergedSectionValue(
+                localValue: local.settings,
+                localSectionUpdatedAt: local.settingsUpdatedAt,
+                remoteValue: remote.settings,
+                remoteSectionUpdatedAt: remote.settingsUpdatedAt,
+                localStateUpdatedAt: local.updatedAt,
+                remoteStateUpdatedAt: remote.updatedAt
+            )
         )
 
         merged.settings.leagueCode = leagueCode
@@ -177,6 +201,25 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         merged.picks = merged.picks.filter { validPlayerIDs.contains($0.playerID) }
         merged.championPicks = merged.championPicks.filter { validPlayerIDs.contains($0.playerID) }
         return merged.normalized()
+    }
+
+    private func mergedSectionValue<T>(
+        localValue: T,
+        localSectionUpdatedAt: Date,
+        remoteValue: T,
+        remoteSectionUpdatedAt: Date,
+        localStateUpdatedAt: Date,
+        remoteStateUpdatedAt: Date
+    ) -> T {
+        if localSectionUpdatedAt != remoteSectionUpdatedAt {
+            return localSectionUpdatedAt > remoteSectionUpdatedAt ? localValue : remoteValue
+        }
+
+        if localStateUpdatedAt != remoteStateUpdatedAt {
+            return localStateUpdatedAt > remoteStateUpdatedAt ? localValue : remoteValue
+        }
+
+        return localValue
     }
 
     private func mergePicks(

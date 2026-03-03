@@ -147,12 +147,13 @@ final class AppViewModel: ObservableObject {
         )
     }
 
+    @discardableResult
     func savePick(
         series: RaceSeries,
         eventID: String,
         playerID: UUID,
         draft: PodiumDraft
-    ) async throws {
+    ) async throws -> String? {
         guard let podium = draft.toPodium() else {
             throw RepositoryError.invalidPodium
         }
@@ -168,16 +169,18 @@ final class AppViewModel: ObservableObject {
             updatedAt: Date()
         )
 
-        let state = try await seasonRepository.upsertPick(newPick)
-        apply(state: state)
+        return try await persistState {
+            try await seasonRepository.upsertPick(newPick)
+        }
     }
 
+    @discardableResult
     func saveResult(
         series: RaceSeries,
         eventID: String,
         draft: PodiumDraft,
         lockResult: Bool = true
-    ) async throws {
+    ) async throws -> String? {
         guard let podium = draft.toPodium() else {
             throw RepositoryError.invalidPodium
         }
@@ -193,15 +196,17 @@ final class AppViewModel: ObservableObject {
             isLocked: lockResult,
             updatedAt: Date()
         )
-        let state = try await seasonRepository.upsertResult(result)
-        apply(state: state)
+        return try await persistState {
+            try await seasonRepository.upsertResult(result)
+        }
     }
 
+    @discardableResult
     func updateResultFromOfficialSource(
         series: RaceSeries,
         eventID: String,
         lockResult: Bool = true
-    ) async throws {
+    ) async throws -> String? {
         guard let event = events(for: series).first(where: { $0.id == eventID }) else {
             throw AppViewModelError.eventNotFound
         }
@@ -219,7 +224,7 @@ final class AppViewModel: ObservableObject {
         }
 
         let draft = PodiumDraft(p1: ids[0], p2: ids[1], p3: ids[2])
-        try await saveResult(series: series, eventID: eventID, draft: draft, lockResult: lockResult)
+        return try await saveResult(series: series, eventID: eventID, draft: draft, lockResult: lockResult)
     }
 
     func standings(for scope: ScoreboardScope) -> [PlayerStanding] {
@@ -273,11 +278,12 @@ final class AppViewModel: ObservableObject {
             .max { lhs, rhs in lhs.updatedAt < rhs.updatedAt }
     }
 
+    @discardableResult
     func saveChampionPick(
         series: RaceSeries,
         playerID: UUID,
         driverID: String
-    ) async throws {
+    ) async throws -> String? {
         if let existingResult = championResult(for: series), existingResult.isLocked {
             throw AppViewModelError.championPickLocked
         }
@@ -291,11 +297,13 @@ final class AppViewModel: ObservableObject {
             updatedAt: Date()
         )
 
-        let state = try await seasonRepository.upsertChampionPick(pick)
-        apply(state: state)
+        return try await persistState {
+            try await seasonRepository.upsertChampionPick(pick)
+        }
     }
 
-    func saveChampionResult(series: RaceSeries, driverID: String) async throws {
+    @discardableResult
+    func saveChampionResult(series: RaceSeries, driverID: String) async throws -> String? {
         if let existing = championResult(for: series), existing.isLocked {
             throw AppViewModelError.championResultLocked
         }
@@ -307,41 +315,50 @@ final class AppViewModel: ObservableObject {
             updatedAt: Date()
         )
 
-        let state = try await seasonRepository.upsertChampionResult(result)
-        apply(state: state)
+        return try await persistState {
+            try await seasonRepository.upsertChampionResult(result)
+        }
     }
 
     func leaderText(for scope: ScoreboardScope) -> String {
         scoreboardCalculator.leaderText(for: standings(for: scope))
     }
 
-    func savePlayers(_ players: [Player]) async throws {
-        let state = try await seasonRepository.savePlayers(players)
-        apply(state: state)
+    @discardableResult
+    func savePlayers(_ players: [Player]) async throws -> String? {
+        try await persistState {
+            try await seasonRepository.savePlayers(players)
+        }
     }
 
-    func addPlayer(named name: String) async throws {
+    @discardableResult
+    func addPlayer(named name: String) async throws -> String? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
 
         var updatedPlayers = players
         updatedPlayers.append(Player(id: UUID(), name: trimmed))
-        try await savePlayers(updatedPlayers)
+        return try await savePlayers(updatedPlayers)
     }
 
-    func removePlayers(withIDs ids: Set<UUID>) async throws {
+    @discardableResult
+    func removePlayers(withIDs ids: Set<UUID>) async throws -> String? {
         let updatedPlayers = players.filter { !ids.contains($0.id) }
-        try await savePlayers(updatedPlayers)
+        return try await savePlayers(updatedPlayers)
     }
 
-    func saveSettings(_ settings: AppSettings) async throws {
-        let state = try await seasonRepository.saveSettings(settings)
-        apply(state: state)
+    @discardableResult
+    func saveSettings(_ settings: AppSettings) async throws -> String? {
+        try await persistState {
+            try await seasonRepository.saveSettings(settings)
+        }
     }
 
-    func resetSeason() async throws {
-        let state = try await seasonRepository.resetSeason()
-        apply(state: state)
+    @discardableResult
+    func resetSeason() async throws -> String? {
+        try await persistState {
+            try await seasonRepository.resetSeason()
+        }
     }
 
     func createLeague() async {
@@ -403,6 +420,19 @@ final class AppViewModel: ObservableObject {
             return nil
         }
         return trimmed
+    }
+
+    private func persistState(
+        _ operation: () async throws -> PersistedState
+    ) async throws -> String? {
+        do {
+            let state = try await operation()
+            apply(state: state)
+            return nil
+        } catch let warning as DeferredCloudSyncWarning {
+            apply(state: warning.state)
+            return warning.errorDescription
+        }
     }
 
     // MARK: - Participant Name Matching

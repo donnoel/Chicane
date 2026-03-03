@@ -74,7 +74,7 @@ Chicane tracks standings across:
 3. Driver/rider lists and calendars refresh from online sources when available.
 4. If network fetch fails, bundled seed JSON is used automatically.
 5. Users enter season champion picks and race picks for each player.
-6. Local changes save immediately, then sync back to the shared iCloud league in the background.
+6. Local changes save immediately, then sync back to the shared iCloud league in the background. If that sync fails, the app keeps the local save and shows a visible warning.
 7. Users tap `Update Results` to pull official podium results and lock the event.
 8. When the season champion is entered for a series, it locks, freezes all player champion picks for that series, and awards the 5-point bonus to matching players.
 9. Standings are computed deterministically from stored picks and results.
@@ -178,7 +178,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 - All picks, results, season champion choices, players, and settings are stored on-device first.
   - Location: `~/Library/Application Support/Chicane/season_state_v1.json`
 - When a shared league code is enabled, the same season state is mirrored to iCloud CloudKit so other phones can pull it automatically.
-- Shared sync now merges picks and results by event/player timestamp before writing, so one stale phone does not wipe out a newer pick from another phone.
+- Shared sync now merges picks/results by item timestamp and resolves players/settings from the newest section change, falling back to the newest overall state when those section timestamps tie.
 - State is written atomically for crash-safety.
 - Schema versioning is in place for future migrations.
 - Legacy stored driver/rider IDs are normalized against current rosters so older saved picks continue to score after feed ID changes.
