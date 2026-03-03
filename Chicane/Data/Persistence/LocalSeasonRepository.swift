@@ -64,15 +64,9 @@ actor LocalSeasonRepository: SeasonRepository {
 
     /// In-memory mirror of the last persisted state.
     ///
-    /// **Known limitation — intentional for this use-case:**
-    /// `cachedState` is populated on first load and updated on every write that goes
-    /// through this actor.  It is *not* invalidated if the backing file is modified
-    /// externally (e.g. by iCloud Drive sync, a future Share Extension, or direct
-    /// file-system access in tests).  For the current single-process, no-cloud design
-    /// this is safe: all writes flow through `mutateState` which always refreshes the
-    /// cache.  If a background-sync or multi-process scenario is added in future, replace
-    /// this with a file-coordinator / NSFilePresenter based approach, or simply set
-    /// `cachedState = nil` before any load that must see external changes.
+    /// `loadState()` returns the warm cache after first load.
+    /// `refreshState()` bypasses that cache and re-reads disk so explicit refreshes
+    /// can see external file changes or restored backups.
     private var cachedState: PersistedState?
 
     init(store: FileStateStore = FileStateStore()) {
@@ -83,14 +77,11 @@ actor LocalSeasonRepository: SeasonRepository {
         if let cachedState {
             return cachedState
         }
-        let loaded = try await store.load()
-        let normalized = loaded.normalized()
-        cachedState = normalized
-        return normalized
+        return try await reloadStateFromDisk()
     }
 
     func refreshState() async throws -> PersistedState {
-        try await loadState()
+        try await reloadStateFromDisk()
     }
 
     func savePlayers(_ players: [Player]) async throws -> PersistedState {
@@ -205,5 +196,12 @@ actor LocalSeasonRepository: SeasonRepository {
         try await store.save(state)
         cachedState = state
         return state
+    }
+
+    private func reloadStateFromDisk() async throws -> PersistedState {
+        let loaded = try await store.load()
+        let normalized = loaded.normalized()
+        cachedState = normalized
+        return normalized
     }
 }

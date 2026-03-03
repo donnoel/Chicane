@@ -244,6 +244,29 @@ final class LocalSeasonRepositoryTests: XCTestCase {
         }
     }
 
+    func testRefreshStateBypassesWarmCacheAndReloadsDisk() async throws {
+        let store = FileStateStore(baseDirectoryURL: tempDir)
+        let repo = LocalSeasonRepository(store: store)
+
+        let cachedPlayer = Player(id: UUID(), name: "Cached")
+        _ = try await repo.savePlayers([cachedPlayer])
+
+        let loaded = try await repo.loadState()
+        XCTAssertEqual(loaded.players.map(\.name), ["Cached"])
+
+        var externalState = loaded
+        externalState.players = [Player(id: UUID(), name: "External")]
+        externalState.playersUpdatedAt = testDate("2026-03-03T21:00:00Z")
+        externalState.updatedAt = testDate("2026-03-03T21:00:00Z")
+        try await store.save(externalState)
+
+        let stillCached = try await repo.loadState()
+        XCTAssertEqual(stillCached.players.map(\.name), ["Cached"])
+
+        let refreshed = try await repo.refreshState()
+        XCTAssertEqual(refreshed.players.map(\.name), ["External"])
+    }
+
     func testUpsertPickReplacesExistingPickForSamePlayerAndEvent() async throws {
         let store = FileStateStore(baseDirectoryURL: tempDir)
         let repo = LocalSeasonRepository(store: store)
@@ -317,7 +340,7 @@ final class LocalSeasonRepositoryTests: XCTestCase {
 
 // MARK: - Equatable conformance for test assertions
 
-extension RepositoryError: Equatable {
+extension RepositoryError: @retroactive Equatable {
     public static func == (lhs: RepositoryError, rhs: RepositoryError) -> Bool {
         switch (lhs, rhs) {
         case (.invalidPodium, .invalidPodium):
@@ -334,4 +357,8 @@ extension RepositoryError: Equatable {
             return false
         }
     }
+}
+
+private func testDate(_ raw: String) -> Date {
+    ISO8601DateFormatter().date(from: raw)!
 }

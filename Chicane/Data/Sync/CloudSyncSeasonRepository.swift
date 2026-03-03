@@ -29,7 +29,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     }
 
     func refreshState() async throws -> PersistedState {
-        let state = try await localRepository.loadState()
+        let state = try await localRepository.refreshState()
         return try await synchronize(localState: state, surfaceCloudErrors: true)
     }
 

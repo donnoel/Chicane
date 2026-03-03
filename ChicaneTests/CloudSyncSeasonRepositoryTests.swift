@@ -240,6 +240,28 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(stored.picks.count, 1)
         XCTAssertEqual(stored.picks.first?.playerID, player.id)
     }
+
+    func testRefreshStateReloadsExternalDiskChangesBeforeSync() async throws {
+        let store = FileStateStore(baseDirectoryURL: tempDir)
+        let localRepo = LocalSeasonRepository(store: store)
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let cachedPlayer = Player(id: UUID(), name: "Cached")
+        _ = try await localRepo.savePlayers([cachedPlayer])
+
+        let loaded = try await repo.loadState()
+        XCTAssertEqual(loaded.players.map(\.name), ["Cached"])
+
+        var externalState = loaded
+        externalState.players = [Player(id: UUID(), name: "External")]
+        externalState.playersUpdatedAt = date("2026-03-03T21:30:00Z")
+        externalState.updatedAt = date("2026-03-03T21:30:00Z")
+        try await store.save(externalState)
+
+        let refreshed = try await repo.refreshState()
+        XCTAssertEqual(refreshed.players.map(\.name), ["External"])
+    }
 }
 
 private actor MemoryLeagueSyncStore: LeagueSyncStore {
