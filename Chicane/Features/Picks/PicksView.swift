@@ -6,6 +6,7 @@ struct PicksView: View {
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
+    @State private var championDraftsByPlayer: [UUID: String] = [:]
     @State private var scrollOffset: CGFloat = 0
     @State private var hasInitialized = false
 
@@ -52,15 +53,20 @@ struct PicksView: View {
         .onChange(of: selectedSeries) {
             initializeSelectionForSeries()
             hydrateDrafts()
+            hydrateChampionDrafts()
         }
         .onChange(of: selectedEventID) {
             hydrateDrafts()
         }
         .onChange(of: viewModel.players) {
             hydrateDrafts()
+            hydrateChampionDrafts()
         }
         .onChange(of: viewModel.picks) {
             hydrateAvailablePicks()
+        }
+        .onChange(of: viewModel.championPicks) {
+            hydrateAvailableChampionPicks()
         }
     }
 
@@ -92,6 +98,28 @@ struct PicksView: View {
     private var playerCards: some View {
         ForEach(viewModel.players) { player in
             VStack(alignment: .leading, spacing: 24) {
+                ChampionPickerSection(
+                    title: "\(player.name)'s World Champion",
+                    drivers: drivers,
+                    participantSingular: participantSingular,
+                    selection: championBinding(for: player.id)
+                )
+
+                Button("Save \(player.name)'s Champion Pick") {
+                    Task {
+                        await saveChampionPick(for: player)
+                    }
+                }
+                .buttonStyle(LargeActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
+                .disabled(championDraftsByPlayer[player.id] == nil)
+                .accessibilityLabel("Save world champion pick for \(player.name)")
+
+                if viewModel.championPick(for: selectedSeries, playerID: player.id) != nil {
+                    Label("Saved. Update it anytime before the season champion is entered.", systemImage: "flag.checkered.circle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 PodiumPickerSection(
                     title: "\(player.name)'s Podium",
                     drivers: drivers,
@@ -126,12 +154,26 @@ struct PicksView: View {
         )
     }
 
+    private func championBinding(for playerID: UUID) -> Binding<String?> {
+        Binding(
+            get: { championDraftsByPlayer[playerID] },
+            set: { newValue in
+                if let newValue {
+                    championDraftsByPlayer[playerID] = newValue
+                } else {
+                    championDraftsByPlayer.removeValue(forKey: playerID)
+                }
+            }
+        )
+    }
+
     private func initializeIfNeeded() {
         if selectedEventID == nil {
             initializeSelectionForSeries()
         }
         ensureValidSelection()
         hydrateDrafts()
+        hydrateChampionDrafts()
     }
 
     private func initializeSelectionForSeries() {
@@ -179,6 +221,16 @@ struct PicksView: View {
         draftsByPlayer = updated
     }
 
+    private func hydrateChampionDrafts() {
+        var updated: [UUID: String] = [:]
+        for player in viewModel.players {
+            if let pick = viewModel.championPick(for: selectedSeries, playerID: player.id) {
+                updated[player.id] = pick.driverID
+            }
+        }
+        championDraftsByPlayer = updated
+    }
+
     /// Called when `viewModel.picks` changes (e.g. after initial async load or after a save).
     /// Only updates a player's draft if they have no in-progress edits, so concurrent edits
     /// for other players are never clobbered.
@@ -197,6 +249,40 @@ struct PicksView: View {
             if currentDraft == .empty || currentDraft == savedDraft {
                 draftsByPlayer[player.id] = savedDraft
             }
+        }
+    }
+
+    private func hydrateAvailableChampionPicks() {
+        for player in viewModel.players {
+            let savedSelection = viewModel.championPick(for: selectedSeries, playerID: player.id)?.driverID
+            let currentSelection = championDraftsByPlayer[player.id]
+
+            if currentSelection == nil || currentSelection == savedSelection {
+                if let savedSelection {
+                    championDraftsByPlayer[player.id] = savedSelection
+                } else {
+                    championDraftsByPlayer.removeValue(forKey: player.id)
+                }
+            }
+        }
+    }
+
+    private func saveChampionPick(for player: Player) async {
+        guard let driverID = championDraftsByPlayer[player.id] else { return }
+
+        do {
+            try await viewModel.saveChampionPick(
+                series: selectedSeries,
+                playerID: player.id,
+                driverID: driverID
+            )
+            viewModel.showInfo("Saved \(player.name)'s world champion pick.")
+            championDraftsByPlayer[player.id] = viewModel.championPick(
+                for: selectedSeries,
+                playerID: player.id
+            )?.driverID
+        } catch {
+            viewModel.showError(error.localizedDescription)
         }
     }
 

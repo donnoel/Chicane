@@ -97,6 +97,52 @@ struct RaceResult: Codable, Hashable, Sendable {
     }
 }
 
+struct SeasonChampionPick: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    let series: RaceSeries
+    let playerID: UUID
+    var driverID: String
+    var updatedAt: Date
+}
+
+struct SeasonChampionResult: Identifiable, Codable, Hashable, Sendable {
+    let series: RaceSeries
+    var driverID: String
+    var isLocked: Bool
+    var updatedAt: Date
+
+    private enum CodingKeys: String, CodingKey {
+        case series
+        case driverID
+        case isLocked
+        case updatedAt
+    }
+
+    init(
+        series: RaceSeries,
+        driverID: String,
+        isLocked: Bool = true,
+        updatedAt: Date
+    ) {
+        self.series = series
+        self.driverID = driverID
+        self.isLocked = isLocked
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        series = try container.decode(RaceSeries.self, forKey: .series)
+        driverID = try container.decode(String.self, forKey: .driverID)
+        isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? true
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+    }
+
+    var id: String {
+        series.rawValue
+    }
+}
+
 struct AppSettings: Codable, Hashable, Sendable {
     var seasonBetText: String
     var spoilerGateEnabled: Bool
@@ -130,7 +176,7 @@ struct AppSettings: Codable, Hashable, Sendable {
 struct PersistedState: Codable, Hashable, Sendable {
     // Increment this when the stored data format changes and add a migration
     // case in migratedToCurrentVersion() below.
-    static let currentSchemaVersion = 3
+    static let currentSchemaVersion = 4
 
     var schemaVersion: Int
     var updatedAt: Date
@@ -140,6 +186,8 @@ struct PersistedState: Codable, Hashable, Sendable {
     var players: [Player]
     var picks: [RacePick]
     var results: [RaceResult]
+    var championPicks: [SeasonChampionPick]
+    var championResults: [SeasonChampionResult]
     var settings: AppSettings
 
     private enum CodingKeys: String, CodingKey {
@@ -151,6 +199,8 @@ struct PersistedState: Codable, Hashable, Sendable {
         case players
         case picks
         case results
+        case championPicks
+        case championResults
         case settings
     }
 
@@ -163,6 +213,8 @@ struct PersistedState: Codable, Hashable, Sendable {
         players: [Player],
         picks: [RacePick],
         results: [RaceResult],
+        championPicks: [SeasonChampionPick],
+        championResults: [SeasonChampionResult],
         settings: AppSettings
     ) {
         self.schemaVersion = schemaVersion
@@ -173,6 +225,8 @@ struct PersistedState: Codable, Hashable, Sendable {
         self.players = players
         self.picks = picks
         self.results = results
+        self.championPicks = championPicks
+        self.championResults = championResults
         self.settings = settings
     }
 
@@ -187,6 +241,8 @@ struct PersistedState: Codable, Hashable, Sendable {
         players: [],
         picks: [],
         results: [],
+        championPicks: [],
+        championResults: [],
         settings: .default
     )
 
@@ -200,6 +256,8 @@ struct PersistedState: Codable, Hashable, Sendable {
         players = try container.decodeIfPresent([Player].self, forKey: .players) ?? []
         picks = try container.decodeIfPresent([RacePick].self, forKey: .picks) ?? []
         results = try container.decodeIfPresent([RaceResult].self, forKey: .results) ?? []
+        championPicks = try container.decodeIfPresent([SeasonChampionPick].self, forKey: .championPicks) ?? []
+        championResults = try container.decodeIfPresent([SeasonChampionResult].self, forKey: .championResults) ?? []
         settings = try container.decodeIfPresent(AppSettings.self, forKey: .settings) ?? .default
     }
 
@@ -216,6 +274,9 @@ struct PersistedState: Codable, Hashable, Sendable {
             return copy
         }
         .filter { !$0.name.isEmpty }
+
+        let validPlayerIDs = Set(state.players.map(\.id))
+        state.championPicks = state.championPicks.filter { validPlayerIDs.contains($0.playerID) }
 
         return state
     }
@@ -241,6 +302,10 @@ struct PersistedState: Codable, Hashable, Sendable {
                 state.settingsUpdatedAt = state.updatedAt
                 state.seasonResetAt = nil
                 state.schemaVersion = 3
+            case 3:
+                state.championPicks = []
+                state.championResults = []
+                state.schemaVersion = 4
             default:
                 // Unrecognised old version: jump to current to avoid an infinite loop.
                 state.schemaVersion = PersistedState.currentSchemaVersion

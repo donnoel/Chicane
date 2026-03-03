@@ -3,14 +3,14 @@
 # Chicane Project Guide for Agents
 
 ## Product intent
-- Audience: two or more family/friend viewers tracking F1 and MotoGP weekend podium bets.
+- Audience: two or more family/friend viewers tracking F1 and MotoGP weekend podium bets plus season champion predictions.
 - Problem solved: fast, spoiler-safe pick entry and season-long scoring with optional iCloud league sync.
 - Success criteria: simple flow for older users (large controls, clear labels), deterministic scoring, reliable offline persistence, and low-friction shared-state sync.
 
 ## Current product phase (MVP implemented)
 1) MVP scope: Home, Picks, Results, Scoreboard, News, Settings.
 2) Architecture boundaries: SwiftUI views + single app-level `AppViewModel`, repository layer, scoring services.
-3) Reliability/UX goals: no default spoilers, locked results protection, atomic file writes, online data with bundled fallback.
+3) Reliability/UX goals: no default spoilers, locked results protection, locked season champion protection, atomic file writes, online data with bundled fallback.
 4) Testing priorities: scoring rule correctness and standings aggregation.
 
 ## Architecture snapshot (current)
@@ -42,6 +42,7 @@
 - Podium picks/results must contain 3 unique participants (drivers for F1, riders for MotoGP).
 - Scoring is position-exact only (P1/P2/P3 exact matches only, 0-3 points per event).
 - Locked results must not be editable until explicit unlock confirmation.
+- Locked season champions must not be editable once entered.
 - Season reset clears picks/results but preserves players/settings.
 
 ## UX rules

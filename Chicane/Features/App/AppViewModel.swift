@@ -8,6 +8,8 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var settings: AppSettings = .default
     @Published private(set) var picks: [RacePick] = []
     @Published private(set) var results: [RaceResult] = []
+    @Published private(set) var championPicks: [SeasonChampionPick] = []
+    @Published private(set) var championResults: [SeasonChampionResult] = []
     @Published private(set) var driversBySeries: [RaceSeries: [Driver]] = [:]
     @Published private(set) var eventsBySeries: [RaceSeries: [RaceEvent]] = [:]
     @Published private(set) var isLoading = false
@@ -225,6 +227,8 @@ final class AppViewModel: ObservableObject {
             players: players,
             picks: picks,
             results: results,
+            championPicks: championPicks,
+            championResults: championResults,
             events: allEvents(),
             scope: scope,
             driversBySeries: driversBySeries
@@ -255,6 +259,52 @@ final class AppViewModel: ObservableObject {
             events: events(for: series),
             participants: drivers(for: series)
         )
+    }
+
+    func championPick(for series: RaceSeries, playerID: UUID) -> SeasonChampionPick? {
+        championPicks
+            .filter { $0.series == series && $0.playerID == playerID }
+            .max { lhs, rhs in lhs.updatedAt < rhs.updatedAt }
+    }
+
+    func championResult(for series: RaceSeries) -> SeasonChampionResult? {
+        championResults
+            .filter { $0.series == series }
+            .max { lhs, rhs in lhs.updatedAt < rhs.updatedAt }
+    }
+
+    func saveChampionPick(
+        series: RaceSeries,
+        playerID: UUID,
+        driverID: String
+    ) async throws {
+        let existingPick = championPick(for: series, playerID: playerID)
+        let pick = SeasonChampionPick(
+            id: existingPick?.id ?? UUID(),
+            series: series,
+            playerID: playerID,
+            driverID: driverID,
+            updatedAt: Date()
+        )
+
+        let state = try await seasonRepository.upsertChampionPick(pick)
+        apply(state: state)
+    }
+
+    func saveChampionResult(series: RaceSeries, driverID: String) async throws {
+        if let existing = championResult(for: series), existing.isLocked {
+            throw AppViewModelError.championResultLocked
+        }
+
+        let result = SeasonChampionResult(
+            series: series,
+            driverID: driverID,
+            isLocked: true,
+            updatedAt: Date()
+        )
+
+        let state = try await seasonRepository.upsertChampionResult(result)
+        apply(state: state)
     }
 
     func leaderText(for scope: ScoreboardScope) -> String {
@@ -330,6 +380,8 @@ final class AppViewModel: ObservableObject {
         players = state.players
         picks = state.picks
         results = state.results
+        championPicks = state.championPicks
+        championResults = state.championResults
         settings = state.settings
     }
 
@@ -446,6 +498,7 @@ final class AppViewModel: ObservableObject {
 
 enum AppViewModelError: LocalizedError {
     case resultLocked
+    case championResultLocked
     case eventNotFound
     case resultUnavailable
     case participantNotFound(name: String)
@@ -454,6 +507,8 @@ enum AppViewModelError: LocalizedError {
         switch self {
         case .resultLocked:
             return "Official results are final once retrieved."
+        case .championResultLocked:
+            return "Season champion is locked and cannot be changed."
         case .eventNotFound:
             return "Selected event could not be found."
         case .resultUnavailable:

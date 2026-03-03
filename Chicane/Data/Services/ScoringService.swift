@@ -9,6 +9,42 @@ struct ScoringService: Sendable {
         return score
     }
 
+    func seasonChampionBonusByPlayer(
+        players: [Player],
+        championPicks: [SeasonChampionPick],
+        championResult: SeasonChampionResult?,
+        series: RaceSeries,
+        participants: [Driver] = []
+    ) -> [UUID: Int] {
+        guard let championResult else {
+            return players.reduce(into: [UUID: Int]()) { output, player in
+                output[player.id] = 0
+            }
+        }
+
+        let resolver = StoredIdentityResolver(
+            series: series,
+            events: [],
+            participants: participants
+        )
+
+        return players.reduce(into: [UUID: Int]()) { output, player in
+            let matchingPick = championPicks
+                .filter { $0.series == series && $0.playerID == player.id }
+                .max { lhs, rhs in lhs.updatedAt < rhs.updatedAt }
+
+            guard let matchingPick else {
+                output[player.id] = 0
+                return
+            }
+
+            output[player.id] = resolver.participantIDsMatch(
+                matchingPick.driverID,
+                championResult.driverID
+            ) ? 5 : 0
+        }
+    }
+
     func pointsByPlayer(
         players: [Player],
         picks: [RacePick],
@@ -47,6 +83,8 @@ struct ScoreboardCalculator: Sendable {
         players: [Player],
         picks: [RacePick],
         results: [RaceResult],
+        championPicks: [SeasonChampionPick] = [],
+        championResults: [SeasonChampionResult] = [],
         events: [RaceEvent],
         scope: ScoreboardScope,
         driversBySeries: [RaceSeries: [Driver]] = [:]
@@ -60,7 +98,7 @@ struct ScoreboardCalculator: Sendable {
             totals[player.id] = 0
         }
 
-        let totals = filteredResults.reduce(into: totalByPlayerID) { totals, result in
+        var totals = filteredResults.reduce(into: totalByPlayerID) { totals, result in
             let points = scoringService.pointsByPlayer(
                 players: players,
                 picks: picks,
@@ -71,6 +109,20 @@ struct ScoreboardCalculator: Sendable {
                 participants: driversBySeries[result.series] ?? []
             )
             for (playerID, earned) in points {
+                totals[playerID, default: 0] += earned
+            }
+        }
+
+        let bonusSeries = scope.series.map { [$0] } ?? RaceSeries.allCases
+        for series in bonusSeries {
+            let bonus = scoringService.seasonChampionBonusByPlayer(
+                players: players,
+                championPicks: championPicks,
+                championResult: championResults.first(where: { $0.series == series }),
+                series: series,
+                participants: driversBySeries[series] ?? []
+            )
+            for (playerID, earned) in bonus {
                 totals[playerID, default: 0] += earned
             }
         }
@@ -258,6 +310,10 @@ struct StoredIdentityResolver: Sendable {
         if participantKeysMatch(pick.p2, result.p2) { score += 1 }
         if participantKeysMatch(pick.p3, result.p3) { score += 1 }
         return score
+    }
+
+    func participantIDsMatch(_ lhs: String, _ rhs: String) -> Bool {
+        participantKeysMatch(lhs, rhs)
     }
 
     private func newestPick(

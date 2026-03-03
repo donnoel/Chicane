@@ -19,11 +19,16 @@ For each race event, each player picks:
 - P2
 - P3
 
+Each player also picks a season world champion for:
+- Formula 1
+- MotoGP
+
 When actual results are entered, scoring is position-exact:
 - +1 for correct P1
 - +1 for correct P2
 - +1 for correct P3
 - Total: 0 to 3 points per event
+- +5 bonus when a saved season world champion pick matches the locked season champion
 
 Chicane tracks standings across:
 - Formula 1 season totals
@@ -37,7 +42,9 @@ Chicane tracks standings across:
 | Feature | Description |
 |--------|-------------|
 | Podium Picks | Create/edit picks per series, round, and player. Supports multiple concurrent players with independent drafts. |
+| Season Champion Picks | Each player can pick the F1 and MotoGP world champion for an end-of-season 5-point bonus. |
 | Results Update + Locking | Tap `Update Results` to fetch official top-3 podium, then lock to prevent accidental edits. |
+| Season Champion Locking | Once the season champion is entered for a series, it locks and immediately applies the bonus to standings. |
 | Exact Scoring | Position-only scoring (no points for correct driver/rider in wrong position). |
 | Scoreboard | Series and combined standings, plus per-event score history. |
 | In-App News Reader | Motorsport.com RSS news feed with Safari Reader mode — loads clean, ad-free articles in-app. |
@@ -52,8 +59,8 @@ Chicane tracks standings across:
 ## Main Screens
 
 - **Home** — Next race countdown, season standings snapshot, quick stats
-- **Picks** — Enter and edit each player's P1/P2/P3 predictions per event
-- **Results** — Enter official results and lock events
+- **Picks** — Enter each player's season champion and P1/P2/P3 predictions
+- **Results** — Enter official results and lock events, plus lock the season champion
 - **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)
 - **News** — Latest F1 and MotoGP news via RSS, read in-app with Reader mode after an entry confirmation
 - **Settings** — Manage players, shared league sync, season bet text, and season reset
@@ -66,10 +73,11 @@ Chicane tracks standings across:
 2. If a shared league code is configured, it syncs the latest shared state from iCloud.
 3. Driver/rider lists and calendars refresh from online sources when available.
 4. If network fetch fails, bundled seed JSON is used automatically.
-5. Users enter picks for each event per player.
+5. Users enter season champion picks and race picks for each player.
 6. Local changes save immediately, then sync back to the shared iCloud league in the background.
 7. Users tap `Update Results` to pull official podium results and lock the event.
-8. Standings are computed deterministically from stored picks and results.
+8. When the season champion is entered for a series, it locks and awards the 5-point bonus to matching players.
+9. Standings are computed deterministically from stored picks and results.
 
 ---
 
@@ -167,7 +175,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 ## Persistence and Privacy
 
 - Local use still works without a shared league code.
-- All picks, results, players, and settings are stored on-device first.
+- All picks, results, season champion choices, players, and settings are stored on-device first.
   - Location: `~/Library/Application Support/Chicane/season_state_v1.json`
 - When a shared league code is enabled, the same season state is mirrored to iCloud CloudKit so other phones can pull it automatically.
 - Shared sync now merges picks and results by event/player timestamp before writing, so one stale phone does not wipe out a newer pick from another phone.
@@ -180,7 +188,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 ## Notes
 
 - MotoGP participants are labeled as Riders throughout the app.
-- Season reset clears picks and results while preserving players and settings.
+- Season reset clears picks, results, and season champion choices while preserving players and settings.
 - The News tab is always visible and opens behind a spoiler-confirmation gate.
 
 ---

@@ -55,6 +55,8 @@ actor LocalSeasonRepository: SeasonRepository {
         case settings
         case picks
         case results
+        case championPicks
+        case championResults
         case reset
     }
 
@@ -103,6 +105,7 @@ actor LocalSeasonRepository: SeasonRepository {
 
             let validPlayerIDs = Set(state.players.map(\.id))
             state.picks = state.picks.filter { validPlayerIDs.contains($0.playerID) }
+            state.championPicks = state.championPicks.filter { validPlayerIDs.contains($0.playerID) }
         }
     }
 
@@ -140,10 +143,28 @@ actor LocalSeasonRepository: SeasonRepository {
         }
     }
 
+    func upsertChampionPick(_ pick: SeasonChampionPick) async throws -> PersistedState {
+        return try await mutateState(kind: .championPicks) { state in
+            state.championPicks.removeAll {
+                $0.series == pick.series && $0.playerID == pick.playerID
+            }
+            state.championPicks.append(pick)
+        }
+    }
+
+    func upsertChampionResult(_ result: SeasonChampionResult) async throws -> PersistedState {
+        return try await mutateState(kind: .championResults) { state in
+            state.championResults.removeAll { $0.series == result.series }
+            state.championResults.append(result)
+        }
+    }
+
     func resetSeason() async throws -> PersistedState {
         try await mutateState(kind: .reset) { state in
             state.picks = []
             state.results = []
+            state.championPicks = []
+            state.championResults = []
         }
     }
 
@@ -174,7 +195,7 @@ actor LocalSeasonRepository: SeasonRepository {
             state.playersUpdatedAt = mutationDate
         case .settings:
             state.settingsUpdatedAt = mutationDate
-        case .picks, .results:
+        case .picks, .results, .championPicks, .championResults:
             break
         case .reset:
             state.seasonResetAt = mutationDate

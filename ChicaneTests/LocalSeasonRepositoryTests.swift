@@ -92,6 +92,57 @@ final class FileStateStoreTests: XCTestCase {
         XCTAssertFalse(loaded.settings.spoilerGateEnabled)
         XCTAssertTrue(loaded.settings.spoilersDontAskAgain)
     }
+
+    func testRoundTripPreservesChampionPicksAndLockedChampionResults() async throws {
+        let store = FileStateStore(baseDirectoryURL: tempDir)
+
+        let player = TestFixtures.player(name: "Charlie")
+        var state = PersistedState.default
+        state.players = [player]
+        state.championPicks = [
+            SeasonChampionPick(
+                id: UUID(),
+                series: .formula1,
+                playerID: player.id,
+                driverID: "driver-a",
+                updatedAt: Date()
+            )
+        ]
+        state.championResults = [
+            SeasonChampionResult(
+                series: .formula1,
+                driverID: "driver-a",
+                isLocked: true,
+                updatedAt: Date()
+            )
+        ]
+
+        try await store.save(state)
+        let loaded = try await store.load()
+
+        XCTAssertEqual(loaded.championPicks.count, 1)
+        XCTAssertEqual(loaded.championPicks.first?.playerID, player.id)
+        XCTAssertEqual(loaded.championResults.count, 1)
+        XCTAssertEqual(loaded.championResults.first?.driverID, "driver-a")
+        XCTAssertEqual(loaded.championResults.first?.isLocked, true)
+    }
+
+    func testSeasonChampionResultDecodeDefaultsMissingLockFlagToLocked() throws {
+        let json = """
+        {
+          "series": "formula1",
+          "driverID": "driver-a",
+          "updatedAt": "2026-03-03T12:00:00Z"
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let result = try decoder.decode(SeasonChampionResult.self, from: Data(json.utf8))
+
+        XCTAssertTrue(result.isLocked)
+    }
 }
 
 // MARK: - PersistedState.normalized()
@@ -209,7 +260,7 @@ final class LocalSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(matchingPicks.first?.podium.p1, "x")
     }
 
-    func testResetSeasonClearsPicksAndResults() async throws {
+    func testResetSeasonClearsPicksResultsAndChampionSelections() async throws {
         let store = FileStateStore(baseDirectoryURL: tempDir)
         let repo = LocalSeasonRepository(store: store)
 
@@ -217,11 +268,30 @@ final class LocalSeasonRepositoryTests: XCTestCase {
         _ = try await repo.savePlayers([player])
         _ = try await repo.upsertPick(TestFixtures.pick(playerID: player.id))
         _ = try await repo.upsertResult(TestFixtures.result())
+        _ = try await repo.upsertChampionPick(
+            SeasonChampionPick(
+                id: UUID(),
+                series: .formula1,
+                playerID: player.id,
+                driverID: "driver-a",
+                updatedAt: Date()
+            )
+        )
+        _ = try await repo.upsertChampionResult(
+            SeasonChampionResult(
+                series: .formula1,
+                driverID: "driver-a",
+                isLocked: true,
+                updatedAt: Date()
+            )
+        )
 
         let state = try await repo.resetSeason()
 
         XCTAssertTrue(state.picks.isEmpty)
         XCTAssertTrue(state.results.isEmpty)
+        XCTAssertTrue(state.championPicks.isEmpty)
+        XCTAssertTrue(state.championResults.isEmpty)
         XCTAssertEqual(state.players.count, 1, "Players should be preserved after reset")
     }
 

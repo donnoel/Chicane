@@ -44,6 +44,16 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         return await pushIfNeeded(state)
     }
 
+    func upsertChampionPick(_ pick: SeasonChampionPick) async throws -> PersistedState {
+        let state = try await localRepository.upsertChampionPick(pick)
+        return await pushIfNeeded(state)
+    }
+
+    func upsertChampionResult(_ result: SeasonChampionResult) async throws -> PersistedState {
+        let state = try await localRepository.upsertChampionResult(result)
+        return await pushIfNeeded(state)
+    }
+
     func resetSeason() async throws -> PersistedState {
         let state = try await localRepository.resetSeason()
         return await pushIfNeeded(state)
@@ -156,6 +166,8 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             players: local.playersUpdatedAt >= remote.playersUpdatedAt ? local.players : remote.players,
             picks: mergePicks(local.picks, remote.picks, resetCutoff: resetCutoff),
             results: mergeResults(local.results, remote.results, resetCutoff: resetCutoff),
+            championPicks: mergeChampionPicks(local.championPicks, remote.championPicks, resetCutoff: resetCutoff),
+            championResults: mergeChampionResults(local.championResults, remote.championResults, resetCutoff: resetCutoff),
             settings: local.settingsUpdatedAt >= remote.settingsUpdatedAt ? local.settings : remote.settings
         )
 
@@ -163,6 +175,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
 
         let validPlayerIDs = Set(merged.players.map(\.id))
         merged.picks = merged.picks.filter { validPlayerIDs.contains($0.playerID) }
+        merged.championPicks = merged.championPicks.filter { validPlayerIDs.contains($0.playerID) }
         return merged.normalized()
     }
 
@@ -222,6 +235,55 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             return lhs.eventID < rhs.eventID
         }
     }
+
+    private func mergeChampionPicks(
+        _ local: [SeasonChampionPick],
+        _ remote: [SeasonChampionPick],
+        resetCutoff: Date?
+    ) -> [SeasonChampionPick] {
+        let filtered = (local + remote).filter { pick in
+            guard let resetCutoff else { return true }
+            return pick.updatedAt >= resetCutoff
+        }
+
+        var picksByKey: [ChampionPickKey: SeasonChampionPick] = [:]
+        for pick in filtered {
+            let key = ChampionPickKey(pick: pick)
+            if let existing = picksByKey[key], existing.updatedAt > pick.updatedAt {
+                continue
+            }
+            picksByKey[key] = pick
+        }
+
+        return Array(picksByKey.values).sorted { lhs, rhs in
+            if lhs.series != rhs.series {
+                return lhs.series.rawValue < rhs.series.rawValue
+            }
+            return lhs.playerID.uuidString < rhs.playerID.uuidString
+        }
+    }
+
+    private func mergeChampionResults(
+        _ local: [SeasonChampionResult],
+        _ remote: [SeasonChampionResult],
+        resetCutoff: Date?
+    ) -> [SeasonChampionResult] {
+        let filtered = (local + remote).filter { result in
+            guard let resetCutoff else { return true }
+            return result.updatedAt >= resetCutoff
+        }
+
+        var resultsByKey: [ChampionResultKey: SeasonChampionResult] = [:]
+        for result in filtered {
+            let key = ChampionResultKey(result: result)
+            if let existing = resultsByKey[key], existing.updatedAt > result.updatedAt {
+                continue
+            }
+            resultsByKey[key] = result
+        }
+
+        return Array(resultsByKey.values).sorted { $0.series.rawValue < $1.series.rawValue }
+    }
 }
 
 private struct PickKey: Hashable {
@@ -243,5 +305,23 @@ private struct ResultKey: Hashable {
     init(result: RaceResult) {
         self.series = result.series
         self.eventID = result.eventID
+    }
+}
+
+private struct ChampionPickKey: Hashable {
+    let series: RaceSeries
+    let playerID: UUID
+
+    init(pick: SeasonChampionPick) {
+        self.series = pick.series
+        self.playerID = pick.playerID
+    }
+}
+
+private struct ChampionResultKey: Hashable {
+    let series: RaceSeries
+
+    init(result: SeasonChampionResult) {
+        self.series = result.series
     }
 }

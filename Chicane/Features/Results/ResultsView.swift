@@ -5,6 +5,7 @@ struct ResultsView: View {
 
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
+    @State private var championDraft: String?
     @State private var isUpdatingResults = false
     @State private var scrollOffset: CGFloat = 0
     @State private var hasInitialized = false
@@ -19,6 +20,8 @@ struct ResultsView: View {
                     events: events,
                     eventPickerLabel: "Event result"
                 )
+
+                seasonChampionCard
 
                 if let selectedEvent {
                     EventSummaryCard(event: selectedEvent)
@@ -51,6 +54,10 @@ struct ResultsView: View {
         }
         .onChange(of: selectedSeries) {
             initializeSelectionForSeries()
+            hydrateChampionDraft()
+        }
+        .onChange(of: viewModel.championResults) {
+            hydrateChampionDraft()
         }
     }
 
@@ -70,6 +77,10 @@ struct ResultsView: View {
     private var currentResult: RaceResult? {
         guard let selectedEventID else { return nil }
         return viewModel.result(for: selectedSeries, eventID: selectedEventID)
+    }
+
+    private var currentChampionResult: SeasonChampionResult? {
+        viewModel.championResult(for: selectedSeries)
     }
 
     private var participantSingular: String {
@@ -126,6 +137,44 @@ struct ResultsView: View {
         .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
+    private var seasonChampionCard: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            if let currentChampionResult {
+                Label(
+                    currentChampionResult.isLocked ? "Season champion is locked" : "Season champion saved",
+                    systemImage: currentChampionResult.isLocked ? "lock.fill" : "checkmark.seal.fill"
+                )
+                    .font(.headline)
+                    .foregroundStyle(currentChampionResult.isLocked ? .green : .orange)
+            }
+
+            ChampionPickerSection(
+                title: "Season Champion",
+                drivers: viewModel.drivers(for: selectedSeries),
+                participantSingular: participantSingular,
+                selection: $championDraft,
+                isDisabled: currentChampionResult?.isLocked ?? false
+            )
+
+            Button("Save Season Champion") {
+                Task {
+                    await saveChampionResult()
+                }
+            }
+            .buttonStyle(LargeActionButtonStyle())
+            .disabled(championDraft == nil || (currentChampionResult?.isLocked ?? false))
+
+            Text(
+                currentChampionResult?.isLocked == true
+                ? "The season champion is final. Matching picks already receive the 5-point bonus."
+                : "This awards 5 bonus points to each player whose world champion pick matches."
+            )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+    }
+
     private var resultStatusLabel: some View {
         HStack {
             Label("Official result is locked", systemImage: "lock.fill")
@@ -177,6 +226,7 @@ struct ResultsView: View {
             initializeSelectionForSeries()
         }
         ensureValidSelection()
+        hydrateChampionDraft()
     }
 
     private func initializeSelectionForSeries() {
@@ -194,6 +244,10 @@ struct ResultsView: View {
             initializeSelectionForSeries()
             return
         }
+    }
+
+    private func hydrateChampionDraft() {
+        championDraft = currentChampionResult?.driverID
     }
 
     private func updateResults() async {
@@ -215,6 +269,18 @@ struct ResultsView: View {
             } else {
                 viewModel.showError(error.localizedDescription)
             }
+        }
+    }
+
+    private func saveChampionResult() async {
+        guard let championDraft else { return }
+
+        do {
+            try await viewModel.saveChampionResult(series: selectedSeries, driverID: championDraft)
+            viewModel.showInfo("Season champion saved. Bonus points are now included in standings.")
+            hydrateChampionDraft()
+        } catch {
+            viewModel.showError(error.localizedDescription)
         }
     }
 }
