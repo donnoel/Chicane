@@ -28,6 +28,7 @@
 - Data flow/persistence:
   - Local state remains the offline source on disk and is saved atomically first.
   - If a shared league code is configured, the full season state is mirrored through CloudKit and refreshed on launch / foreground. If that mirror step fails after a local save, the local save still stands and the UI must show a visible sync warning.
+  - Joining a shared league should require explicit confirmation before replacing non-empty on-device season state.
   - Shared league merges keep per-pick/per-result timestamps authoritative and use per-section timestamps for players/settings, falling back to the newest overall state if those section timestamps tie.
   - Explicit `refreshState()` calls must bypass the warm local cache so restored or externally modified state can be reloaded from disk before sync.
   - Online refresh for calendars/drivers from official sources when reachable.

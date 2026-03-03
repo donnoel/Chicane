@@ -49,7 +49,7 @@ Chicane tracks standings across:
 | Scoreboard | Series and combined standings, plus per-event score history. |
 | In-App News Reader | Motorsport.com RSS news feed with Safari Reader mode — loads clean, ad-free articles in-app. |
 | Spoiler Safety | No race spoilers by default; the News tab is blurred on entry until the user explicitly continues. |
-| Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. |
+| Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. Joining prompts before replacing existing local season data. |
 | Offline Fallback | Works with bundled seed data if network sources are unavailable. |
 | Accessibility | Large tap targets, Dynamic Type, VoiceOver labels, high-contrast friendly UI. |
 | Premium UI | Apple-material based "Liquid Glass" visual design with themed motorsport color accents. |
@@ -64,6 +64,7 @@ Chicane tracks standings across:
 - **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)
 - **News** — Latest F1 and MotoGP news via RSS, read in-app with Reader mode after an entry confirmation
 - **Settings** — Manage players, shared league sync, season bet text, and season reset
+  - Reset clears race picks/results and season champion picks/results.
 
 ---
 

@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var seasonBetText = ""
     @State private var joinLeagueCode = ""
     @State private var showResetConfirmation = false
+    @State private var showJoinConfirmation = false
 
     private enum FocusField: Hashable {
         case player(UUID)
@@ -53,7 +54,17 @@ struct SettingsView: View {
                 }
             }
         } message: {
-            Text("This clears all picks and results for the season.")
+            Text("This clears all race picks, race results, world champion picks, and season champion results for the season.")
+        }
+        .alert("Join shared league?", isPresented: $showJoinConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Replace Local Data", role: .destructive) {
+                Task {
+                    await joinLeague(replacingLocalState: true)
+                }
+            }
+        } message: {
+            Text("Joining replaces your current on-device players, picks, results, and champion selections with the shared league state.")
         }
     }
 
@@ -323,9 +334,28 @@ struct SettingsView: View {
         return trimmed
     }
 
-    private func joinLeague() async {
+    private var hasLocalSeasonStateToReplace: Bool {
+        if !viewModel.players.isEmpty ||
+            !viewModel.picks.isEmpty ||
+            !viewModel.results.isEmpty ||
+            !viewModel.championPicks.isEmpty ||
+            !viewModel.championResults.isEmpty {
+            return true
+        }
+
+        var comparableSettings = viewModel.settings
+        comparableSettings.leagueCode = nil
+        return comparableSettings != .default
+    }
+
+    private func joinLeague(replacingLocalState: Bool = false) async {
         let code = joinLeagueCode.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !code.isEmpty else { return }
+        if !replacingLocalState && hasLocalSeasonStateToReplace {
+            showJoinConfirmation = true
+            return
+        }
+
         await viewModel.joinLeague(code: code)
         if activeLeagueCode != nil {
             joinLeagueCode = ""

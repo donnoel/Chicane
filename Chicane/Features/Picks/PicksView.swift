@@ -6,7 +6,7 @@ struct PicksView: View {
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
-    @State private var championDraftsByPlayer: [UUID: String] = [:]
+    @State private var championDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
     @State private var scrollOffset: CGFloat = 0
     @State private var hasInitialized = false
 
@@ -99,6 +99,10 @@ struct PicksView: View {
         viewModel.championResult(for: selectedSeries)?.isLocked ?? false
     }
 
+    private var championDraftsByPlayer: [UUID: String] {
+        championDraftsBySeries[selectedSeries] ?? [:]
+    }
+
     private var playerCards: some View {
         ForEach(viewModel.players) { player in
             VStack(alignment: .leading, spacing: 24) {
@@ -165,15 +169,25 @@ struct PicksView: View {
 
     private func championBinding(for playerID: UUID) -> Binding<String?> {
         Binding(
-            get: { championDraftsByPlayer[playerID] },
+            get: { championDraft(for: playerID) },
             set: { newValue in
-                if let newValue {
-                    championDraftsByPlayer[playerID] = newValue
-                } else {
-                    championDraftsByPlayer.removeValue(forKey: playerID)
-                }
+                setChampionDraft(newValue, for: playerID)
             }
         )
+    }
+
+    private func championDraft(for playerID: UUID) -> String? {
+        championDraftsBySeries[selectedSeries]?[playerID]
+    }
+
+    private func setChampionDraft(_ driverID: String?, for playerID: UUID) {
+        var drafts = championDraftsBySeries[selectedSeries] ?? [:]
+        if let driverID {
+            drafts[playerID] = driverID
+        } else {
+            drafts.removeValue(forKey: playerID)
+        }
+        championDraftsBySeries[selectedSeries] = drafts
     }
 
     private func initializeIfNeeded() {
@@ -231,13 +245,28 @@ struct PicksView: View {
     }
 
     private func hydrateChampionDrafts() {
-        var updated: [UUID: String] = [:]
-        for player in viewModel.players {
-            if let pick = viewModel.championPick(for: selectedSeries, playerID: player.id) {
-                updated[player.id] = pick.driverID
+        let currentPlayerIDs = Set(viewModel.players.map(\.id))
+        championDraftsBySeries = championDraftsBySeries.reduce(into: [RaceSeries: [UUID: String]]()) { output, entry in
+            let filtered = entry.value.filter { currentPlayerIDs.contains($0.key) }
+            if !filtered.isEmpty {
+                output[entry.key] = filtered
             }
         }
-        championDraftsByPlayer = updated
+
+        var updated = championDraftsBySeries[selectedSeries] ?? [:]
+        for player in viewModel.players {
+            let savedSelection = viewModel.championPick(for: selectedSeries, playerID: player.id)?.driverID
+            let currentSelection = updated[player.id]
+
+            if currentSelection == nil || currentSelection == savedSelection {
+                if let savedSelection {
+                    updated[player.id] = savedSelection
+                } else {
+                    updated.removeValue(forKey: player.id)
+                }
+            }
+        }
+        championDraftsBySeries[selectedSeries] = updated
     }
 
     /// Called when `viewModel.picks` changes (e.g. after initial async load or after a save).
@@ -262,22 +291,11 @@ struct PicksView: View {
     }
 
     private func hydrateAvailableChampionPicks() {
-        for player in viewModel.players {
-            let savedSelection = viewModel.championPick(for: selectedSeries, playerID: player.id)?.driverID
-            let currentSelection = championDraftsByPlayer[player.id]
-
-            if currentSelection == nil || currentSelection == savedSelection {
-                if let savedSelection {
-                    championDraftsByPlayer[player.id] = savedSelection
-                } else {
-                    championDraftsByPlayer.removeValue(forKey: player.id)
-                }
-            }
-        }
+        hydrateChampionDrafts()
     }
 
     private func saveChampionPick(for player: Player) async {
-        guard let driverID = championDraftsByPlayer[player.id] else { return }
+        guard let driverID = championDraft(for: player.id) else { return }
 
         do {
             let warning = try await viewModel.saveChampionPick(
@@ -286,10 +304,10 @@ struct PicksView: View {
                 driverID: driverID
             )
             viewModel.showInfo(warning ?? "Saved \(player.name)'s world champion pick.")
-            championDraftsByPlayer[player.id] = viewModel.championPick(
+            setChampionDraft(viewModel.championPick(
                 for: selectedSeries,
                 playerID: player.id
-            )?.driverID
+            )?.driverID, for: player.id)
         } catch {
             viewModel.showError(error.localizedDescription)
         }
