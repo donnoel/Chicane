@@ -42,7 +42,7 @@ Chicane tracks standings across:
 | Feature | Description |
 |--------|-------------|
 | Podium Picks | Create/edit picks per series, round, and player. Supports multiple concurrent players with independent drafts. |
-| Season Champion Picks | Each player can pick the F1 and MotoGP world champion for an end-of-season 5-point bonus. |
+| Season Champion Picks | Each player can pick the F1 and MotoGP world champion for an end-of-season 5-point bonus, and those picks lock once the official season champion is entered. |
 | Results Update + Locking | Tap `Update Results` to fetch official top-3 podium, then lock to prevent accidental edits. |
 | Season Champion Locking | Once the season champion is entered for a series, it locks and immediately applies the bonus to standings. |
 | Exact Scoring | Position-only scoring (no points for correct driver/rider in wrong position). |
@@ -76,7 +76,7 @@ Chicane tracks standings across:
 5. Users enter season champion picks and race picks for each player.
 6. Local changes save immediately, then sync back to the shared iCloud league in the background.
 7. Users tap `Update Results` to pull official podium results and lock the event.
-8. When the season champion is entered for a series, it locks and awards the 5-point bonus to matching players.
+8. When the season champion is entered for a series, it locks, freezes all player champion picks for that series, and awards the 5-point bonus to matching players.
 9. Standings are computed deterministically from stored picks and results.
 
 ---

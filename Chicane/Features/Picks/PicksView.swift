@@ -95,6 +95,10 @@ struct PicksView: View {
         selectedSeries == .motoGP ? "riders" : "drivers"
     }
 
+    private var championPicksAreLocked: Bool {
+        viewModel.championResult(for: selectedSeries)?.isLocked ?? false
+    }
+
     private var playerCards: some View {
         ForEach(viewModel.players) { player in
             VStack(alignment: .leading, spacing: 24) {
@@ -102,7 +106,8 @@ struct PicksView: View {
                     title: "\(player.name)'s World Champion",
                     drivers: drivers,
                     participantSingular: participantSingular,
-                    selection: championBinding(for: player.id)
+                    selection: championBinding(for: player.id),
+                    isDisabled: championPicksAreLocked
                 )
 
                 Button("Save \(player.name)'s Champion Pick") {
@@ -111,10 +116,14 @@ struct PicksView: View {
                     }
                 }
                 .buttonStyle(LargeActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
-                .disabled(championDraftsByPlayer[player.id] == nil)
+                .disabled(championDraftsByPlayer[player.id] == nil || championPicksAreLocked)
                 .accessibilityLabel("Save world champion pick for \(player.name)")
 
-                if viewModel.championPick(for: selectedSeries, playerID: player.id) != nil {
+                if championPicksAreLocked {
+                    Label("Locked. The official season champion has been entered for this series.", systemImage: "lock.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else if viewModel.championPick(for: selectedSeries, playerID: player.id) != nil {
                     Label("Saved. Update it anytime before the season champion is entered.", systemImage: "flag.checkered.circle.fill")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
