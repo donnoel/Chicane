@@ -41,7 +41,7 @@ final class PersistedStateMigrationTests: XCTestCase {
         let decoded = try decoder.decode(PersistedState.self, from: Data(payload.utf8))
         let normalized = decoded.normalized()
 
-        XCTAssertEqual(normalized.schemaVersion, 3)
+        XCTAssertEqual(normalized.schemaVersion, PersistedState.currentSchemaVersion)
         XCTAssertEqual(normalized.players.first?.name, "Mom")
         XCTAssertEqual(
             normalized.updatedAt,
