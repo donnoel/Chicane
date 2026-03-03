@@ -181,6 +181,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 - Shared sync now merges picks and results by event/player timestamp before writing, so one stale phone does not wipe out a newer pick from another phone.
 - State is written atomically for crash-safety.
 - Schema versioning is in place for future migrations.
+- Legacy stored driver/rider IDs are normalized against current rosters so older saved picks continue to score after feed ID changes.
 - News is blurred on entry and only shown after explicit confirmation.
 
 ---

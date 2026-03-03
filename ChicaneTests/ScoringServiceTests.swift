@@ -192,6 +192,36 @@ final class ScoringServiceTests: XCTestCase {
         XCTAssertEqual(standings.first?.points, 1)
     }
 
+    func testSeasonChampionBonusMatchesLegacyMotoGPPickToLiveDriverID() {
+        let player = TestFixtures.player(name: "Mom")
+        let liveDrivers = [
+            TestFixtures.driver(id: "mgp-live-bagnaia", series: .motoGP, name: "Francesco Bagnaia", team: "Ducati")
+        ]
+        let championPick = SeasonChampionPick(
+            id: UUID(),
+            series: .motoGP,
+            playerID: player.id,
+            driverID: "mgp-bagnaia",
+            updatedAt: Date()
+        )
+        let championResult = SeasonChampionResult(
+            series: .motoGP,
+            driverID: "mgp-live-bagnaia",
+            isLocked: true,
+            updatedAt: Date()
+        )
+
+        let bonus = scoring.seasonChampionBonusByPlayer(
+            players: [player],
+            championPicks: [championPick],
+            championResult: championResult,
+            series: .motoGP,
+            participants: liveDrivers
+        )
+
+        XCTAssertEqual(bonus[player.id], 5)
+    }
+
     func testStandingsWithNoResultsReturnsAllPlayersAtZero() {
         let players = [TestFixtures.player(name: "A"), TestFixtures.player(name: "B")]
 

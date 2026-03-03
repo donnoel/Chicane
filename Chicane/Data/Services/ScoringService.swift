@@ -343,12 +343,39 @@ struct StoredIdentityResolver: Sendable {
             return canonicalNameKey(for: participant.name)
         }
 
-        let rawAlias = normalizedIdentifierFragment(rawID)
-        if let aliasMatch = aliasToParticipantKey[rawAlias] {
-            return aliasMatch
+        let aliases = legacyParticipantAliases(for: rawID)
+        for alias in aliases {
+            if let aliasMatch = aliasToParticipantKey[alias] {
+                return aliasMatch
+            }
         }
 
-        return rawAlias
+        return aliases.first ?? normalizedIdentifierFragment(rawID)
+    }
+
+    private func legacyParticipantAliases(for rawID: String) -> [String] {
+        let tokens = normalizedTokens(rawID)
+        guard !tokens.isEmpty else {
+            return []
+        }
+
+        var aliases: [String] = []
+        aliases.append(tokens.joined())
+
+        var strippedTokens = tokens
+        if strippedTokens.first == seriesIDPrefix {
+            strippedTokens.removeFirst()
+        }
+
+        if !strippedTokens.isEmpty {
+            aliases.append(strippedTokens.joined())
+        }
+
+        var uniqueAliases: [String] = []
+        for alias in aliases where !uniqueAliases.contains(alias) {
+            uniqueAliases.append(alias)
+        }
+        return uniqueAliases
     }
 
     private func legacyEventKey(for eventID: String) -> (season: Int?, tokens: [String]) {
