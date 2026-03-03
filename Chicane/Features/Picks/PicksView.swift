@@ -45,6 +45,10 @@ struct PicksView: View {
             hasInitialized = true
             initializeIfNeeded()
         }
+        .onChange(of: eventIDs) {
+            ensureValidSelection()
+            hydrateDrafts()
+        }
         .onChange(of: selectedSeries) {
             initializeSelectionForSeries()
             hydrateDrafts()
@@ -62,6 +66,10 @@ struct PicksView: View {
 
     private var events: [RaceEvent] {
         viewModel.events(for: selectedSeries)
+    }
+
+    private var eventIDs: [String] {
+        events.map(\.id)
     }
 
     private var selectedEvent: RaceEvent? {
@@ -122,6 +130,7 @@ struct PicksView: View {
         if selectedEventID == nil {
             initializeSelectionForSeries()
         }
+        ensureValidSelection()
         hydrateDrafts()
     }
 
@@ -142,6 +151,14 @@ struct PicksView: View {
         } else {
             // Season is over — pick the most recent event.
             selectedEventID = events.max(by: { $0.raceDate < $1.raceDate })?.id
+        }
+    }
+
+    private func ensureValidSelection() {
+        guard !events.isEmpty else { return }
+        guard let selectedEventID, eventIDs.contains(selectedEventID) else {
+            initializeSelectionForSeries()
+            return
         }
     }
 

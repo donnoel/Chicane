@@ -163,15 +163,34 @@ struct NewsView: View {
         loadError = nil
         defer { isLoading = false }
 
-        async let f1Task   = repository.articles(for: .formula1)
-        async let motoTask = repository.articles(for: .motoGP)
+        async let f1Task = fetchArticles(for: .formula1)
+        async let motoTask = fetchArticles(for: .motoGP)
 
+        let (f1Result, motoResult) = await (f1Task, motoTask)
+        var errors: [String] = []
+
+        switch f1Result {
+        case let .success(articles):
+            articlesBySeriesF1 = articles
+        case let .failure(error):
+            errors.append("F1: \(error.localizedDescription)")
+        }
+
+        switch motoResult {
+        case let .success(articles):
+            articlesBySeriesMotoGP = articles
+        case let .failure(error):
+            errors.append("MotoGP: \(error.localizedDescription)")
+        }
+
+        loadError = errors.isEmpty ? nil : errors.joined(separator: "\n")
+    }
+
+    private func fetchArticles(for series: RaceSeries) async -> Result<[NewsArticle], Error> {
         do {
-            let (f1, moto) = try await (f1Task, motoTask)
-            articlesBySeriesF1    = f1
-            articlesBySeriesMotoGP = moto
+            return .success(try await repository.articles(for: series))
         } catch {
-            loadError = error.localizedDescription
+            return .failure(error)
         }
     }
 }

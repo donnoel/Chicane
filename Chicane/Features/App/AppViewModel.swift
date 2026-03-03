@@ -180,14 +180,13 @@ final class AppViewModel: ObservableObject {
             throw RepositoryError.invalidPodium
         }
 
-        if let existing = result(for: series, eventID: eventID), existing.isLocked {
+        if result(for: series, eventID: eventID) != nil {
             throw AppViewModelError.resultLocked
         }
 
-        let existingResult = result(for: series, eventID: eventID)
         let result = RaceResult(
             series: series,
-            eventID: existingResult?.eventID ?? eventID,
+            eventID: eventID,
             podium: podium,
             isLocked: lockResult,
             updatedAt: Date()
@@ -219,16 +218,6 @@ final class AppViewModel: ObservableObject {
 
         let draft = PodiumDraft(p1: ids[0], p2: ids[1], p3: ids[2])
         try await saveResult(series: series, eventID: eventID, draft: draft, lockResult: lockResult)
-    }
-
-    func unlockResult(series: RaceSeries, eventID: String) async throws {
-        guard var existing = result(for: series, eventID: eventID) else {
-            return
-        }
-        existing.isLocked = false
-        existing.updatedAt = Date()
-        let state = try await seasonRepository.upsertResult(existing)
-        apply(state: state)
     }
 
     func standings(for scope: ScoreboardScope) -> [PlayerStanding] {
@@ -380,7 +369,10 @@ final class AppViewModel: ObservableObject {
         let participants = drivers(for: series)
 
         // Tier 1: exact normalised match.
-        if let exact = participants.first(where: { normalizedParticipantName($0.name) == normalizedTarget }) {
+        if let exact = uniquelyMatchedParticipant(
+            in: participants,
+            where: { normalizedParticipantName($0.name) == normalizedTarget }
+        ) {
             return exact.id
         }
 
@@ -393,10 +385,13 @@ final class AppViewModel: ObservableObject {
         if !surnameCandidates.isEmpty {
             // Find a participant whose normalised name contains at least one of the
             // surname candidates as an exact token — not just a substring.
-            if let surnameMatch = participants.first(where: { participant in
-                let participantTokens = Set(normalizedParticipantName(participant.name).split(separator: " ").map(String.init))
-                return surnameCandidates.contains(where: { participantTokens.contains($0) })
-            }) {
+            if let surnameMatch = uniquelyMatchedParticipant(
+                in: participants,
+                where: { participant in
+                    let participantTokens = Set(normalizedParticipantName(participant.name).split(separator: " ").map(String.init))
+                    return surnameCandidates.contains(where: { participantTokens.contains($0) })
+                }
+            ) {
                 return surnameMatch.id
             }
         }
@@ -404,11 +399,14 @@ final class AppViewModel: ObservableObject {
         // Tier 3: token-set intersection (at least 2 shared tokens, both sides must be multi-token).
         let targetTokenSet = Set(targetTokens)
         if targetTokenSet.count >= 2 {
-            if let tokenMatch = participants.first(where: { participant in
-                let candidateTokens = Set(normalizedParticipantName(participant.name).split(separator: " ").map(String.init))
-                guard candidateTokens.count >= 2 else { return false }
-                return candidateTokens.intersection(targetTokenSet).count >= 2
-            }) {
+            if let tokenMatch = uniquelyMatchedParticipant(
+                in: participants,
+                where: { participant in
+                    let candidateTokens = Set(normalizedParticipantName(participant.name).split(separator: " ").map(String.init))
+                    guard candidateTokens.count >= 2 else { return false }
+                    return candidateTokens.intersection(targetTokenSet).count >= 2
+                }
+            ) {
                 return tokenMatch.id
             }
         }
@@ -433,6 +431,17 @@ final class AppViewModel: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
     }
+
+    private func uniquelyMatchedParticipant(
+        in participants: [Driver],
+        where predicate: (Driver) -> Bool
+    ) -> Driver? {
+        let matches = participants.filter(predicate)
+        guard matches.count == 1 else {
+            return nil
+        }
+        return matches[0]
+    }
 }
 
 enum AppViewModelError: LocalizedError {
@@ -444,7 +453,7 @@ enum AppViewModelError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .resultLocked:
-            return "Results are locked. Unlock first to edit."
+            return "Official results are final once retrieved."
         case .eventNotFound:
             return "Selected event could not be found."
         case .resultUnavailable:

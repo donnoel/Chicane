@@ -271,20 +271,24 @@ struct SettingsView: View {
     }
 
     private func saveBetText() async {
-        await updateSettings { settings in
+        let didSave = await updateSettings { settings in
             settings.seasonBetText = seasonBetText.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        viewModel.showInfo("Season bet saved")
+        if didSave {
+            viewModel.showInfo("Season bet saved")
+        }
     }
 
-    private func updateSettings(_ mutate: (inout AppSettings) -> Void) async {
+    private func updateSettings(_ mutate: (inout AppSettings) -> Void) async -> Bool {
         var updated = viewModel.settings
         mutate(&updated)
 
         do {
             try await viewModel.saveSettings(updated)
+            return true
         } catch {
             viewModel.showError(error.localizedDescription)
+            return false
         }
     }
 

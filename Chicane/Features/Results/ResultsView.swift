@@ -5,8 +5,6 @@ struct ResultsView: View {
 
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
-    @State private var draft: PodiumDraft = .empty
-    @State private var showUnlockConfirmation = false
     @State private var isUpdatingResults = false
     @State private var scrollOffset: CGFloat = 0
     @State private var hasInitialized = false
@@ -48,30 +46,20 @@ struct ResultsView: View {
             hasInitialized = true
             initializeIfNeeded()
         }
+        .onChange(of: eventIDs) {
+            ensureValidSelection()
+        }
         .onChange(of: selectedSeries) {
             initializeSelectionForSeries()
-            hydrateDraft()
-        }
-        .onChange(of: selectedEventID) {
-            hydrateDraft()
-        }
-        .onChange(of: viewModel.results) {
-            hydrateDraft()
-        }
-        .alert("Unlock result?", isPresented: $showUnlockConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Unlock", role: .destructive) {
-                Task {
-                    await unlockCurrentResult()
-                }
-            }
-        } message: {
-            Text("This allows editing this race result again.")
         }
     }
 
     private var events: [RaceEvent] {
         viewModel.events(for: selectedSeries)
+    }
+
+    private var eventIDs: [String] {
+        events.map(\.id)
     }
 
     private var selectedEvent: RaceEvent? {
@@ -95,25 +83,25 @@ struct ResultsView: View {
     private var resultEditorCard: some View {
         VStack(alignment: .leading, spacing: 24) {
             if let currentResult {
-                resultStatusLabel(currentResult)
-            }
+                resultStatusLabel
 
-            PodiumPickerSection(
-                title: "Actual Podium",
-                drivers: viewModel.drivers(for: selectedSeries),
-                participantSingular: participantSingular,
-                participantPlural: participantPlural,
-                draft: $draft,
-                isDisabled: currentResult?.isLocked ?? false
-            )
+                PodiumPickerSection(
+                    title: "Official Podium",
+                    drivers: viewModel.drivers(for: selectedSeries),
+                    participantSingular: participantSingular,
+                    participantPlural: participantPlural,
+                    draft: .constant(PodiumDraft(podium: currentResult.podium)),
+                    isDisabled: true
+                )
 
-            if currentResult?.isLocked == true {
-                Button("Unlock Result") {
-                    showUnlockConfirmation = true
-                }
-                .buttonStyle(LargeActionButtonStyle(tint: .orange))
-                .accessibilityHint("Confirm to edit this locked result")
+                Text("Official results are locked once retrieved.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             } else {
+                Text("Tap below to fetch the official top three for this event.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+
                 Button {
                     Task {
                         await updateResults()
@@ -123,29 +111,26 @@ struct ResultsView: View {
                         HStack(spacing: 8) {
                             ProgressView()
                                 .tint(.white)
-                            Text("Updating…")
+                            Text("Fetching…")
                         }
                     } else {
-                        Text("Update Results")
+                        Text("Fetch Official Results")
                     }
                 }
                 .buttonStyle(LargeActionButtonStyle())
                 .disabled(isUpdatingResults)
-                .accessibilityLabel("Update results")
-                .accessibilityHint("Fetches official top three and locks this result")
+                .accessibilityLabel("Fetch official results")
+                .accessibilityHint("Fetches the official top three and locks this result")
             }
         }
         .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
-    private func resultStatusLabel(_ result: RaceResult) -> some View {
+    private var resultStatusLabel: some View {
         HStack {
-            Label(
-                result.isLocked ? "Result is locked" : "Result is editable",
-                systemImage: result.isLocked ? "lock.fill" : "lock.open.fill"
-            )
-            .font(.headline)
-            .foregroundStyle(result.isLocked ? .green : .orange)
+            Label("Official result is locked", systemImage: "lock.fill")
+                .font(.headline)
+                .foregroundStyle(.green)
 
             Spacer()
         }
@@ -165,7 +150,7 @@ struct ResultsView: View {
                 .font(.headline)
 
             if points.isEmpty {
-                Text("Update results to compute points.")
+                Text("Fetch official results to compute points.")
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else if !hasAnySavedPickForEvent {
@@ -191,28 +176,24 @@ struct ResultsView: View {
         if selectedEventID == nil {
             initializeSelectionForSeries()
         }
-        hydrateDraft()
+        ensureValidSelection()
     }
 
     private func initializeSelectionForSeries() {
         let now = Date()
-        // Default to the most recently completed event (most likely needs results entered).
         if let recent = events.filter({ $0.raceDate < now }).max(by: { $0.raceDate < $1.raceDate }) {
             selectedEventID = recent.id
         } else {
-            // No past events — pick the earliest upcoming.
             selectedEventID = events.min(by: { $0.raceDate < $1.raceDate })?.id
         }
     }
 
-    private func hydrateDraft() {
-        guard let selectedEventID,
-              let existingResult = viewModel.result(for: selectedSeries, eventID: selectedEventID) else {
-            draft = .empty
+    private func ensureValidSelection() {
+        guard !events.isEmpty else { return }
+        guard let selectedEventID, eventIDs.contains(selectedEventID) else {
+            initializeSelectionForSeries()
             return
         }
-
-        draft = PodiumDraft(podium: existingResult.podium)
     }
 
     private func updateResults() async {
@@ -227,29 +208,13 @@ struct ResultsView: View {
                 eventID: selectedEventID,
                 lockResult: true
             )
-            // Always show the banner — the auto-dismiss timer in RootTabView ensures
-            // the old banner has been cleared well before the user can tap Update Results
-            // a second time, so duplicate suppression is unnecessary and was causing
-            // the banner to silently not appear after the first auto-dismiss.
             viewModel.showInfo("Results updated and locked.")
-            hydrateDraft()
         } catch {
             if error is OfficialResultRepositoryError {
                 viewModel.showInfo("Official results aren't available yet. Try again later.")
             } else {
                 viewModel.showError(error.localizedDescription)
             }
-        }
-    }
-
-    private func unlockCurrentResult() async {
-        guard let selectedEventID else { return }
-        do {
-            try await viewModel.unlockResult(series: selectedSeries, eventID: selectedEventID)
-            viewModel.showInfo("Result unlocked. Tap Update Results to refresh official podium.")
-            hydrateDraft()
-        } catch {
-            viewModel.showError(error.localizedDescription)
         }
     }
 }

@@ -1,0 +1,110 @@
+import XCTest
+@testable import Chicane
+
+@MainActor
+final class AppViewModelTests: XCTestCase {
+    private var tempDir: URL!
+
+    override func setUp() {
+        super.setUp()
+        tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ChicaneAppViewModelTests-\(UUID().uuidString)", isDirectory: true)
+    }
+
+    override func tearDown() {
+        if let tempDir {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+        super.tearDown()
+    }
+
+    func testUpdateResultFromOfficialSourceLocksOfficialResultAndRejectsFurtherChanges() async throws {
+        let event = TestFixtures.event(id: "f1-2026-test", series: .formula1)
+        let drivers = [
+            TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
+            TestFixtures.driver(id: "f1-lando", series: .formula1, name: "Lando Norris", team: "McLaren"),
+            TestFixtures.driver(id: "f1-charles", series: .formula1, name: "Charles Leclerc", team: "Ferrari")
+        ]
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: drivers,
+            podiumNames: drivers.map(\.name)
+        )
+
+        await viewModel.reload()
+        try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+
+        let storedResult = viewModel.result(for: .formula1, eventID: event.id)
+        XCTAssertEqual(storedResult?.isLocked, true)
+
+        do {
+            try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+            XCTFail("Expected a locked-result error")
+        } catch let error as AppViewModelError {
+            if case .resultLocked = error {
+                // Expected path.
+            } else {
+                XCTFail("Unexpected AppViewModelError: \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testUpdateResultFromOfficialSourceFailsClosedOnAmbiguousParticipantMatch() async throws {
+        let event = TestFixtures.event(id: "f1-2026-ambiguous", series: .formula1)
+        let drivers = [
+            TestFixtures.driver(id: "f1-alex", series: .formula1, name: "Alex Smith", team: "Team A"),
+            TestFixtures.driver(id: "f1-jamie", series: .formula1, name: "Jamie Smith", team: "Team B"),
+            TestFixtures.driver(id: "f1-taylor", series: .formula1, name: "Taylor Driver", team: "Team C")
+        ]
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: drivers,
+            podiumNames: ["Smith", "Taylor Driver", "Alex Smith"]
+        )
+
+        await viewModel.reload()
+
+        do {
+            try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+            XCTFail("Expected an ambiguous-name failure")
+        } catch let error as AppViewModelError {
+            if case let .participantNotFound(name) = error {
+                XCTAssertEqual(name, "Smith")
+            } else {
+                XCTFail("Unexpected AppViewModelError: \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertNil(viewModel.result(for: .formula1, eventID: event.id))
+    }
+
+    private func makeViewModel(
+        event: RaceEvent,
+        drivers: [Driver],
+        podiumNames: [String]
+    ) -> AppViewModel {
+        let driverRepository = MockDriverRepository()
+        driverRepository.stubbedDrivers[.formula1] = drivers
+
+        let calendarRepository = MockCalendarRepository()
+        calendarRepository.stubbedEvents[.formula1] = [event]
+
+        let resultRepository = MockResultRepository()
+        resultRepository.stubbedPodiums[event.id] = podiumNames
+
+        let seasonRepository = LocalSeasonRepository(
+            store: FileStateStore(baseDirectoryURL: tempDir)
+        )
+
+        return AppViewModel(
+            driverRepository: driverRepository,
+            calendarRepository: calendarRepository,
+            resultRepository: resultRepository,
+            seasonRepository: seasonRepository
+        )
+    }
+}
