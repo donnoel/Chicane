@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ScoreboardView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var viewModel: AppViewModel
     @State private var selectedScope: ScoreboardScope = .combined
     @State private var scrollOffset: CGFloat = 0
@@ -114,7 +115,7 @@ struct ScoreboardView: View {
                     .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.white.opacity(0.1))
+                            .fill(ChicaneTheme.insetFill(for: colorScheme))
                     )
                 }
             }

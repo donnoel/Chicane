@@ -6,6 +6,8 @@ enum ChicaneTheme {
     static let deepNavy = Color(red: 0.04, green: 0.08, blue: 0.18)
     static let dusk = Color(red: 0.11, green: 0.14, blue: 0.27)
     static let glowAmber = Color(red: 0.99, green: 0.61, blue: 0.28)
+    static let midnight = Color(red: 0.02, green: 0.03, blue: 0.08)
+    static let slate = Color(red: 0.08, green: 0.12, blue: 0.22)
 
     // Light gradient palette
     static let skyBlue    = Color(red: 0.76, green: 0.90, blue: 1.00)  // top – bright sky blue
@@ -39,6 +41,75 @@ enum ChicaneTheme {
             return motoBlue
         case .combined:
             return glowAmber
+        }
+    }
+
+    static func backgroundGradient(for colorScheme: ColorScheme) -> [Color] {
+        switch colorScheme {
+        case .dark:
+            return [midnight, deepNavy, slate]
+        default:
+            return [skyBlue, pearlBlue, iceBlue]
+        }
+    }
+
+    static func upperBloomColor(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return f1Red.opacity(0.18)
+        default:
+            return periwinkle.opacity(0.28)
+        }
+    }
+
+    static func lowerBloomColor(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return motoBlue.opacity(0.20)
+        default:
+            return seafoam.opacity(0.22)
+        }
+    }
+
+    static func highlightFill(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.white.opacity(0.10)
+        default:
+            return Color.white.opacity(0.30)
+        }
+    }
+
+    static func cardSheen(for colorScheme: ColorScheme) -> [Color] {
+        switch colorScheme {
+        case .dark:
+            return [
+                Color.white.opacity(0.08),
+                Color.white.opacity(0.02)
+            ]
+        default:
+            return [
+                Color.white.opacity(0.18),
+                Color.white.opacity(0.04)
+            ]
+        }
+    }
+
+    static func insetFill(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.white.opacity(0.12)
+        default:
+            return Color.black.opacity(0.05)
+        }
+    }
+
+    static func cardShadow(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.black.opacity(0.34)
+        default:
+            return Color.black.opacity(0.14)
         }
     }
 }
@@ -77,6 +148,8 @@ extension View {
 // MARK: - Parallax background
 
 struct LiquidGlassBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     /// Current scroll position — positive = user has scrolled down.
     /// Each orb moves at a different fraction of this offset, creating depth.
     var scrollOffset: CGFloat = 0
@@ -85,7 +158,7 @@ struct LiquidGlassBackground: View {
         ZStack {
             // Base gradient — static, full bleed
             LinearGradient(
-                colors: [ChicaneTheme.skyBlue, ChicaneTheme.pearlBlue, ChicaneTheme.iceBlue],
+                colors: ChicaneTheme.backgroundGradient(for: colorScheme),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -95,7 +168,7 @@ struct LiquidGlassBackground: View {
             // Moves at 0.18x scroll speed, drifting upward as content scrolls down.
             // Being furthest "back" in the scene it moves the least.
             Circle()
-                .fill(ChicaneTheme.periwinkle.opacity(0.28))
+                .fill(ChicaneTheme.upperBloomColor(for: colorScheme))
                 .frame(width: 360)
                 .blur(radius: 90)
                 .offset(x: 170, y: -230 - scrollOffset * 0.18)
@@ -104,7 +177,7 @@ struct LiquidGlassBackground: View {
             // Moves at 0.12x in the opposite vertical direction, increasing
             // the perceived separation between the two orbs as you scroll.
             Circle()
-                .fill(ChicaneTheme.seafoam.opacity(0.22))
+                .fill(ChicaneTheme.lowerBloomColor(for: colorScheme))
                 .frame(width: 340)
                 .blur(radius: 95)
                 .offset(x: -160, y: 300 + scrollOffset * 0.12)
@@ -113,7 +186,7 @@ struct LiquidGlassBackground: View {
             // Barely moves (0.06x) — it's the "closest" layer so has the
             // largest parallax but we keep it gentle so it stays centred.
             Capsule()
-                .fill(Color.white.opacity(0.30))
+                .fill(ChicaneTheme.highlightFill(for: colorScheme))
                 .frame(width: 320, height: 90)
                 .blur(radius: 70)
                 .offset(x: 20, y: 80 - scrollOffset * 0.06)
@@ -122,6 +195,8 @@ struct LiquidGlassBackground: View {
 }
 
 struct GlassCardModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
     /// When non-nil the border stroke animates to reflect this colour —
     /// e.g. the active series (F1 red / MotoGP blue) or scope (amber).
     /// Pass `nil` (the default) to keep the neutral static border.
@@ -135,7 +210,7 @@ struct GlassCardModifier: ViewModifier {
             return [
                 accent.opacity(0.70),
                 accent.opacity(0.38),
-                Color.white.opacity(0.18)
+                colorScheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.18)
             ]
         } else {
             return [
@@ -157,10 +232,7 @@ struct GlassCardModifier: ViewModifier {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.18),
-                                        Color.white.opacity(0.02)
-                                    ],
+                                    colors: ChicaneTheme.cardSheen(for: colorScheme),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -180,7 +252,7 @@ struct GlassCardModifier: ViewModifier {
                     // Smooth spring transition whenever accentColor changes
                     .animation(.spring(response: 0.45, dampingFraction: 0.85), value: accentColor)
             )
-            .shadow(color: Color.black.opacity(0.22), radius: 16, x: 0, y: 8)
+            .shadow(color: ChicaneTheme.cardShadow(for: colorScheme), radius: 16, x: 0, y: 8)
     }
 }
 

@@ -262,6 +262,45 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         let refreshed = try await repo.refreshState()
         XCTAssertEqual(refreshed.players.map(\.name), ["External"])
     }
+
+    func testJoinLeaguePersistsNormalizedLeagueCodeWhenSharedStateOmitsIt() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let player = Player(id: UUID(), name: "Mom")
+        var sharedState = PersistedState.default
+        sharedState.players = [player]
+        await cloudStore.seed(sharedState, for: "ABC123")
+
+        let joined = try await repo.joinLeague(code: " ab-c123 ")
+
+        XCTAssertEqual(joined.players.map(\.name), ["Mom"])
+        XCTAssertEqual(joined.settings.leagueCode, "ABC123")
+
+        let stored = try await localRepo.loadState()
+        XCTAssertEqual(stored.settings.leagueCode, "ABC123")
+    }
+
+    func testJoinLeagueRetriesTransientLeagueNotFound() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = EventuallyAvailableLeagueSyncStore(
+            availableAfterAttempt: 3,
+            state: {
+                var state = PersistedState.default
+                state.players = [Player(id: UUID(), name: "Mom")]
+                return state
+            }()
+        )
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let joined = try await repo.joinLeague(code: "ABC123")
+
+        XCTAssertEqual(joined.players.map(\.name), ["Mom"])
+        XCTAssertEqual(joined.settings.leagueCode, "ABC123")
+        let attempts = await cloudStore.joinAttempts
+        XCTAssertEqual(attempts, 3)
+    }
 }
 
 private actor MemoryLeagueSyncStore: LeagueSyncStore {
@@ -324,6 +363,37 @@ private actor FailingMemoryLeagueSyncStore: LeagueSyncStore {
     func pushState(_ state: PersistedState, for code: String) async throws {
         throw MockError.simulated
     }
+}
+
+private actor EventuallyAvailableLeagueSyncStore: LeagueSyncStore {
+    private let availableAfterAttempt: Int
+    private let storedState: PersistedState
+    private(set) var joinAttempts = 0
+
+    init(availableAfterAttempt: Int, state: PersistedState) {
+        self.availableAfterAttempt = availableAfterAttempt
+        storedState = state
+    }
+
+    func createLeague(from state: PersistedState) async throws -> PersistedState {
+        var sharedState = state
+        sharedState.settings.leagueCode = "ABC123"
+        return sharedState
+    }
+
+    func joinLeague(code: String) async throws -> PersistedState {
+        joinAttempts += 1
+        guard joinAttempts >= availableAfterAttempt else {
+            throw RepositoryError.leagueNotFound(code: code)
+        }
+        return storedState
+    }
+
+    func fetchState(for code: String) async throws -> PersistedState? {
+        nil
+    }
+
+    func pushState(_ state: PersistedState, for code: String) async throws {}
 }
 
 private func date(_ raw: String) -> Date {

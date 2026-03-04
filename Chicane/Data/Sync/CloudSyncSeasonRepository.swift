@@ -11,6 +11,12 @@ struct DeferredCloudSyncWarning: LocalizedError {
 }
 
 actor CloudSyncSeasonRepository: SeasonRepository {
+    private enum Constants {
+        static let leagueCodeLength = 6
+        static let joinLookupAttempts = 5
+        static let joinRetryDelayNanoseconds: UInt64 = 750_000_000
+    }
+
     private let localRepository: LocalSeasonRepository
     private let cloudStore: any LeagueSyncStore
     private let logger = Logger(subsystem: "dn.chicane", category: "CloudSyncSeasonRepository")
@@ -79,7 +85,12 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     }
 
     func joinLeague(code: String) async throws -> PersistedState {
-        let sharedState = try await cloudStore.joinLeague(code: code)
+        let requestedCode = normalizedLeagueCode(code)
+            ?? code.trimmingCharacters(in: .whitespacesAndNewlines)
+        var sharedState = try await fetchSharedStateForJoin(code: requestedCode)
+        if let normalizedCode = normalizedLeagueCode(requestedCode) {
+            sharedState.settings.leagueCode = normalizedCode
+        }
         return try await localRepository.replaceState(sharedState)
     }
 
@@ -143,13 +154,35 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     }
 
     private func normalizedLeagueCode(from state: PersistedState) -> String? {
-        let trimmed = state.settings.leagueCode?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .uppercased()
-        guard let trimmed, !trimmed.isEmpty else {
+        normalizedLeagueCode(state.settings.leagueCode)
+    }
+
+    private func normalizedLeagueCode(_ code: String?) -> String? {
+        guard let code else {
             return nil
         }
-        return trimmed
+
+        let allowed = code.uppercased().filter { $0.isLetter || $0.isNumber }
+        let normalized = String(allowed.prefix(Constants.leagueCodeLength))
+        guard !normalized.isEmpty else {
+            return nil
+        }
+        return normalized
+    }
+
+    private func fetchSharedStateForJoin(code: String) async throws -> PersistedState {
+        for attempt in 1 ... Constants.joinLookupAttempts {
+            do {
+                return try await cloudStore.joinLeague(code: code)
+            } catch let error as RepositoryError {
+                guard case .leagueNotFound = error, attempt < Constants.joinLookupAttempts else {
+                    throw error
+                }
+                try await Task.sleep(nanoseconds: Constants.joinRetryDelayNanoseconds)
+            }
+        }
+
+        throw RepositoryError.leagueNotFound(code: code)
     }
 
     private func mergedState(

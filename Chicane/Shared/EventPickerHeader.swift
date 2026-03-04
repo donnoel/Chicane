@@ -34,6 +34,7 @@ struct EventPickerHeader: View {
                         .tag(Optional(event.id))
                 }
             }
+            .tint(.primary)
             .padding(.horizontal, 12)
             .frame(minHeight: 48)
             .background(
@@ -52,8 +53,9 @@ struct EventPickerHeader: View {
 /// the standard `.secondary`. Pass `subtitleOpacity` to override.
 struct EventSummaryCard: View {
     let event: RaceEvent
-    /// Opacity for the round/circuit line. Picks uses `0.88` (on a dark glass card);
-    /// Results uses `1.0` (standard `.secondary`).
+    /// Opacity for the round/circuit line.
+    /// The subtitle always stays on the semantic secondary color so it remains
+    /// readable in both light and dark mode.
     var subtitleOpacity: Double = 1.0
     
     var body: some View {
@@ -71,11 +73,7 @@ struct EventSummaryCard: View {
             }
             Text("Round \(event.round) · \(event.circuit)")
                 .font(.body)
-                .foregroundStyle(
-                    subtitleOpacity < 1.0
-                    ? Color.white.opacity(subtitleOpacity)
-                    : Color.secondary
-                )
+                .foregroundStyle(Color.secondary.opacity(subtitleOpacity))
             Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
                 .font(.body)
         }

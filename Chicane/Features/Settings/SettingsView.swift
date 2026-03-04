@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var joinLeagueCode = ""
     @State private var showResetConfirmation = false
     @State private var showJoinConfirmation = false
+    @State private var showLeaveLeagueConfirmation = false
 
     private enum FocusField: Hashable {
         case player(UUID)
@@ -65,6 +66,16 @@ struct SettingsView: View {
             }
         } message: {
             Text("Joining replaces your current on-device players, picks, results, and champion selections with the shared league state.")
+        }
+        .alert("Leave shared league?", isPresented: $showLeaveLeagueConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Leave", role: .destructive) {
+                Task {
+                    await leaveLeague()
+                }
+            }
+        } message: {
+            Text("This device will stop syncing with the current shared league. Your local players, picks, and results stay on this device.")
         }
     }
 
@@ -163,6 +174,11 @@ struct SettingsView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .frame(minHeight: 44)
+
+                Button("Leave Shared League", role: .destructive) {
+                    showLeaveLeagueConfirmation = true
+                }
                 .frame(minHeight: 44)
             } else {
                 if viewModel.isSyncing {
@@ -359,6 +375,20 @@ struct SettingsView: View {
         await viewModel.joinLeague(code: code)
         if activeLeagueCode != nil {
             joinLeagueCode = ""
+        }
+    }
+
+    private func leaveLeague() async {
+        switch await updateSettings({ settings in
+            settings.leagueCode = nil
+        }) {
+        case .success:
+            joinLeagueCode = ""
+            viewModel.showInfo("Left shared league")
+        case let .warning(warning):
+            viewModel.showInfo(warning)
+        case .failure:
+            break
         }
     }
 }

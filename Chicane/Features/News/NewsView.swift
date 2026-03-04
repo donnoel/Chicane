@@ -212,7 +212,7 @@ private struct ArticleRowView: View {
                 Spacer()
                 Text(article.formattedDate)
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
 
             Text(article.title)

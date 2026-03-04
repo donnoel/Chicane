@@ -51,7 +51,7 @@ Chicane tracks standings across:
 | Spoiler Safety | No race spoilers by default; the News tab is blurred on entry until the user explicitly continues. |
 | Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. Joining prompts before replacing existing local season data. |
 | Offline Fallback | Works with bundled seed data if network sources are unavailable. |
-| Accessibility | Large tap targets, Dynamic Type, VoiceOver labels, high-contrast friendly UI. |
+| Accessibility | Large tap targets, Dynamic Type, VoiceOver labels, and contrast-safe light/dark mode surfaces. |
 | Premium UI | Apple-material based "Liquid Glass" visual design with themed motorsport color accents. |
 
 ---

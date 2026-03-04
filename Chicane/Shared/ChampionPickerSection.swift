@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ChampionPickerSection: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let title: String
     let drivers: [Driver]
     let participantSingular: String
@@ -36,11 +38,12 @@ struct ChampionPickerSection: View {
                 }
             }
             .pickerStyle(.navigationLink)
+            .tint(.primary)
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white.opacity(0.1))
+                    .fill(ChicaneTheme.insetFill(for: colorScheme))
             )
             .accessibilityLabel(title)
             .accessibilityHint("Select a \(participantSingular)")
