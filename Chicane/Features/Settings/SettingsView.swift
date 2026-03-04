@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var showResetConfirmation = false
     @State private var showJoinConfirmation = false
     @State private var showLeaveLeagueConfirmation = false
+    @State private var sharedLeagueStatusMessage: String?
 
     private enum FocusField: Hashable {
         case player(UUID)
@@ -170,6 +171,7 @@ struct SettingsView: View {
 
                 Button("Sync Now") {
                     Task {
+                        sharedLeagueStatusMessage = nil
                         await viewModel.syncLeagueIfNeeded(showBannerOnSuccess: true)
                     }
                 }
@@ -187,7 +189,7 @@ struct SettingsView: View {
 
                 Button("Create Shared League") {
                     Task {
-                        await viewModel.createLeague()
+                        sharedLeagueStatusMessage = await viewModel.createLeague()
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -214,6 +216,12 @@ struct SettingsView: View {
                     .frame(minHeight: 44)
                     .disabled(joinLeagueCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+
+            if let sharedLeagueStatusMessage, !sharedLeagueStatusMessage.isEmpty {
+                Text(sharedLeagueStatusMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
             }
         }
     }
@@ -269,6 +277,7 @@ struct SettingsView: View {
 
         if activeLeagueCode != nil {
             joinLeagueCode = ""
+            sharedLeagueStatusMessage = nil
         }
     }
 
@@ -372,9 +381,10 @@ struct SettingsView: View {
             return
         }
 
-        await viewModel.joinLeague(code: code)
+        sharedLeagueStatusMessage = await viewModel.joinLeague(code: code)
         if activeLeagueCode != nil {
             joinLeagueCode = ""
+            sharedLeagueStatusMessage = nil
         }
     }
 
@@ -384,8 +394,10 @@ struct SettingsView: View {
         }) {
         case .success:
             joinLeagueCode = ""
+            sharedLeagueStatusMessage = nil
             viewModel.showInfo("Left shared league")
         case let .warning(warning):
+            sharedLeagueStatusMessage = warning
             viewModel.showInfo(warning)
         case .failure:
             break

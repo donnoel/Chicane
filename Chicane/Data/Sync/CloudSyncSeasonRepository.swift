@@ -13,8 +13,8 @@ struct DeferredCloudSyncWarning: LocalizedError {
 actor CloudSyncSeasonRepository: SeasonRepository {
     private enum Constants {
         static let leagueCodeLength = 6
-        static let joinLookupAttempts = 5
-        static let joinRetryDelayNanoseconds: UInt64 = 750_000_000
+        static let joinLookupAttempts = 8
+        static let joinRetryDelayNanoseconds: UInt64 = 1_000_000_000
     }
 
     private let localRepository: LocalSeasonRepository

@@ -361,7 +361,8 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    func createLeague() async {
+    @discardableResult
+    func createLeague() async -> String? {
         isSyncing = true
         defer { isSyncing = false }
 
@@ -373,13 +374,16 @@ final class AppViewModel: ObservableObject {
             } else {
                 showInfo("League created")
             }
+            return nil
         } catch {
             logger.error("Failed creating league: \(error.localizedDescription, privacy: .public)")
             showError(error.localizedDescription)
+            return error.localizedDescription
         }
     }
 
-    func joinLeague(code: String) async {
+    @discardableResult
+    func joinLeague(code: String) async -> String? {
         isSyncing = true
         defer { isSyncing = false }
 
@@ -391,9 +395,11 @@ final class AppViewModel: ObservableObject {
             } else {
                 showInfo("Joined league")
             }
+            return nil
         } catch {
             logger.error("Failed joining league: \(error.localizedDescription, privacy: .public)")
             showError(error.localizedDescription)
+            return error.localizedDescription
         }
     }
 
