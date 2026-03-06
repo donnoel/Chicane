@@ -17,7 +17,7 @@ struct RaceCountdownCard: View {
             let remaining     = event.raceDate.timeIntervalSince(context.date)
             let isRaceWeekend = remaining > 0 && remaining < 3 * 24 * 3600
 
-            cardContent(remaining: remaining, isRaceWeekend: isRaceWeekend)
+            cardContent(remaining: remaining, isRaceWeekend: isRaceWeekend, now: context.date)
                 .glassCard(accent: seriesColor)
                 // Coloured glow that fades in as race weekend approaches
                 .shadow(
@@ -32,7 +32,7 @@ struct RaceCountdownCard: View {
     // MARK: Card body
 
     @ViewBuilder
-    private func cardContent(remaining: TimeInterval, isRaceWeekend: Bool) -> some View {
+    private func cardContent(remaining: TimeInterval, isRaceWeekend: Bool, now: Date) -> some View {
         VStack(alignment: .leading, spacing: 20) {
 
             // Header row with label + series badge
@@ -54,6 +54,11 @@ struct RaceCountdownCard: View {
             Text(event.circuit)
                 .font(.body)
                 .foregroundStyle(.secondary)
+            if let trackLocalTime = event.trackLocalTimeString(at: now) {
+                Label("Track local time: \(trackLocalTime)", systemImage: "clock")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
 
             // Live countdown vs. post-race state
             if remaining > 0 {

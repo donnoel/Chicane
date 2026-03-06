@@ -50,6 +50,27 @@ struct RaceEvent: Identifiable, Codable, Hashable, Sendable {
     let title: String
     let circuit: String
     let raceDate: Date
+    let trackTimeZoneID: String?
+
+    init(
+        id: String,
+        series: RaceSeries,
+        season: Int,
+        round: Int,
+        title: String,
+        circuit: String,
+        raceDate: Date,
+        trackTimeZoneID: String? = nil
+    ) {
+        self.id = id
+        self.series = series
+        self.season = season
+        self.round = round
+        self.title = title
+        self.circuit = circuit
+        self.raceDate = raceDate
+        self.trackTimeZoneID = trackTimeZoneID
+    }
 
     var accessibilitySummary: String {
         let formatter = DateFormatter.dayMonthYear
@@ -389,4 +410,184 @@ extension DateFormatter {
         formatter.timeStyle = .none
         return formatter
     }()
+}
+
+extension RaceEvent {
+    var trackTimeZone: TimeZone? {
+        RaceTrackTimeZoneResolver.timeZone(for: self)
+    }
+
+    func trackLocalTimeString(at referenceDate: Date = .now) -> String? {
+        guard let trackTimeZone else {
+            return nil
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        formatter.timeZone = trackTimeZone
+        let localTime = formatter.string(from: referenceDate)
+        if let abbreviation = trackTimeZone.abbreviation(for: referenceDate) {
+            return "\(localTime) \(abbreviation)"
+        }
+        return localTime
+    }
+}
+
+private enum RaceTrackTimeZoneResolver {
+    private static let slugToTimeZoneID: [String: String] = [
+        "abu-dhabi": "Asia/Dubai",
+        "americas": "America/Chicago",
+        "aragon": "Europe/Madrid",
+        "australia": "Australia/Melbourne",
+        "austria": "Europe/Vienna",
+        "azerbaijan": "Asia/Baku",
+        "bahrain": "Asia/Bahrain",
+        "belgium": "Europe/Brussels",
+        "brazil": "America/Sao_Paulo",
+        "canada": "America/Toronto",
+        "catalan": "Europe/Madrid",
+        "china": "Asia/Shanghai",
+        "czech": "Europe/Prague",
+        "france": "Europe/Paris",
+        "germany": "Europe/Berlin",
+        "great-britain": "Europe/London",
+        "hungary": "Europe/Budapest",
+        "italy": "Europe/Rome",
+        "japan": "Asia/Tokyo",
+        "las-vegas": "America/Los_Angeles",
+        "mexico-city": "America/Mexico_City",
+        "monaco": "Europe/Monaco",
+        "netherlands": "Europe/Amsterdam",
+        "qatar": "Asia/Qatar",
+        "san-marino": "Europe/Rome",
+        "sao-paulo": "America/Sao_Paulo",
+        "saudi-arabia": "Asia/Riyadh",
+        "singapore": "Asia/Singapore",
+        "spain": "Europe/Madrid",
+        "thailand": "Asia/Bangkok",
+        "united-states": "America/Chicago",
+        "usa": "America/Chicago",
+        "valencia": "Europe/Madrid"
+    ]
+
+    private static let circuitToTimeZoneID: [String: String] = [
+        "albert-park": "Australia/Melbourne",
+        "assen": "Europe/Amsterdam",
+        "austin": "America/Chicago",
+        "baku": "Asia/Baku",
+        "balaton-park": "Europe/Budapest",
+        "brno": "Europe/Prague",
+        "buriram": "Asia/Bangkok",
+        "circuit-de-barcelona-catalunya": "Europe/Madrid",
+        "goiania": "America/Sao_Paulo",
+        "hungaroring": "Europe/Budapest",
+        "interlagos": "America/Sao_Paulo",
+        "jeddah": "Asia/Riyadh",
+        "jerez": "Europe/Madrid",
+        "las-vegas-strip": "America/Los_Angeles",
+        "le-mans": "Europe/Paris",
+        "lusail": "Asia/Qatar",
+        "madrid": "Europe/Madrid",
+        "marina-bay": "Asia/Singapore",
+        "mexico-city": "America/Mexico_City",
+        "miami": "America/New_York",
+        "misano": "Europe/Rome",
+        "monte-carlo": "Europe/Monaco",
+        "montreal": "America/Toronto",
+        "monza": "Europe/Rome",
+        "motorland-aragon": "Europe/Madrid",
+        "mugello": "Europe/Rome",
+        "ricardo-tormo": "Europe/Madrid",
+        "sachsenring": "Europe/Berlin",
+        "sakhir": "Asia/Bahrain",
+        "shanghai": "Asia/Shanghai",
+        "silverstone": "Europe/London",
+        "spa-francorchamps": "Europe/Brussels",
+        "spielberg": "Europe/Vienna",
+        "suzuka": "Asia/Tokyo",
+        "yas-marina": "Asia/Dubai",
+        "zandvoort": "Europe/Amsterdam"
+    ]
+
+    static func timeZone(for event: RaceEvent) -> TimeZone? {
+        if
+            let storedID = canonicalTimeZoneID(from: event.trackTimeZoneID),
+            let stored = TimeZone(identifier: storedID)
+        {
+            return stored
+        }
+
+        let slug = eventSlug(from: event.id)
+        if
+            let mappedID = slugToTimeZoneID[slug],
+            let mapped = TimeZone(identifier: mappedID)
+        {
+            return mapped
+        }
+
+        let circuitKey = normalizedLookupKey(from: event.circuit)
+        if
+            let mappedID = circuitToTimeZoneID[circuitKey],
+            let mapped = TimeZone(identifier: mappedID)
+        {
+            return mapped
+        }
+
+        return nil
+    }
+
+    private static func canonicalTimeZoneID(from rawID: String?) -> String? {
+        guard let rawID = rawID?.trimmingCharacters(in: .whitespacesAndNewlines), !rawID.isEmpty else {
+            return nil
+        }
+
+        if TimeZone(identifier: rawID) != nil {
+            return rawID
+        }
+
+        let canonical = rawID
+            .split(separator: "/")
+            .map { pathPart in
+                pathPart
+                    .split(separator: "_")
+                    .map { segment in
+                        let lower = segment.lowercased()
+                        guard let first = lower.first else {
+                            return lower
+                        }
+                        return first.uppercased() + lower.dropFirst()
+                    }
+                    .joined(separator: "_")
+            }
+            .joined(separator: "/")
+
+        return TimeZone(identifier: canonical) == nil ? nil : canonical
+    }
+
+    private static func eventSlug(from eventID: String) -> String {
+        let parts = eventID.lowercased().split(separator: "-")
+        guard let seriesPrefix = parts.first else {
+            return normalizedLookupKey(from: eventID)
+        }
+
+        guard seriesPrefix == "f1" || seriesPrefix == "mgp" else {
+            return normalizedLookupKey(from: eventID)
+        }
+
+        if parts.count >= 3, Int(parts[1]) != nil {
+            return parts.dropFirst(2).joined(separator: "-")
+        }
+        if parts.count >= 2 {
+            return parts.dropFirst().joined(separator: "-")
+        }
+        return normalizedLookupKey(from: eventID)
+    }
+
+    private static func normalizedLookupKey(from value: String) -> String {
+        value.lowercased()
+            .replacingOccurrences(of: #"[^\p{L}\p{N}]+"#, with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+    }
 }

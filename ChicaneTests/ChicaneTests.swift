@@ -61,6 +61,50 @@ final class ChicaneTests: XCTestCase {
         XCTAssertEqual(standings.last?.points, 3)
     }
 
+    func testTrackTimeZoneResolvesFromF1EventSlug() {
+        let event = RaceEvent(
+            id: "f1-2026-japan",
+            series: .formula1,
+            season: 2026,
+            round: 3,
+            title: "Japanese Grand Prix",
+            circuit: "Unknown Circuit",
+            raceDate: Date(timeIntervalSince1970: 1)
+        )
+
+        XCTAssertEqual(event.trackTimeZone?.identifier, "Asia/Tokyo")
+    }
+
+    func testTrackTimeZoneResolvesFromCircuitNameFallback() {
+        let event = RaceEvent(
+            id: "mgp-12345",
+            series: .motoGP,
+            season: 2026,
+            round: 17,
+            title: "Valencia Grand Prix",
+            circuit: "Ricardo Tormo",
+            raceDate: Date(timeIntervalSince1970: 1)
+        )
+
+        XCTAssertEqual(event.trackTimeZone?.identifier, "Europe/Madrid")
+    }
+
+    func testTrackTimeZoneCanonicalizesUppercasePayloadIdentifier() {
+        let event = RaceEvent(
+            id: "mgp-abc",
+            series: .motoGP,
+            season: 2026,
+            round: 1,
+            title: "Qatar Grand Prix",
+            circuit: "Lusail",
+            raceDate: Date(timeIntervalSince1970: 1),
+            trackTimeZoneID: "ASIA/QATAR"
+        )
+
+        XCTAssertEqual(event.trackTimeZone?.identifier, "Asia/Qatar")
+        XCTAssertNotNil(event.trackLocalTimeString(at: Date(timeIntervalSince1970: 1)))
+    }
+
     func testF1DriverParserParsesUniqueDriverCards() throws {
         let gaslyContext = try base64Context([
             "actionType": "driver_card_clicked",

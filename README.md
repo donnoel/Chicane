@@ -47,6 +47,7 @@ Chicane tracks standings across:
 | Season Champion Locking | Once the season champion is entered for a series, it locks and immediately applies the bonus to standings. |
 | Exact Scoring | Position-only scoring (no points for correct driver/rider in wrong position). |
 | Scoreboard | Series and combined standings, plus per-event score history. |
+| Track-Local Time | Hero cards show the current local time at each race circuit timezone. |
 | In-App News Reader | Motorsport.com RSS news feed with Safari Reader mode — loads clean, ad-free articles in-app. |
 | Spoiler Safety | No race spoilers by default; the News tab is blurred on entry until the user explicitly continues. |
 | Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. Joining prompts before replacing existing local season data. |
@@ -58,7 +59,7 @@ Chicane tracks standings across:
 
 ## Main Screens
 
-- **Home** — Next race countdown, season standings snapshot, quick stats
+- **Home** — Next race countdown, race-track local time, season standings snapshot, quick stats
 - **Picks** — Enter each player's season champion and P1/P2/P3 predictions
 - **Results** — Enter official results and lock events, plus lock the season champion
 - **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)

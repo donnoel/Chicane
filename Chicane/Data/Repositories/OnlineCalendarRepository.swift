@@ -120,7 +120,8 @@ struct OnlineCalendarRepository: CalendarRepository {
                 round: round,
                 title: title,
                 circuit: circuit,
-                raceDate: event.dateEnd
+                raceDate: event.dateEnd,
+                trackTimeZoneID: event.timeZone
             )
         }
         .sorted {
@@ -147,6 +148,7 @@ private struct MotoGPEventPayload: Decodable {
     let kind: String
     let circuit: MotoGPEventCircuitPayload?
     let dateEnd: Date
+    let timeZone: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -156,6 +158,7 @@ private struct MotoGPEventPayload: Decodable {
         case kind
         case circuit
         case dateEnd = "date_end"
+        case timeZone = "time_zone"
     }
 }
 
