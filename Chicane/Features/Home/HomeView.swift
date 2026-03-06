@@ -122,11 +122,10 @@ struct HomeView: View {
             } else {
                 VStack(spacing: 10) {
                     ForEach(Array(viewModel.players.enumerated()), id: \.element.id) { index, player in
-                        let bet = playerBet(for: player)
+                        let betText = playerBetText(for: player)
                         PlayerBetLedgerRow(
                             playerName: player.name,
-                            betText: bet.text,
-                            isPersonalBet: bet.isPersonalBet,
+                            betText: betText,
                             accentColor: ledgerAccentColor(at: index)
                         )
                     }
@@ -136,20 +135,13 @@ struct HomeView: View {
         .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
-    private func playerBet(for player: Player) -> (text: String, isPersonalBet: Bool) {
+    private func playerBetText(for player: Player) -> String? {
         let personalBet = viewModel.settings.playerBetTextByPlayerID[player.id]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if let personalBet, !personalBet.isEmpty {
-            return (personalBet, true)
+            return personalBet
         }
-
-        let sharedBet = viewModel.settings.seasonBetText
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        if !sharedBet.isEmpty {
-            return (sharedBet, false)
-        }
-
-        return ("No bet entered yet", false)
+        return nil
     }
 
     private func ledgerAccentColor(at index: Int) -> Color {
@@ -166,11 +158,12 @@ struct HomeView: View {
 
 private struct PlayerBetLedgerRow: View {
     let playerName: String
-    let betText: String
-    let isPersonalBet: Bool
+    let betText: String?
     let accentColor: Color
 
     var body: some View {
+        let hasBet = (betText?.isEmpty == false)
+
         HStack(alignment: .top, spacing: 12) {
             Text(initials(from: playerName))
                 .font(.caption.weight(.bold))
@@ -187,7 +180,7 @@ private struct PlayerBetLedgerRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(playerName)
                     .font(.subheadline.weight(.semibold))
-                Text(betText)
+                Text(hasBet ? (betText ?? "") : "No personal bet entered")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -195,9 +188,9 @@ private struct PlayerBetLedgerRow: View {
 
             Spacer(minLength: 8)
 
-            Text(isPersonalBet ? "Personal" : "Shared")
+            Text(hasBet ? "Set" : "Missing")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(isPersonalBet ? accentColor : .secondary)
+                .foregroundStyle(hasBet ? accentColor : .secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(.ultraThinMaterial, in: Capsule())

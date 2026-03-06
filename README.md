@@ -48,7 +48,7 @@ Chicane tracks standings across:
 | Exact Scoring | Position-only scoring (no points for correct driver/rider in wrong position). |
 | Scoreboard | Series and combined standings, plus per-event score history. |
 | Track-Local Time | Hero cards show each circuit's current local clock time with a day cue (`Yesterday`, `Today`, `Tomorrow`). |
-| Bet Ledger | Home shows each player's current bet in a premium card, with per-player overrides and shared-rule fallback. |
+| Bet Ledger | Home shows each player's current bet in a premium card. |
 | In-App News Reader | Motorsport.com RSS news feed with Safari Reader mode — loads clean, ad-free articles in-app. |
 | Spoiler Safety | No race spoilers by default; the News tab is blurred on entry until the user explicitly continues. |
 | Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. Joining prompts before replacing existing local season data. |
@@ -65,7 +65,7 @@ Chicane tracks standings across:
 - **Results** — Enter official results and lock events, plus lock the season champion
 - **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)
 - **News** — Latest F1 and MotoGP news via RSS, read in-app with Reader mode after an entry confirmation
-- **Settings** — Manage players, shared league sync, shared bet rule, per-player bets, and season reset
+- **Settings** — Manage players, shared league sync, per-player bets, and season reset
   - Reset clears race picks/results and season champion picks/results.
 
 ---

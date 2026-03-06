@@ -7,7 +7,6 @@ struct SettingsView: View {
     @State private var playerNames: [UUID: String] = [:]
     @State private var playerBetTextByPlayerID: [UUID: String] = [:]
     @State private var newPlayerName = ""
-    @State private var seasonBetText = ""
     @State private var joinLeagueCode = ""
     @State private var showResetConfirmation = false
     @State private var showJoinConfirmation = false
@@ -18,7 +17,6 @@ struct SettingsView: View {
         case player(UUID)
         case playerBet(UUID)
         case newPlayer
-        case seasonBet
     }
 
     private enum SettingsSaveOutcome {
@@ -34,7 +32,6 @@ struct SettingsView: View {
             playerSection
             syncSection
             playerBetSection
-            betSection
             resetSection
         }
         .tint(.accentColor)
@@ -164,22 +161,6 @@ struct SettingsView: View {
                 .buttonStyle(.borderedProminent)
                 .frame(minHeight: 44)
             }
-        }
-    }
-
-    private var betSection: some View {
-        Section("Shared Bet Rule") {
-            TextField("Friendly Bet", text: $seasonBetText, axis: .vertical)
-                .focused($focusedField, equals: .seasonBet)
-                .lineLimit(2...4)
-
-            Button("Save shared bet rule") {
-                Task {
-                    await saveBetText()
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .frame(minHeight: 44)
         }
     }
 
@@ -335,11 +316,6 @@ struct SettingsView: View {
         }
         playerBetTextByPlayerID = mergedBets
 
-        // Only refresh bet text if the user isn't actively editing it.
-        if focusedField != .seasonBet {
-            seasonBetText = viewModel.settings.seasonBetText
-        }
-
         if activeLeagueCode != nil {
             joinLeagueCode = ""
             sharedLeagueStatusMessage = nil
@@ -374,19 +350,6 @@ struct SettingsView: View {
             viewModel.showInfo(warning ?? "Player Removed")
         } catch {
             viewModel.showError(error.localizedDescription)
-        }
-    }
-
-    private func saveBetText() async {
-        switch await updateSettings({ settings in
-            settings.seasonBetText = seasonBetText.trimmingCharacters(in: .whitespacesAndNewlines)
-        }) {
-        case .success:
-            viewModel.showInfo("Shared bet rule saved")
-        case let .warning(warning):
-            viewModel.showInfo(warning)
-        case .failure:
-            break
         }
     }
 
