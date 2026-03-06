@@ -417,7 +417,10 @@ extension RaceEvent {
         RaceTrackTimeZoneResolver.timeZone(for: self)
     }
 
-    func trackLocalTimeString(at referenceDate: Date = .now) -> String? {
+    func trackLocalTimeString(
+        at referenceDate: Date = .now,
+        relativeTo viewerTimeZone: TimeZone = .current
+    ) -> String? {
         guard let trackTimeZone else {
             return nil
         }
@@ -428,10 +431,57 @@ extension RaceEvent {
         formatter.timeStyle = .short
         formatter.timeZone = trackTimeZone
         let localTime = formatter.string(from: referenceDate)
-        if let abbreviation = trackTimeZone.abbreviation(for: referenceDate) {
-            return "\(localTime) \(abbreviation)"
+        let relativeDay = Self.relativeDayLabel(
+            at: referenceDate,
+            trackTimeZone: trackTimeZone,
+            viewerTimeZone: viewerTimeZone
+        )
+        return "\(localTime) · \(relativeDay)"
+    }
+
+    private static func relativeDayLabel(
+        at referenceDate: Date,
+        trackTimeZone: TimeZone,
+        viewerTimeZone: TimeZone
+    ) -> String {
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(secondsFromGMT: 0) ?? viewerTimeZone
+
+        let trackDateComponents = utcCalendar.dateComponents(in: trackTimeZone, from: referenceDate)
+        let viewerDateComponents = utcCalendar.dateComponents(in: viewerTimeZone, from: referenceDate)
+
+        guard
+            let trackDay = utcCalendar.date(
+                from: DateComponents(
+                    year: trackDateComponents.year,
+                    month: trackDateComponents.month,
+                    day: trackDateComponents.day
+                )
+            ),
+            let viewerDay = utcCalendar.date(
+                from: DateComponents(
+                    year: viewerDateComponents.year,
+                    month: viewerDateComponents.month,
+                    day: viewerDateComponents.day
+                )
+            )
+        else {
+            return "Today"
         }
-        return localTime
+
+        let dayDelta = utcCalendar.dateComponents([.day], from: viewerDay, to: trackDay).day ?? 0
+        switch dayDelta {
+        case ..<(-1):
+            return "\(abs(dayDelta)) days ago"
+        case -1:
+            return "Yesterday"
+        case 0:
+            return "Today"
+        case 1:
+            return "Tomorrow"
+        default:
+            return "In \(dayDelta) days"
+        }
     }
 }
 

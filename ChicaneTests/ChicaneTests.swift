@@ -105,6 +105,87 @@ final class ChicaneTests: XCTestCase {
         XCTAssertNotNil(event.trackLocalTimeString(at: Date(timeIntervalSince1970: 1)))
     }
 
+    func testTrackLocalTimeIncludesTodayWhenTrackAndViewerShareDate() {
+        let viewerTimeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let event = RaceEvent(
+            id: "f1-2026-usa",
+            series: .formula1,
+            season: 2026,
+            round: 1,
+            title: "US Grand Prix",
+            circuit: "Austin",
+            raceDate: Date(timeIntervalSince1970: 1),
+            trackTimeZoneID: "America/Chicago"
+        )
+
+        let referenceDate = date(
+            year: 2026,
+            month: 3,
+            day: 6,
+            hour: 12,
+            minute: 0,
+            timeZoneID: "America/Los_Angeles"
+        )
+
+        let display = event.trackLocalTimeString(at: referenceDate, relativeTo: viewerTimeZone)
+        XCTAssertNotNil(display)
+        XCTAssertTrue(display?.contains("Today") == true)
+    }
+
+    func testTrackLocalTimeIncludesTomorrowWhenTrackIsNextDay() {
+        let viewerTimeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let event = RaceEvent(
+            id: "f1-2026-japan",
+            series: .formula1,
+            season: 2026,
+            round: 3,
+            title: "Japanese Grand Prix",
+            circuit: "Suzuka",
+            raceDate: Date(timeIntervalSince1970: 1),
+            trackTimeZoneID: "Asia/Tokyo"
+        )
+
+        let referenceDate = date(
+            year: 2026,
+            month: 3,
+            day: 6,
+            hour: 8,
+            minute: 0,
+            timeZoneID: "America/Los_Angeles"
+        )
+
+        let display = event.trackLocalTimeString(at: referenceDate, relativeTo: viewerTimeZone)
+        XCTAssertNotNil(display)
+        XCTAssertTrue(display?.contains("Tomorrow") == true)
+    }
+
+    func testTrackLocalTimeIncludesYesterdayWhenTrackIsPriorDay() {
+        let viewerTimeZone = TimeZone(identifier: "Asia/Tokyo")!
+        let event = RaceEvent(
+            id: "f1-2026-usa",
+            series: .formula1,
+            season: 2026,
+            round: 1,
+            title: "US Grand Prix",
+            circuit: "Austin",
+            raceDate: Date(timeIntervalSince1970: 1),
+            trackTimeZoneID: "America/Los_Angeles"
+        )
+
+        let referenceDate = date(
+            year: 2026,
+            month: 3,
+            day: 7,
+            hour: 7,
+            minute: 0,
+            timeZoneID: "Asia/Tokyo"
+        )
+
+        let display = event.trackLocalTimeString(at: referenceDate, relativeTo: viewerTimeZone)
+        XCTAssertNotNil(display)
+        XCTAssertTrue(display?.contains("Yesterday") == true)
+    }
+
     func testF1DriverParserParsesUniqueDriverCards() throws {
         let gaslyContext = try base64Context([
             "actionType": "driver_card_clicked",
@@ -195,5 +276,25 @@ final class ChicaneTests: XCTestCase {
     private func base64Context(_ dictionary: [String: String]) throws -> String {
         let data = try JSONSerialization.data(withJSONObject: dictionary)
         return data.base64EncodedString()
+    }
+
+    private func date(
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int,
+        minute: Int,
+        timeZoneID: String
+    ) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: timeZoneID)!
+        let components = DateComponents(
+            year: year,
+            month: month,
+            day: day,
+            hour: hour,
+            minute: minute
+        )
+        return calendar.date(from: components)!
     }
 }
