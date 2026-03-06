@@ -30,8 +30,8 @@ struct SettingsView: View {
     var body: some View {
         Form {
             playerSection
-            syncSection
             playerBetSection
+            syncSection
             resetSection
         }
         .tint(.accentColor)

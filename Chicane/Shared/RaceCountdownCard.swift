@@ -55,7 +55,7 @@ struct RaceCountdownCard: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
             if let trackLocalTime = event.trackLocalTimeString(at: now) {
-                Label("Track local time: \(trackLocalTime)", systemImage: "clock")
+                Label("Track now: \(trackLocalTime)", systemImage: "clock")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
             }

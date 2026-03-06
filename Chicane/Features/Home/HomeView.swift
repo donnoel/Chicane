@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
     @State private var selectedScope: ScoreboardScope = .combined
     @State private var scrollOffset: CGFloat = 0
@@ -120,7 +121,7 @@ struct HomeView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: 10) {
+                LazyVGrid(columns: betLedgerColumns, spacing: 10) {
                     ForEach(Array(viewModel.players.enumerated()), id: \.element.id) { index, player in
                         let betText = playerBetText(for: player)
                         PlayerBetLedgerRow(
@@ -133,6 +134,16 @@ struct HomeView: View {
             }
         }
         .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
+    }
+
+    private var betLedgerColumns: [GridItem] {
+        if horizontalSizeClass == .regular {
+            return [
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12)
+            ]
+        }
+        return [GridItem(.flexible())]
     }
 
     private func playerBetText(for player: Player) -> String? {
@@ -182,19 +193,23 @@ private struct PlayerBetLedgerRow: View {
                     .font(.subheadline.weight(.semibold))
                 Text(hasBet ? (betText ?? "") : "No personal bet entered")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(hasBet ? .primary : .secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 8)
 
-            Text(hasBet ? "Set" : "Missing")
+            Label(hasBet ? "Set" : "Missing", systemImage: hasBet ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(hasBet ? accentColor : .secondary)
+                .foregroundStyle(hasBet ? accentColor : .orange)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(.ultraThinMaterial, in: Capsule())
+                .background(
+                    Capsule(style: .continuous)
+                        .fill((hasBet ? accentColor : .orange).opacity(0.16))
+                )
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)

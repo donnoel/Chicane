@@ -76,7 +76,7 @@ struct EventSummaryCard: View {
                 .foregroundStyle(Color.secondary.opacity(subtitleOpacity))
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 if let trackLocalTime = event.trackLocalTimeString(at: context.date) {
-                    Label("Track local time: \(trackLocalTime)", systemImage: "clock")
+                    Label("Track now: \(trackLocalTime)", systemImage: "clock")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.secondary.opacity(subtitleOpacity))
                 }
