@@ -5,6 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject private var viewModel: AppViewModel
 
     @State private var playerNames: [UUID: String] = [:]
+    @State private var playerBetTextByPlayerID: [UUID: String] = [:]
     @State private var newPlayerName = ""
     @State private var seasonBetText = ""
     @State private var joinLeagueCode = ""
@@ -15,6 +16,7 @@ struct SettingsView: View {
 
     private enum FocusField: Hashable {
         case player(UUID)
+        case playerBet(UUID)
         case newPlayer
         case seasonBet
     }
@@ -31,6 +33,7 @@ struct SettingsView: View {
         Form {
             playerSection
             syncSection
+            playerBetSection
             betSection
             resetSection
         }
@@ -130,13 +133,47 @@ struct SettingsView: View {
         }
     }
 
+    private var playerBetSection: some View {
+        Section("Player Bets") {
+            if viewModel.players.isEmpty {
+                Text("Add players first, then set what each person is betting.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(viewModel.players) { player in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(player.name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        TextField(
+                            "What \(player.name) is betting",
+                            text: betBinding(for: player.id),
+                            axis: .vertical
+                        )
+                        .focused($focusedField, equals: .playerBet(player.id))
+                        .lineLimit(1...3)
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                Button("Save player bets") {
+                    Task {
+                        await savePlayerBets()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(minHeight: 44)
+            }
+        }
+    }
+
     private var betSection: some View {
-        Section("Season Bet Text") {
+        Section("Shared Bet Rule") {
             TextField("Friendly Bet", text: $seasonBetText, axis: .vertical)
                 .focused($focusedField, equals: .seasonBet)
                 .lineLimit(2...4)
 
-            Button("Save bet text") {
+            Button("Save shared bet rule") {
                 Task {
                     await saveBetText()
                 }
@@ -242,10 +279,21 @@ struct SettingsView: View {
         )
     }
 
+    private func betBinding(for playerID: UUID) -> Binding<String> {
+        Binding(
+            get: { playerBetTextByPlayerID[playerID, default: ""] },
+            set: { playerBetTextByPlayerID[playerID] = $0 }
+        )
+    }
+
     private func hydrateLocalState() {
         // Keep local edits stable while a field is focused, but still reflect external changes.
         let focusedPlayerID: UUID? = {
             if case let .player(id)? = focusedField { return id }
+            return nil
+        }()
+        let focusedBetPlayerID: UUID? = {
+            if case let .playerBet(id)? = focusedField { return id }
             return nil
         }()
 
@@ -269,6 +317,23 @@ struct SettingsView: View {
         }
 
         playerNames = mergedNames
+
+        var mergedBets = playerBetTextByPlayerID
+        let storedBets = viewModel.settings.playerBetTextByPlayerID
+        mergedBets.keys
+            .filter { !currentIDs.contains($0) }
+            .forEach { mergedBets.removeValue(forKey: $0) }
+
+        for player in viewModel.players {
+            guard player.id != focusedBetPlayerID else {
+                if mergedBets[player.id] == nil {
+                    mergedBets[player.id] = storedBets[player.id] ?? ""
+                }
+                continue
+            }
+            mergedBets[player.id] = storedBets[player.id] ?? ""
+        }
+        playerBetTextByPlayerID = mergedBets
 
         // Only refresh bet text if the user isn't actively editing it.
         if focusedField != .seasonBet {
@@ -317,7 +382,28 @@ struct SettingsView: View {
             settings.seasonBetText = seasonBetText.trimmingCharacters(in: .whitespacesAndNewlines)
         }) {
         case .success:
-            viewModel.showInfo("Season bet saved")
+            viewModel.showInfo("Shared bet rule saved")
+        case let .warning(warning):
+            viewModel.showInfo(warning)
+        case .failure:
+            break
+        }
+    }
+
+    private func savePlayerBets() async {
+        let validPlayerIDs = Set(viewModel.players.map(\.id))
+        let sanitizedBets = playerBetTextByPlayerID.reduce(into: [UUID: String]()) { partialResult, entry in
+            guard validPlayerIDs.contains(entry.key) else { return }
+            let trimmed = entry.value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            partialResult[entry.key] = trimmed
+        }
+
+        switch await updateSettings({ settings in
+            settings.playerBetTextByPlayerID = sanitizedBets
+        }) {
+        case .success:
+            viewModel.showInfo("Player bets saved")
         case let .warning(warning):
             viewModel.showInfo(warning)
         case .failure:

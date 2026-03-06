@@ -97,6 +97,12 @@ actor LocalSeasonRepository: SeasonRepository {
             let validPlayerIDs = Set(state.players.map(\.id))
             state.picks = state.picks.filter { validPlayerIDs.contains($0.playerID) }
             state.championPicks = state.championPicks.filter { validPlayerIDs.contains($0.playerID) }
+            state.settings.playerBetTextByPlayerID = state.settings.playerBetTextByPlayerID.reduce(into: [:]) { partialResult, entry in
+                guard validPlayerIDs.contains(entry.key) else { return }
+                let trimmed = entry.value.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return }
+                partialResult[entry.key] = trimmed
+            }
         }
     }
 

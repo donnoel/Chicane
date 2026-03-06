@@ -104,14 +104,118 @@ struct HomeView: View {
     }
     
     private var betCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Season Bet", systemImage: "sparkles")
-                .font(.headline)
-                .foregroundStyle(ChicaneTheme.actionGradient)
-            Text(viewModel.settings.seasonBetText)
-                .font(.body)
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Label("Bet Ledger", systemImage: "sparkles.rectangle.stack.fill")
+                    .font(.headline)
+                    .foregroundStyle(ChicaneTheme.actionGradient)
+                Spacer()
+                Text("\(viewModel.players.count) players")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            if viewModel.players.isEmpty {
+                Text("Add players in Settings to track each player's bet.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(Array(viewModel.players.enumerated()), id: \.element.id) { index, player in
+                        let bet = playerBet(for: player)
+                        PlayerBetLedgerRow(
+                            playerName: player.name,
+                            betText: bet.text,
+                            isPersonalBet: bet.isPersonalBet,
+                            accentColor: ledgerAccentColor(at: index)
+                        )
+                    }
+                }
+            }
         }
         .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
+    }
+
+    private func playerBet(for player: Player) -> (text: String, isPersonalBet: Bool) {
+        let personalBet = viewModel.settings.playerBetTextByPlayerID[player.id]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let personalBet, !personalBet.isEmpty {
+            return (personalBet, true)
+        }
+
+        let sharedBet = viewModel.settings.seasonBetText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if !sharedBet.isEmpty {
+            return (sharedBet, false)
+        }
+
+        return ("No bet entered yet", false)
+    }
+
+    private func ledgerAccentColor(at index: Int) -> Color {
+        switch index % 3 {
+        case 0:
+            return ChicaneTheme.f1Red
+        case 1:
+            return ChicaneTheme.motoBlue
+        default:
+            return ChicaneTheme.glowAmber
+        }
+    }
+}
+
+private struct PlayerBetLedgerRow: View {
+    let playerName: String
+    let betText: String
+    let isPersonalBet: Bool
+    let accentColor: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(initials(from: playerName))
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(
+                    Circle()
+                        .fill(accentColor)
+                        .overlay(
+                            Circle().strokeBorder(.white.opacity(0.22), lineWidth: 1)
+                        )
+                )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(playerName)
+                    .font(.subheadline.weight(.semibold))
+                Text(betText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(isPersonalBet ? "Personal" : "Shared")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isPersonalBet ? accentColor : .secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.ultraThinMaterial, in: Capsule())
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(accentColor.opacity(0.28), lineWidth: 1)
+                )
+        )
+    }
+
+    private func initials(from name: String) -> String {
+        let words = name.split(separator: " ")
+        let letters = words.prefix(2).compactMap { $0.first }.map(String.init).joined()
+        return letters.isEmpty ? "?" : letters.uppercased()
     }
 }

@@ -166,27 +166,50 @@ struct SeasonChampionResult: Identifiable, Codable, Hashable, Sendable {
 
 struct AppSettings: Codable, Hashable, Sendable {
     var seasonBetText: String
+    var playerBetTextByPlayerID: [UUID: String]
     var spoilerGateEnabled: Bool
     var spoilersDontAskAgain: Bool
     var showSpoilersSection: Bool
     var leagueCode: String?
 
+    private enum CodingKeys: String, CodingKey {
+        case seasonBetText
+        case playerBetTextByPlayerID
+        case spoilerGateEnabled
+        case spoilersDontAskAgain
+        case showSpoilersSection
+        case leagueCode
+    }
+
     init(
         seasonBetText: String,
+        playerBetTextByPlayerID: [UUID: String] = [:],
         spoilerGateEnabled: Bool,
         spoilersDontAskAgain: Bool,
         showSpoilersSection: Bool,
         leagueCode: String? = nil
     ) {
         self.seasonBetText = seasonBetText
+        self.playerBetTextByPlayerID = playerBetTextByPlayerID
         self.spoilerGateEnabled = spoilerGateEnabled
         self.spoilersDontAskAgain = spoilersDontAskAgain
         self.showSpoilersSection = showSpoilersSection
         self.leagueCode = leagueCode
     }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        seasonBetText = try container.decodeIfPresent(String.self, forKey: .seasonBetText) ?? AppSettings.default.seasonBetText
+        playerBetTextByPlayerID = try container.decodeIfPresent([UUID: String].self, forKey: .playerBetTextByPlayerID) ?? [:]
+        spoilerGateEnabled = try container.decodeIfPresent(Bool.self, forKey: .spoilerGateEnabled) ?? AppSettings.default.spoilerGateEnabled
+        spoilersDontAskAgain = try container.decodeIfPresent(Bool.self, forKey: .spoilersDontAskAgain) ?? AppSettings.default.spoilersDontAskAgain
+        showSpoilersSection = try container.decodeIfPresent(Bool.self, forKey: .showSpoilersSection) ?? AppSettings.default.showSpoilersSection
+        leagueCode = try container.decodeIfPresent(String.self, forKey: .leagueCode)
+    }
+
     static let `default` = AppSettings(
         seasonBetText: "Winner determines.",
+        playerBetTextByPlayerID: [:],
         spoilerGateEnabled: true,
         spoilersDontAskAgain: false,
         showSpoilersSection: false,
@@ -298,6 +321,12 @@ struct PersistedState: Codable, Hashable, Sendable {
 
         let validPlayerIDs = Set(state.players.map(\.id))
         state.championPicks = state.championPicks.filter { validPlayerIDs.contains($0.playerID) }
+        state.settings.playerBetTextByPlayerID = state.settings.playerBetTextByPlayerID.reduce(into: [:]) { partialResult, entry in
+            guard validPlayerIDs.contains(entry.key) else { return }
+            let trimmed = entry.value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            partialResult[entry.key] = trimmed
+        }
 
         return state
     }

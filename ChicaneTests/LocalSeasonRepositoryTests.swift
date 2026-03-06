@@ -77,9 +77,12 @@ final class FileStateStoreTests: XCTestCase {
     func testRoundTripPreservesSettings() async throws {
         let store = FileStateStore(baseDirectoryURL: tempDir)
 
+        let player = TestFixtures.player(name: "Alice")
         var state = PersistedState.default
+        state.players = [player]
         state.settings = AppSettings(
             seasonBetText: "Loser buys dinner",
+            playerBetTextByPlayerID: [player.id: "Steak dinner"],
             spoilerGateEnabled: false,
             spoilersDontAskAgain: true,
             showSpoilersSection: true
@@ -89,6 +92,7 @@ final class FileStateStoreTests: XCTestCase {
         let loaded = try await store.load()
 
         XCTAssertEqual(loaded.settings.seasonBetText, "Loser buys dinner")
+        XCTAssertEqual(loaded.settings.playerBetTextByPlayerID[player.id], "Steak dinner")
         XCTAssertFalse(loaded.settings.spoilerGateEnabled)
         XCTAssertTrue(loaded.settings.spoilersDontAskAgain)
     }
@@ -178,6 +182,23 @@ final class PersistedStateNormalizationTests: XCTestCase {
         let normalized = state.normalized()
 
         XCTAssertEqual(normalized.schemaVersion, PersistedState.currentSchemaVersion)
+    }
+
+    func testNormalizedDropsPlayerBetsForRemovedPlayers() {
+        let keepID = UUID()
+        let dropID = UUID()
+        var state = PersistedState.default
+        state.players = [Player(id: keepID, name: "Keep")]
+        state.settings.playerBetTextByPlayerID = [
+            keepID: "Winner buys coffee",
+            dropID: "Should be removed"
+        ]
+
+        let normalized = state.normalized()
+
+        XCTAssertEqual(normalized.settings.playerBetTextByPlayerID.count, 1)
+        XCTAssertEqual(normalized.settings.playerBetTextByPlayerID[keepID], "Winner buys coffee")
+        XCTAssertNil(normalized.settings.playerBetTextByPlayerID[dropID])
     }
 }
 
@@ -335,6 +356,29 @@ final class LocalSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(state.players.count, 1)
         XCTAssertEqual(state.picks.count, 1)
         XCTAssertEqual(state.picks.first?.playerID, keepPlayer.id)
+    }
+
+    func testSavePlayersRemovesOrphanedPlayerBets() async throws {
+        let store = FileStateStore(baseDirectoryURL: tempDir)
+        let repo = LocalSeasonRepository(store: store)
+
+        let keepPlayer = TestFixtures.player(name: "Keep")
+        let removePlayer = TestFixtures.player(name: "Remove")
+
+        _ = try await repo.savePlayers([keepPlayer, removePlayer])
+
+        var settings = PersistedState.default.settings
+        settings.playerBetTextByPlayerID = [
+            keepPlayer.id: "Dinner tab",
+            removePlayer.id: "Drinks tab"
+        ]
+        _ = try await repo.saveSettings(settings)
+
+        let state = try await repo.savePlayers([keepPlayer])
+
+        XCTAssertEqual(state.settings.playerBetTextByPlayerID.count, 1)
+        XCTAssertEqual(state.settings.playerBetTextByPlayerID[keepPlayer.id], "Dinner tab")
+        XCTAssertNil(state.settings.playerBetTextByPlayerID[removePlayer.id])
     }
 }
 

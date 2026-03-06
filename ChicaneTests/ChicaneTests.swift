@@ -105,6 +105,20 @@ final class ChicaneTests: XCTestCase {
         XCTAssertNotNil(event.trackLocalTimeString(at: Date(timeIntervalSince1970: 1)))
     }
 
+    func testAppSettingsDecodesLegacyPayloadWithoutPlayerBets() throws {
+        let json = """
+        {
+          "seasonBetText": "Winner determines.",
+          "spoilerGateEnabled": true,
+          "spoilersDontAskAgain": false,
+          "showSpoilersSection": false
+        }
+        """
+        let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+        XCTAssertEqual(settings.seasonBetText, "Winner determines.")
+        XCTAssertTrue(settings.playerBetTextByPlayerID.isEmpty)
+    }
+
     func testTrackLocalTimeIncludesTodayWhenTrackAndViewerShareDate() {
         let viewerTimeZone = TimeZone(identifier: "America/Los_Angeles")!
         let event = RaceEvent(
