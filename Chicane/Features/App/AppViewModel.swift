@@ -326,8 +326,17 @@ final class AppViewModel: ObservableObject {
 
     @discardableResult
     func savePlayers(_ players: [Player]) async throws -> String? {
-        try await persistState {
-            try await seasonRepository.savePlayers(players)
+        let sanitizedPlayers = players.map { player in
+            var copy = player
+            copy.name = copy.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            return copy
+        }
+        if sanitizedPlayers.contains(where: { $0.name.isEmpty }) {
+            throw AppViewModelError.playerNameEmpty
+        }
+
+        return try await persistState {
+            try await seasonRepository.savePlayers(sanitizedPlayers)
         }
     }
 
@@ -540,6 +549,7 @@ enum AppViewModelError: LocalizedError {
     case resultLocked
     case championPickLocked
     case championResultLocked
+    case playerNameEmpty
     case eventNotFound
     case resultUnavailable
     case participantNotFound(name: String)
@@ -552,6 +562,8 @@ enum AppViewModelError: LocalizedError {
             return "Champion picks lock once the official season champion is entered."
         case .championResultLocked:
             return "Season champion is locked and cannot be changed."
+        case .playerNameEmpty:
+            return "Player names cannot be blank. Use Remove to delete a player."
         case .eventNotFound:
             return "Selected event could not be found."
         case .resultUnavailable:

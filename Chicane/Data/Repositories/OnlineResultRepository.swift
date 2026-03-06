@@ -191,7 +191,7 @@ struct OnlineResultRepository: ResultRepository {
         return try await client.fetchJSON(T.self, from: url)
     }
 
-    private func parseF1ResultLinks(from html: String) -> [F1ResultLink] {
+    func parseF1ResultLinks(from html: String) -> [F1ResultLink] {
         let normalizedHTML = html.replacingOccurrences(of: "\\/", with: "/")
         let range = NSRange(normalizedHTML.startIndex..<normalizedHTML.endIndex, in: normalizedHTML)
         let matches = f1ResultLinkRegexes.flatMap { $0.matches(in: normalizedHTML, range: range) }
@@ -215,8 +215,15 @@ struct OnlineResultRepository: ResultRepository {
         return links
     }
 
-    private func selectF1ResultLink(for event: RaceEvent, links: [F1ResultLink]) -> F1ResultLink? {
-        let seasonLinks = links.filter { $0.season == event.season }
+    func selectF1ResultLink(for event: RaceEvent, links: [F1ResultLink]) -> F1ResultLink? {
+        let seasonLinks = links
+            .filter { $0.season == event.season }
+            .sorted { lhs, rhs in
+                if lhs.meetingID == rhs.meetingID {
+                    return lhs.path < rhs.path
+                }
+                return lhs.meetingID < rhs.meetingID
+            }
         guard !seasonLinks.isEmpty else {
             return nil
         }
@@ -256,7 +263,7 @@ enum OfficialResultRepositoryError: LocalizedError {
     }
 }
 
-private struct F1ResultLink: Hashable {
+struct F1ResultLink: Hashable {
     let season: Int
     let meetingID: Int
     let slug: String

@@ -128,6 +128,39 @@ final class AppViewModelTests: XCTestCase {
         )
     }
 
+    func testSavePlayersRejectsBlankNamesWithoutDeletingPlayerData() async throws {
+        let event = TestFixtures.event(id: "f1-2026-blank-name", series: .formula1)
+        let drivers = [
+            TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
+            TestFixtures.driver(id: "f1-lando", series: .formula1, name: "Lando Norris", team: "McLaren"),
+            TestFixtures.driver(id: "f1-charles", series: .formula1, name: "Charles Leclerc", team: "Ferrari")
+        ]
+        let player = Player(id: UUID(), name: "Mom")
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: drivers,
+            podiumNames: drivers.map(\.name)
+        )
+
+        await viewModel.reload()
+        try await viewModel.savePlayers([player])
+
+        do {
+            try await viewModel.savePlayers([Player(id: player.id, name: "   ")])
+            XCTFail("Expected a blank-name validation error")
+        } catch let error as AppViewModelError {
+            if case .playerNameEmpty = error {
+                // Expected path.
+            } else {
+                XCTFail("Unexpected AppViewModelError: \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertEqual(viewModel.players.map(\.name), ["Mom"])
+    }
+
     func testSavePickReturnsWarningAndAppliesLocalStateWhenCloudSyncFails() async throws {
         let event = TestFixtures.event(id: "f1-2026-local-only", series: .formula1)
         let drivers = [

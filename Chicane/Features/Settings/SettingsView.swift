@@ -109,6 +109,7 @@ struct SettingsView: View {
             }
             .buttonStyle(.borderedProminent)
             .frame(minHeight: 44)
+            .disabled(hasBlankPlayerNames)
 
             HStack(spacing: 10) {
                 TextField("Add Player", text: $newPlayerName)
@@ -406,6 +407,14 @@ struct SettingsView: View {
             return nil
         }
         return trimmed
+    }
+
+    private var hasBlankPlayerNames: Bool {
+        viewModel.players.contains { player in
+            playerNames[player.id, default: player.name]
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty
+        }
     }
 
     private var hasLocalSeasonStateToReplace: Bool {

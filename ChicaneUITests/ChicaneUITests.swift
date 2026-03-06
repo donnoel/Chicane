@@ -1,3 +1,4 @@
+import AppIntents
 import XCTest
 
 final class ChicaneUITests: XCTestCase {

@@ -1,3 +1,4 @@
+import AppIntents
 import XCTest
 @testable import Chicane
 
@@ -285,6 +286,29 @@ final class ChicaneTests: XCTestCase {
 
         let names = OnlineResultRepository.parseF1PodiumNames(from: html)
         XCTAssertEqual(names, ["Lando Norris", "Max Verstappen", "George Russell"])
+    }
+
+    func testF1ResultLinkFallbackUsesMeetingOrderForRoundLookup() {
+        let repository = OnlineResultRepository()
+        let event = RaceEvent(
+            id: "f1-2026-miami-grand-prix",
+            series: .formula1,
+            season: 2026,
+            round: 2,
+            title: "Miami Grand Prix",
+            circuit: "Miami",
+            raceDate: Date(timeIntervalSince1970: 1)
+        )
+
+        let links: [F1ResultLink] = [
+            F1ResultLink(season: 2026, meetingID: 3, slug: "japan-grand-prix", path: "/en/results/2026/races/1303/japan-grand-prix/race-result"),
+            F1ResultLink(season: 2026, meetingID: 1, slug: "australian-grand-prix", path: "/en/results/2026/races/1301/australian-grand-prix/race-result"),
+            F1ResultLink(season: 2026, meetingID: 2, slug: "miami-gp-renamed", path: "/en/results/2026/races/1302/miami-gp-renamed/race-result")
+        ]
+
+        let selected = repository.selectF1ResultLink(for: event, links: links)
+        XCTAssertEqual(selected?.meetingID, 2)
+        XCTAssertEqual(selected?.slug, "miami-gp-renamed")
     }
 
     private func base64Context(_ dictionary: [String: String]) throws -> String {

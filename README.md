@@ -66,6 +66,7 @@ Chicane tracks standings across:
 - **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)
 - **News** — Latest F1 and MotoGP news via RSS, read in-app with Reader mode after an entry confirmation
 - **Settings** — Manage players, shared league sync, per-player bets, and season reset
+  - Player names cannot be blank when saving; use `Remove` to delete a player.
   - Reset clears race picks/results and season champion picks/results.
 
 ---
