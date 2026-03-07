@@ -33,6 +33,7 @@ struct SettingsView: View {
             playerBetSection
             syncSection
             resetSection
+            aboutSection
         }
         .tint(.accentColor)
         .scrollContentBackground(.hidden)
@@ -254,6 +255,17 @@ struct SettingsView: View {
         }
     }
 
+    private var aboutSection: some View {
+        Section("About") {
+            LabeledContent("Version") {
+                Text(appVersionDescription)
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
+    }
+
     private func binding(for playerID: UUID) -> Binding<String> {
         Binding(
             get: { playerNames[playerID, default: ""] },
@@ -431,6 +443,22 @@ struct SettingsView: View {
         return comparableSettings != .default
     }
 
+    private var appVersionDescription: String {
+        let shortVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let buildNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+
+        switch (shortVersion?.nonEmpty, buildNumber?.nonEmpty) {
+        case let (version?, build?) where version != build:
+            return "\(version) (\(build))"
+        case let (version?, _):
+            return version
+        case let (_, build?):
+            return build
+        default:
+            return "Unavailable"
+        }
+    }
+
     private func joinLeague(replacingLocalState: Bool = false) async {
         let code = joinLeagueCode.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !code.isEmpty else { return }
@@ -460,5 +488,12 @@ struct SettingsView: View {
         case .failure:
             break
         }
+    }
+}
+
+private extension String {
+    var nonEmpty: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
