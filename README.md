@@ -61,6 +61,7 @@ Chicane tracks standings across:
 ## Main Screens
 
 - **Home** — Next race countdown, race-track local time with relative day context, season standings snapshot, and player bet ledger
+  - Formula 1 countdown uses the official race-session start time from the event page when available, not a date-only noon placeholder.
 - **Picks** — Enter each player's season champion and P1/P2/P3 predictions
 - **Results** — Enter official results and lock events, plus lock the season champion
 - **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)

@@ -43,11 +43,24 @@ enum F1OfficialHTMLParser {
         ?? fallbackNeverMatchRegex
     }()
 
+    private static let raceSessionRegex: NSRegularExpression = {
+        (try? NSRegularExpression(
+            pattern: #"\\"session\\":\\"r\\",.*?\\"startTime\\":\\"([^\\"]+)\\",.*?\\"gmtOffset\\":\\"([+-]\d{2}:\d{2})\\",.*?\\"timezone\\":\\"([^\\"]+)\\""#,
+            options: [.dotMatchesLineSeparators]
+        )) ?? fallbackNeverMatchRegex
+    }()
+
     private static let fallbackNeverMatchRegex: NSRegularExpression = {
         // A guaranteed non-matching regex used as a safe fallback when compilation fails.
         // Using an explicit pattern avoids defining an `init()` that would conflict with Obj-C.
         (try? NSRegularExpression(pattern: "(?!x)x"))
         ?? (try! NSRegularExpression(pattern: "(?!x)x"))
+    }()
+
+    private static let raceSessionDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
     }()
 
     private static let monthMap: [String: Int] = [
@@ -207,6 +220,21 @@ enum F1OfficialHTMLParser {
         components.day = day
         components.hour = 12
         return components.date
+    }
+
+    static func parseRaceSessionDetails(fromRacePageHTML html: String) -> (startDate: Date, timeZoneID: String)? {
+        let range = NSRange(html.startIndex..<html.endIndex, in: html)
+        guard
+            let match = raceSessionRegex.firstMatch(in: html, range: range),
+            let startTime = html.substring(for: match.range(at: 1)),
+            let gmtOffset = html.substring(for: match.range(at: 2)),
+            let timeZoneID = html.substring(for: match.range(at: 3)),
+            let startDate = raceSessionDateFormatter.date(from: "\(startTime)\(gmtOffset)")
+        else {
+            return nil
+        }
+
+        return (startDate, timeZoneID)
     }
 
     private static func normalizedRaceTitle(

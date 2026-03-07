@@ -41,7 +41,7 @@ struct OnlineCalendarRepository: CalendarRepository {
                 let html = try await client.fetchString(from: url)
                 let parsed = F1OfficialHTMLParser.parseEvents(from: html, expectedSeason: season)
                 if !parsed.isEmpty {
-                    return parsed
+                    return await enrichUpcomingFormula1Event(in: parsed, season: season)
                 }
             } catch {
                 lastError = error
@@ -52,6 +52,51 @@ struct OnlineCalendarRepository: CalendarRepository {
             throw lastError
         }
         throw RemoteDataError.emptyPayload(source: "Formula 1 calendar")
+    }
+
+    private func enrichUpcomingFormula1Event(in events: [RaceEvent], season: Int) async -> [RaceEvent] {
+        let now = Date()
+        guard let eventIndex = events.firstIndex(where: { calendar.isDateInToday($0.raceDate) || $0.raceDate >= now }) else {
+            return events
+        }
+
+        let event = events[eventIndex]
+        guard
+            let slug = formula1Slug(for: event),
+            let url = URL(string: "https://www.formula1.com/en/racing/\(season)/\(slug)")
+        else {
+            return events
+        }
+
+        guard
+            let html = try? await client.fetchString(from: url),
+            let details = F1OfficialHTMLParser.parseRaceSessionDetails(fromRacePageHTML: html)
+        else {
+            return events
+        }
+
+        var updatedEvents = events
+        updatedEvents[eventIndex] = RaceEvent(
+            id: event.id,
+            series: event.series,
+            season: event.season,
+            round: event.round,
+            title: event.title,
+            circuit: event.circuit,
+            raceDate: details.startDate,
+            trackTimeZoneID: details.timeZoneID
+        )
+        return updatedEvents
+    }
+
+    private func formula1Slug(for event: RaceEvent) -> String? {
+        let prefix = "f1-\(event.season)-"
+        guard event.id.hasPrefix(prefix) else {
+            return nil
+        }
+
+        let slug = String(event.id.dropFirst(prefix.count))
+        return slug.isEmpty ? nil : slug
     }
 
     private func motoGPEvents() async throws -> [RaceEvent] {

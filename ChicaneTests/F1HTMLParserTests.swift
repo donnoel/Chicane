@@ -134,6 +134,29 @@ final class F1HTMLParserTests: XCTestCase {
         XCTAssertTrue(events.isEmpty)
     }
 
+    func testParseRaceSessionDetailsParsesRaceStartDateAndTimeZone() {
+        let html = #"""
+        <script>
+        self.__next_f.push([1,"{\"race\":{\"meetingSessions\":[{\"session\":\"q\",\"shortName\":\"Qualifying\",\"startTime\":\"2026-03-07T16:00:00\",\"gmtOffset\":\"+11:00\",\"timezone\":\"Australia/Melbourne\"},{\"session\":\"r\",\"shortName\":\"Race\",\"description\":\"Race\",\"startTime\":\"2026-03-08T15:00:00\",\"endTime\":\"2026-03-08T17:00:00\",\"gmtOffset\":\"+11:00\",\"state\":\"upcoming\",\"sessionType\":\"Race\",\"timezone\":\"Australia/Melbourne\"}]}}"])
+        </script>
+        """#
+
+        let details = F1OfficialHTMLParser.parseRaceSessionDetails(fromRacePageHTML: html)
+
+        XCTAssertEqual(details?.timeZoneID, "Australia/Melbourne")
+        XCTAssertEqual(details?.startDate, Date(timeIntervalSince1970: 1_772_942_400))
+    }
+
+    func testParseRaceSessionDetailsReturnsNilWithoutRaceSession() {
+        let html = #"""
+        <script>
+        self.__next_f.push([1,"{\"race\":{\"meetingSessions\":[{\"session\":\"q\",\"shortName\":\"Qualifying\",\"startTime\":\"2026-03-07T16:00:00\",\"gmtOffset\":\"+11:00\",\"timezone\":\"Australia/Melbourne\"}]}}"])
+        </script>
+        """#
+
+        XCTAssertNil(F1OfficialHTMLParser.parseRaceSessionDetails(fromRacePageHTML: html))
+    }
+
     // MARK: - parseF1PodiumNames — malformed HTML
 
     func testParseF1PodiumNamesReturnsEmptyForNoTable() {
