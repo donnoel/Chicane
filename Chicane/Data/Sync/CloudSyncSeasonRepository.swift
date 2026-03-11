@@ -15,6 +15,8 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         static let leagueCodeLength = 6
         static let joinLookupAttempts = 8
         static let joinRetryDelayNanoseconds: UInt64 = 1_000_000_000
+        static let deferredPushAttempts = 2
+        static let deferredPushRetryDelayNanoseconds: UInt64 = 250_000_000
     }
 
     private let localRepository: LocalSeasonRepository
@@ -130,27 +132,38 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             return state
         }
 
-        do {
-            let remoteState = try await cloudStore.fetchState(for: code)
-            let mergedState = mergedState(
-                local: state,
-                remote: remoteState,
-                leagueCode: code
-            )
+        var lastError: Error?
+        for attempt in 1 ... Constants.deferredPushAttempts {
+            do {
+                let remoteState = try await cloudStore.fetchState(for: code)
+                let mergedState = mergedState(
+                    local: state,
+                    remote: remoteState,
+                    leagueCode: code
+                )
 
-            if remoteState != .some(mergedState) {
-                try await cloudStore.pushState(mergedState, for: code)
-            }
+                if remoteState != .some(mergedState) {
+                    try await cloudStore.pushState(mergedState, for: code)
+                }
 
-            if mergedState != state {
-                return try await localRepository.replaceState(mergedState)
+                if mergedState != state {
+                    return try await localRepository.replaceState(mergedState)
+                }
+                return state
+            } catch {
+                lastError = error
+                logger.error("Deferred cloud push attempt \(attempt, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                guard attempt < Constants.deferredPushAttempts else {
+                    break
+                }
+                try? await Task.sleep(nanoseconds: Constants.deferredPushRetryDelayNanoseconds)
             }
-        } catch {
-            logger.error("Deferred cloud push failed: \(error.localizedDescription, privacy: .public)")
-            throw DeferredCloudSyncWarning(state: state, underlyingError: error)
         }
 
-        return state
+        throw DeferredCloudSyncWarning(
+            state: state,
+            underlyingError: lastError ?? RepositoryError.cloudSyncUnavailable
+        )
     }
 
     private func normalizedLeagueCode(from state: PersistedState) -> String? {

@@ -241,6 +241,41 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(stored.picks.first?.playerID, player.id)
     }
 
+    func testUpsertPickRetriesDeferredCloudPushAndSucceeds() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = FlakyFirstPushMemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let mom = Player(id: UUID(), name: "Mom")
+        let son = Player(id: UUID(), name: "Son")
+
+        var sharedState = PersistedState.default
+        sharedState.settings.leagueCode = "ABC123"
+        sharedState.players = [mom, son]
+        sharedState.updatedAt = date("2026-03-01T08:00:00Z")
+        sharedState.playersUpdatedAt = sharedState.updatedAt
+        await cloudStore.seed(sharedState, for: "ABC123")
+        _ = try await localRepo.replaceState(sharedState)
+
+        let pick = TestFixtures.pick(
+            series: .formula1,
+            eventID: "f1-r1",
+            playerID: mom.id,
+            p1: "a", p2: "b", p3: "c"
+        )
+
+        let saved = try await repo.upsertPick(pick)
+
+        XCTAssertEqual(saved.picks.count, 1)
+        XCTAssertEqual(saved.picks.first?.playerID, mom.id)
+
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertEqual(remote?.picks.count, 1)
+        XCTAssertEqual(remote?.picks.first?.playerID, mom.id)
+        let pushAttempts = await cloudStore.pushAttempts
+        XCTAssertEqual(pushAttempts, 2)
+    }
+
     func testRefreshStateReloadsExternalDiskChangesBeforeSync() async throws {
         let store = FileStateStore(baseDirectoryURL: tempDir)
         let localRepo = LocalSeasonRepository(store: store)
@@ -362,6 +397,54 @@ private actor FailingMemoryLeagueSyncStore: LeagueSyncStore {
 
     func pushState(_ state: PersistedState, for code: String) async throws {
         throw MockError.simulated
+    }
+}
+
+private actor FlakyFirstPushMemoryLeagueSyncStore: LeagueSyncStore {
+    private var states: [String: PersistedState] = [:]
+    private(set) var pushAttempts = 0
+
+    func createLeague(from state: PersistedState) async throws -> PersistedState {
+        var sharedState = state
+        sharedState.settings.leagueCode = "ABC123"
+        sharedState.updatedAt = Date()
+        states["ABC123"] = sharedState
+        return sharedState
+    }
+
+    func joinLeague(code: String) async throws -> PersistedState {
+        let normalizedCode = normalize(code)
+        guard let state = states[normalizedCode] else {
+            throw RepositoryError.leagueNotFound(code: normalizedCode)
+        }
+        return state
+    }
+
+    func fetchState(for code: String) async throws -> PersistedState? {
+        states[normalize(code)]
+    }
+
+    func pushState(_ state: PersistedState, for code: String) async throws {
+        pushAttempts += 1
+        if pushAttempts == 1 {
+            throw MockError.simulated
+        }
+
+        var sharedState = state
+        sharedState.settings.leagueCode = normalize(code)
+        states[normalize(code)] = sharedState
+    }
+
+    func seed(_ state: PersistedState, for code: String) {
+        states[normalize(code)] = state
+    }
+
+    func state(for code: String) -> PersistedState? {
+        states[normalize(code)]
+    }
+
+    private func normalize(_ code: String) -> String {
+        code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
 }
 
