@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct RootTabView: View {
+    private enum Constants {
+        static let leagueAutoSyncIntervalNanoseconds: UInt64 = 20_000_000_000
+    }
+
     @EnvironmentObject private var viewModel: AppViewModel
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -68,11 +72,8 @@ struct RootTabView: View {
         .task {
             await viewModel.loadIfNeeded()
         }
-        .onChange(of: scenePhase) { _, newValue in
-            guard newValue == .active else { return }
-            Task {
-                await viewModel.syncLeagueIfNeeded()
-            }
+        .task(id: leagueAutoSyncTaskID) {
+            await runLeagueAutoSyncLoop()
         }
         .onChange(of: viewModel.errorMessage) { _, newValue in
             guard let message = newValue, !message.isEmpty else { return }
@@ -114,6 +115,29 @@ struct RootTabView: View {
             }
         } else {
             viewModel.banner = nil
+        }
+    }
+
+    private var leagueAutoSyncTaskID: String {
+        let phaseLabel = scenePhase == .active ? "active" : "inactive"
+        let code = viewModel.settings.leagueCode?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased() ?? ""
+        return "\(phaseLabel)-\(code)"
+    }
+
+    private func runLeagueAutoSyncLoop() async {
+        guard scenePhase == .active else { return }
+
+        await viewModel.syncLeagueIfNeeded()
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(nanoseconds: Constants.leagueAutoSyncIntervalNanoseconds)
+            } catch {
+                return
+            }
+            guard scenePhase == .active else { return }
+            await viewModel.syncLeagueIfNeeded()
         }
     }
 }

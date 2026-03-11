@@ -110,8 +110,7 @@ struct OnlineResultRepository: ResultRepository {
             ]
         )
 
-        let toadEventUUID = event.id.replacingOccurrences(of: "mgp-", with: "")
-        guard let resultsEvent = resultsEvents.first(where: { $0.toadAPIUUID == toadEventUUID }) else {
+        guard let resultsEvent = selectMotoGPResultsEvent(for: event, events: resultsEvents) else {
             throw OfficialResultRepositoryError.resultsUnavailable
         }
 
@@ -189,6 +188,32 @@ struct OnlineResultRepository: ResultRepository {
             throw OfficialResultRepositoryError.resultsUnavailable
         }
         return try await client.fetchJSON(T.self, from: url)
+    }
+
+    func selectMotoGPResultsEvent(
+        for event: RaceEvent,
+        events: [MotoGPResultsEventPayload]
+    ) -> MotoGPResultsEventPayload? {
+        let toadEventUUID = event.id.replacingOccurrences(of: "mgp-", with: "")
+
+        let toadMatches = events.filter { $0.toadAPIUUID == toadEventUUID }
+        if let bestMatch = preferredMotoGPResultsEvent(in: toadMatches) {
+            return bestMatch
+        }
+
+        let roundMatches = events.filter { $0.legacyEventID == event.round }
+        if let bestMatch = preferredMotoGPResultsEvent(in: roundMatches) {
+            return bestMatch
+        }
+
+        let sequenceMatches = events.filter { $0.sequence == event.round }
+        return preferredMotoGPResultsEvent(in: sequenceMatches)
+    }
+
+    private func preferredMotoGPResultsEvent(
+        in candidates: [MotoGPResultsEventPayload]
+    ) -> MotoGPResultsEventPayload? {
+        candidates.first(where: { !$0.test }) ?? candidates.first
     }
 
     func parseF1ResultLinks(from html: String) -> [F1ResultLink] {
@@ -276,15 +301,62 @@ private struct MotoGPSeasonPayload: Decodable {
     let current: Bool
 }
 
-private struct MotoGPResultsEventPayload: Decodable {
+struct MotoGPResultsEventPayload: Decodable {
     let id: String
-    let toadAPIUUID: String
+    let toadAPIUUID: String?
     let test: Bool
+    let sequence: Int?
+    let legacyIDs: [MotoGPResultsEventLegacyIDPayload]
+
+    var legacyEventID: Int? {
+        legacyIDs.first(where: { $0.categoryID == 3 })?.eventID
+            ?? legacyIDs.first?.eventID
+    }
+
+    init(
+        id: String,
+        toadAPIUUID: String?,
+        test: Bool,
+        sequence: Int?,
+        legacyIDs: [MotoGPResultsEventLegacyIDPayload]
+    ) {
+        self.id = id
+        self.toadAPIUUID = toadAPIUUID
+        self.test = test
+        self.sequence = sequence
+        self.legacyIDs = legacyIDs
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        toadAPIUUID = try container.decodeIfPresent(String.self, forKey: .toadAPIUUID)
+        test = try container.decodeIfPresent(Bool.self, forKey: .test) ?? false
+        sequence = try container.decodeIfPresent(Int.self, forKey: .sequence)
+        legacyIDs = try container.decodeIfPresent([MotoGPResultsEventLegacyIDPayload].self, forKey: .legacyIDs) ?? []
+    }
 
     enum CodingKeys: String, CodingKey {
         case id
         case toadAPIUUID = "toad_api_uuid"
         case test
+        case sequence
+        case legacyIDs = "legacy_id"
+    }
+}
+
+struct MotoGPResultsEventLegacyIDPayload: Decodable {
+    let categoryID: Int?
+    let eventID: Int?
+
+    init(categoryID: Int?, eventID: Int?) {
+        self.categoryID = categoryID
+        self.eventID = eventID
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case categoryID = "categoryId"
+        case eventID = "eventId"
     }
 }
 

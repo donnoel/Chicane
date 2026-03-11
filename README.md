@@ -80,10 +80,12 @@ Chicane tracks standings across:
 3. Driver/rider lists and calendars refresh from online sources when available.
 4. If network fetch fails, bundled seed JSON is used automatically.
 5. Users enter season champion picks and race picks for each player.
-6. Local changes save immediately, then sync back to the shared iCloud league in the background. If that sync fails, the app keeps the local save and shows a visible warning.
-7. Users tap `Update Results` to pull official podium results and lock the event.
-8. When the season champion is entered for a series, it locks, freezes all player champion picks for that series, and awards the 5-point bonus to matching players.
-9. Standings are computed deterministically from stored picks and results.
+6. Local changes save immediately, then sync back to the shared iCloud league in the background.
+7. While the app is active in a shared league, it automatically re-syncs periodically so updates from other phones appear without opening Settings.
+8. If shared sync fails, the app keeps the local save and shows a visible warning.
+9. Users tap `Update Results` to pull official podium results and lock the event.
+10. When the season champion is entered for a series, it locks, freezes all player champion picks for that series, and awards the 5-point bonus to matching players.
+11. Standings are computed deterministically from stored picks and results.
 
 ---
 
@@ -184,6 +186,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 - All picks, results, season champion choices, players, and settings are stored on-device first.
   - Location: `~/Library/Application Support/Chicane/season_state_v1.json`
 - When a shared league code is enabled, the same season state is mirrored to iCloud CloudKit so other phones can pull it automatically.
+- Shared league state is auto-polled while the app is active, so manual `Sync Now` is optional.
 - Shared sync now merges picks/results by item timestamp and resolves players/settings from the newest section change, falling back to the newest overall state when those section timestamps tie.
 - Explicit refreshes bypass the in-memory cache and reload the latest on-disk state before syncing.
 - State is written atomically for crash-safety.

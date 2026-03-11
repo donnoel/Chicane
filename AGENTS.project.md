@@ -27,7 +27,7 @@
   - `BundledDriverRepository` / `BundledCalendarRepository` (seed JSON loaders)
 - Data flow/persistence:
   - Local state remains the offline source on disk and is saved atomically first.
-  - If a shared league code is configured, the full season state is mirrored through CloudKit and refreshed on launch / foreground. If that mirror step fails after a local save, the local save still stands and the UI must show a visible sync warning.
+  - If a shared league code is configured, the full season state is mirrored through CloudKit and refreshed on launch / foreground, plus periodic automatic pulls while the app is active. If that mirror step fails after a local save, the local save still stands and the UI must show a visible sync warning.
   - Joining a shared league should require explicit confirmation before replacing non-empty on-device season state.
   - Leaving a shared league should clear only the local league link so the same device can create or join a different league without wiping local season data.
   - Shared league merges keep per-pick/per-result timestamps authoritative and use per-section timestamps for players/settings, falling back to the newest overall state if those section timestamps tie.

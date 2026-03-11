@@ -311,6 +311,59 @@ final class ChicaneTests: XCTestCase {
         XCTAssertEqual(selected?.slug, "miami-gp-renamed")
     }
 
+    func testMotoGPResultsEventDecodesWithNullToadUUID() throws {
+        let json = """
+        [
+          {
+            "id": "results-event-1",
+            "toad_api_uuid": null,
+            "test": false,
+            "legacy_id": [
+              { "categoryId": 3, "eventId": 1 }
+            ]
+          }
+        ]
+        """
+
+        let payload = try JSONDecoder().decode([MotoGPResultsEventPayload].self, from: Data(json.utf8))
+        XCTAssertEqual(payload.count, 1)
+        XCTAssertNil(payload[0].toadAPIUUID)
+        XCTAssertEqual(payload[0].legacyEventID, 1)
+    }
+
+    func testMotoGPResultsEventSelectionFallsBackToLegacyRound() {
+        let repository = OnlineResultRepository()
+        let event = RaceEvent(
+            id: "mgp-calendar-event-uuid",
+            series: .motoGP,
+            season: 2026,
+            round: 1,
+            title: "Round 1",
+            circuit: "Buriram",
+            raceDate: Date(timeIntervalSince1970: 1)
+        )
+
+        let resultsEvents = [
+            MotoGPResultsEventPayload(
+                id: "test-event",
+                toadAPIUUID: nil,
+                test: true,
+                sequence: nil,
+                legacyIDs: [MotoGPResultsEventLegacyIDPayload(categoryID: 3, eventID: 1)]
+            ),
+            MotoGPResultsEventPayload(
+                id: "race-event",
+                toadAPIUUID: nil,
+                test: false,
+                sequence: nil,
+                legacyIDs: [MotoGPResultsEventLegacyIDPayload(categoryID: 3, eventID: 1)]
+            )
+        ]
+
+        let selected = repository.selectMotoGPResultsEvent(for: event, events: resultsEvents)
+        XCTAssertEqual(selected?.id, "race-event")
+    }
+
     private func base64Context(_ dictionary: [String: String]) throws -> String {
         let data = try JSONSerialization.data(withJSONObject: dictionary)
         return data.base64EncodedString()
