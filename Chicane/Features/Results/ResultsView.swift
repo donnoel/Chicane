@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ResultsView: View {
     @EnvironmentObject private var viewModel: AppViewModel
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
@@ -87,8 +88,8 @@ struct ResultsView: View {
         selectedSeries == .motoGP ? "rider" : "driver"
     }
 
-    private var participantPlural: String {
-        selectedSeries == .motoGP ? "riders" : "drivers"
+    private var participantsByID: [String: Driver] {
+        Dictionary(uniqueKeysWithValues: viewModel.drivers(for: selectedSeries).map { ($0.id, $0) })
     }
 
     private var resultEditorCard: some View {
@@ -96,14 +97,7 @@ struct ResultsView: View {
             if let currentResult {
                 resultStatusLabel
 
-                PodiumPickerSection(
-                    title: "Official Podium",
-                    drivers: viewModel.drivers(for: selectedSeries),
-                    participantSingular: participantSingular,
-                    participantPlural: participantPlural,
-                    draft: .constant(PodiumDraft(podium: currentResult.podium)),
-                    isDisabled: true
-                )
+                officialPodiumSection(for: currentResult.podium)
 
                 Text("Official results are locked once retrieved.")
                     .font(.footnote)
@@ -184,6 +178,69 @@ struct ResultsView: View {
             Spacer()
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func officialPodiumSection(for podium: Podium) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Official Podium")
+                .font(.title3.weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
+
+            officialPodiumRow(position: 1, title: "P1", participantID: podium.p1)
+            officialPodiumRow(position: 2, title: "P2", participantID: podium.p2)
+            officialPodiumRow(position: 3, title: "P3", participantID: podium.p3)
+        }
+    }
+
+    private func officialPodiumRow(position: Int, title: String, participantID: String) -> some View {
+        let label = participantDisplayLabel(for: participantID)
+
+        return HStack(spacing: 14) {
+            PodiumMedalView(position: position, isSelected: true)
+
+            Text(label)
+                .font(.body.weight(.medium))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(ChicaneTheme.insetFill(for: colorScheme))
+                )
+                .accessibilityLabel("\(title) \(label)")
+        }
+    }
+
+    private func participantDisplayLabel(for participantID: String) -> String {
+        if let participant = participantsByID[participantID] {
+            return "\(participant.name) (\(participant.team))"
+        }
+        return fallbackParticipantLabel(from: participantID)
+    }
+
+    private func fallbackParticipantLabel(from participantID: String) -> String {
+        let trimmed = participantID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return "Unknown participant"
+        }
+
+        let tokens = trimmed
+            .replacingOccurrences(of: #"[_-]+"#, with: " ", options: .regularExpression)
+            .split(separator: " ")
+            .map(String.init)
+
+        let filtered = tokens.enumerated().compactMap { index, token -> String? in
+            let lowered = token.lowercased()
+            if index == 0 && (lowered == "f1" || lowered == "mgp" || lowered == "motogp" || lowered == "formula1") {
+                return nil
+            }
+            return token
+        }
+
+        guard !filtered.isEmpty else {
+            return trimmed
+        }
+        return filtered.map { $0.capitalized }.joined(separator: " ")
     }
 
     private var pointsCard: some View {
