@@ -219,11 +219,11 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             playersUpdatedAt: max(local.playersUpdatedAt, remote.playersUpdatedAt),
             settingsUpdatedAt: max(local.settingsUpdatedAt, remote.settingsUpdatedAt),
             seasonResetAt: resetCutoff,
-            players: mergedSectionValue(
-                localValue: local.players,
-                localSectionUpdatedAt: local.playersUpdatedAt,
-                remoteValue: remote.players,
-                remoteSectionUpdatedAt: remote.playersUpdatedAt,
+            players: mergePlayers(
+                localPlayers: local.players,
+                localPlayersUpdatedAt: local.playersUpdatedAt,
+                remotePlayers: remote.players,
+                remotePlayersUpdatedAt: remote.playersUpdatedAt,
                 localStateUpdatedAt: local.updatedAt,
                 remoteStateUpdatedAt: remote.updatedAt
             ),
@@ -249,6 +249,43 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         return merged.normalized()
     }
 
+    private func mergePlayers(
+        localPlayers: [Player],
+        localPlayersUpdatedAt: Date,
+        remotePlayers: [Player],
+        remotePlayersUpdatedAt: Date,
+        localStateUpdatedAt: Date,
+        remoteStateUpdatedAt: Date
+    ) -> [Player] {
+        let preferLocal = prefersLocalSection(
+            localSectionUpdatedAt: localPlayersUpdatedAt,
+            remoteSectionUpdatedAt: remotePlayersUpdatedAt,
+            localStateUpdatedAt: localStateUpdatedAt,
+            remoteStateUpdatedAt: remoteStateUpdatedAt
+        )
+
+        var playersByID: [UUID: Player] = [:]
+        if preferLocal {
+            for player in remotePlayers {
+                playersByID[player.id] = player
+            }
+            for player in localPlayers {
+                playersByID[player.id] = player
+            }
+        } else {
+            for player in localPlayers {
+                playersByID[player.id] = player
+            }
+            for player in remotePlayers {
+                playersByID[player.id] = player
+            }
+        }
+
+        return Array(playersByID.values).sorted { lhs, rhs in
+            lhs.id.uuidString < rhs.id.uuidString
+        }
+    }
+
     private func mergedSectionValue<T>(
         localValue: T,
         localSectionUpdatedAt: Date,
@@ -257,15 +294,29 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         localStateUpdatedAt: Date,
         remoteStateUpdatedAt: Date
     ) -> T {
+        prefersLocalSection(
+            localSectionUpdatedAt: localSectionUpdatedAt,
+            remoteSectionUpdatedAt: remoteSectionUpdatedAt,
+            localStateUpdatedAt: localStateUpdatedAt,
+            remoteStateUpdatedAt: remoteStateUpdatedAt
+        ) ? localValue : remoteValue
+    }
+
+    private func prefersLocalSection(
+        localSectionUpdatedAt: Date,
+        remoteSectionUpdatedAt: Date,
+        localStateUpdatedAt: Date,
+        remoteStateUpdatedAt: Date
+    ) -> Bool {
         if localSectionUpdatedAt != remoteSectionUpdatedAt {
-            return localSectionUpdatedAt > remoteSectionUpdatedAt ? localValue : remoteValue
+            return localSectionUpdatedAt > remoteSectionUpdatedAt
         }
 
         if localStateUpdatedAt != remoteStateUpdatedAt {
-            return localStateUpdatedAt > remoteStateUpdatedAt ? localValue : remoteValue
+            return localStateUpdatedAt > remoteStateUpdatedAt
         }
 
-        return localValue
+        return true
     }
 
     private func mergePicks(

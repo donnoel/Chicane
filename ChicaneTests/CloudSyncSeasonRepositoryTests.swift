@@ -70,7 +70,7 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         super.tearDown()
     }
 
-    func testLoadStatePullsNewerRemoteLeagueState() async throws {
+    func testLoadStateMergesRemoteLeaguePlayersIntoLocalState() async throws {
         let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
         let cloudStore = MemoryLeagueSyncStore()
         let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
@@ -89,9 +89,9 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
 
         let loaded = try await repo.loadState()
 
-        XCTAssertEqual(loaded.players.map(\.name), ["Remote"])
+        XCTAssertEqual(Set(loaded.players.map(\.name)), Set(["Local", "Remote"]))
         let stored = try await localRepo.loadState()
-        XCTAssertEqual(stored.players.map(\.name), ["Remote"])
+        XCTAssertEqual(Set(stored.players.map(\.name)), Set(["Local", "Remote"]))
     }
 
     func testSavePlayersPushesStateToSharedLeague() async throws {
@@ -173,6 +173,69 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertTrue(saved.picks.contains(where: { $0.playerID == son.id && $0.podium.p1 == "x" }))
 
         let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertEqual(remote?.picks.count, 2)
+    }
+
+    func testSavingPickMergesPlayersAcrossDevicesAndKeepsBothPlayersPicks() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let mom = Player(id: UUID(), name: "Mom")
+        let son = Player(id: UUID(), name: "Son")
+
+        var localState = PersistedState.default
+        localState.settings.leagueCode = "ABC123"
+        localState.players = [mom]
+        localState.playersUpdatedAt = date("2026-03-01T08:00:00Z")
+        localState.updatedAt = date("2026-03-01T09:00:00Z")
+        localState.picks = [
+            RacePick(
+                id: UUID(),
+                series: .formula1,
+                eventID: "f1-r1",
+                playerID: mom.id,
+                podium: Podium(p1: "a", p2: "b", p3: "c"),
+                updatedAt: date("2026-03-01T09:00:00Z")
+            )
+        ]
+        _ = try await localRepo.replaceState(localState)
+
+        var remoteState = PersistedState.default
+        remoteState.settings.leagueCode = "ABC123"
+        remoteState.players = [son]
+        remoteState.playersUpdatedAt = date("2026-03-01T08:05:00Z")
+        remoteState.updatedAt = date("2026-03-01T08:50:00Z")
+        remoteState.picks = [
+            RacePick(
+                id: UUID(),
+                series: .formula1,
+                eventID: "f1-r1",
+                playerID: son.id,
+                podium: Podium(p1: "x", p2: "y", p3: "z"),
+                updatedAt: date("2026-03-01T08:50:00Z")
+            )
+        ]
+        await cloudStore.seed(remoteState, for: "ABC123")
+
+        let updatedLocalPick = RacePick(
+            id: localState.picks[0].id,
+            series: .formula1,
+            eventID: "f1-r1",
+            playerID: mom.id,
+            podium: Podium(p1: "c", p2: "b", p3: "a"),
+            updatedAt: date("2026-03-01T09:10:00Z")
+        )
+
+        let saved = try await repo.upsertPick(updatedLocalPick)
+
+        XCTAssertEqual(Set(saved.players.map(\.id)), Set([mom.id, son.id]))
+        XCTAssertEqual(saved.picks.count, 2)
+        XCTAssertTrue(saved.picks.contains(where: { $0.playerID == mom.id }))
+        XCTAssertTrue(saved.picks.contains(where: { $0.playerID == son.id }))
+
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertEqual(Set(remote?.players.map(\.id) ?? []), Set([mom.id, son.id]))
         XCTAssertEqual(remote?.picks.count, 2)
     }
 
