@@ -15,13 +15,27 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         static let leagueCodeLength = 6
         static let joinLookupAttempts = 8
         static let joinRetryDelayNanoseconds: UInt64 = 1_000_000_000
-        static let deferredPushAttempts = 2
-        static let deferredPushRetryDelayNanoseconds: UInt64 = 250_000_000
+        static let synchronizeAttempts = 4
+        static let synchronizeRetryDelayNanoseconds: UInt64 = 300_000_000
+        static let deferredPushAttempts = 5
+        static let deferredPushRetryDelayNanoseconds: UInt64 = 400_000_000
     }
 
     private let localRepository: LocalSeasonRepository
     private let cloudStore: any LeagueSyncStore
     private let logger = Logger(subsystem: "dn.chicane", category: "CloudSyncSeasonRepository")
+
+    private struct MergePreference {
+        var preferLocalPlayers = false
+        var preferLocalSettings = false
+        var preferLocalReset = false
+        var preferredPickKeys: Set<PickKey> = []
+        var preferredResultKeys: Set<ResultKey> = []
+        var preferredChampionPickKeys: Set<ChampionPickKey> = []
+        var preferredChampionResultSeries: Set<RaceSeries> = []
+
+        static let none = MergePreference()
+    }
 
     init(
         localRepository: LocalSeasonRepository = LocalSeasonRepository(),
@@ -33,53 +47,69 @@ actor CloudSyncSeasonRepository: SeasonRepository {
 
     func loadState() async throws -> PersistedState {
         let state = try await localRepository.loadState()
-        return try await synchronize(localState: state, surfaceCloudErrors: false)
+        return try await synchronize(localState: state, surfaceCloudErrors: false, preference: .none)
     }
 
     func refreshState() async throws -> PersistedState {
         let state = try await localRepository.refreshState()
-        return try await synchronize(localState: state, surfaceCloudErrors: true)
+        return try await synchronize(localState: state, surfaceCloudErrors: true, preference: .none)
     }
 
     func savePlayers(_ players: [Player]) async throws -> PersistedState {
         let state = try await localRepository.savePlayers(players)
-        return try await pushIfNeeded(state)
+        return try await pushIfNeeded(state, preference: MergePreference(preferLocalPlayers: true))
     }
 
     func saveSettings(_ settings: AppSettings) async throws -> PersistedState {
         let state = try await localRepository.saveSettings(settings)
-        return try await pushIfNeeded(state)
+        return try await pushIfNeeded(state, preference: MergePreference(preferLocalSettings: true))
     }
 
     func upsertPick(_ pick: RacePick) async throws -> PersistedState {
         let state = try await localRepository.upsertPick(pick)
-        return try await pushIfNeeded(state)
+        return try await pushIfNeeded(
+            state,
+            preference: MergePreference(preferredPickKeys: [PickKey(pick: pick)])
+        )
     }
 
     func upsertResult(_ result: RaceResult) async throws -> PersistedState {
         let state = try await localRepository.upsertResult(result)
-        return try await pushIfNeeded(state)
+        return try await pushIfNeeded(
+            state,
+            preference: MergePreference(preferredResultKeys: [ResultKey(result: result)])
+        )
     }
 
     func upsertChampionPick(_ pick: SeasonChampionPick) async throws -> PersistedState {
         let state = try await localRepository.upsertChampionPick(pick)
-        return try await pushIfNeeded(state)
+        return try await pushIfNeeded(
+            state,
+            preference: MergePreference(preferredChampionPickKeys: [ChampionPickKey(pick: pick)])
+        )
     }
 
     func upsertChampionResult(_ result: SeasonChampionResult) async throws -> PersistedState {
         let state = try await localRepository.upsertChampionResult(result)
-        return try await pushIfNeeded(state)
+        return try await pushIfNeeded(
+            state,
+            preference: MergePreference(preferredChampionResultSeries: [result.series])
+        )
     }
 
     func resetSeason() async throws -> PersistedState {
         let state = try await localRepository.resetSeason()
-        return try await pushIfNeeded(state)
+        return try await pushIfNeeded(state, preference: MergePreference(preferLocalReset: true))
     }
 
     func createLeague() async throws -> PersistedState {
         let localState = try await localRepository.loadState()
         if normalizedLeagueCode(from: localState) != nil {
-            return try await synchronize(localState: localState, surfaceCloudErrors: true)
+            return try await synchronize(
+                localState: localState,
+                surfaceCloudErrors: true,
+                preference: .none
+            )
         }
 
         let sharedState = try await cloudStore.createLeague(from: localState)
@@ -96,38 +126,59 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         return try await localRepository.replaceState(sharedState)
     }
 
-    private func synchronize(localState: PersistedState, surfaceCloudErrors: Bool) async throws -> PersistedState {
+    private func synchronize(
+        localState: PersistedState,
+        surfaceCloudErrors: Bool,
+        preference: MergePreference
+    ) async throws -> PersistedState {
         guard let code = normalizedLeagueCode(from: localState) else {
             return localState
         }
 
-        do {
-            guard let remoteState = try await cloudStore.fetchState(for: code) else {
-                try await cloudStore.pushState(localState, for: code)
-                return localState
-            }
+        var lastError: Error?
+        for attempt in 1 ... Constants.synchronizeAttempts {
+            do {
+                guard let remoteState = try await cloudStore.fetchState(for: code) else {
+                    try await cloudStore.pushState(localState, for: code)
+                    return localState
+                }
 
-            let mergedState = mergedState(local: localState, remote: remoteState, leagueCode: code)
+                let mergedState = mergedState(
+                    local: localState,
+                    remote: remoteState,
+                    leagueCode: code,
+                    preference: preference
+                )
 
-            if mergedState != remoteState {
-                try await cloudStore.pushState(mergedState, for: code)
-            }
+                if mergedState != remoteState {
+                    try await cloudStore.pushState(mergedState, for: code)
+                }
 
-            if mergedState != localState {
-                return try await localRepository.replaceState(mergedState)
-            }
+                if mergedState != localState {
+                    return try await localRepository.replaceState(mergedState)
+                }
 
-            return mergedState
-        } catch {
-            logger.error("Cloud sync failed: \(error.localizedDescription, privacy: .public)")
-            if surfaceCloudErrors {
-                throw error
+                return mergedState
+            } catch {
+                lastError = error
+                logger.error("Cloud sync attempt \(attempt, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                guard attempt < Constants.synchronizeAttempts else {
+                    break
+                }
+                try? await Task.sleep(nanoseconds: Constants.synchronizeRetryDelayNanoseconds)
             }
-            return localState
         }
+
+        if surfaceCloudErrors {
+            throw lastError ?? RepositoryError.cloudSyncUnavailable
+        }
+        return localState
     }
 
-    private func pushIfNeeded(_ state: PersistedState) async throws -> PersistedState {
+    private func pushIfNeeded(
+        _ state: PersistedState,
+        preference: MergePreference
+    ) async throws -> PersistedState {
         guard let code = normalizedLeagueCode(from: state) else {
             return state
         }
@@ -139,7 +190,8 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                 let mergedState = mergedState(
                     local: state,
                     remote: remoteState,
-                    leagueCode: code
+                    leagueCode: code,
+                    preference: preference
                 )
 
                 if remoteState != .some(mergedState) {
@@ -201,7 +253,8 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     private func mergedState(
         local: PersistedState,
         remote: PersistedState?,
-        leagueCode: String
+        leagueCode: String,
+        preference: MergePreference
     ) -> PersistedState {
         guard let remote else {
             var state = local
@@ -209,9 +262,13 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             return state.normalized()
         }
 
-        let resetCutoff = [local.seasonResetAt, remote.seasonResetAt]
-            .compactMap { $0 }
-            .max()
+        let resetCutoff: Date? = if preference.preferLocalReset {
+            local.seasonResetAt ?? remote.seasonResetAt
+        } else {
+            [local.seasonResetAt, remote.seasonResetAt]
+                .compactMap { $0 }
+                .max()
+        }
 
         var merged = PersistedState(
             schemaVersion: PersistedState.currentSchemaVersion,
@@ -225,19 +282,41 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                 remotePlayers: remote.players,
                 remotePlayersUpdatedAt: remote.playersUpdatedAt,
                 localStateUpdatedAt: local.updatedAt,
-                remoteStateUpdatedAt: remote.updatedAt
+                remoteStateUpdatedAt: remote.updatedAt,
+                preferLocalOverride: preference.preferLocalPlayers
             ),
-            picks: mergePicks(local.picks, remote.picks, resetCutoff: resetCutoff),
-            results: mergeResults(local.results, remote.results, resetCutoff: resetCutoff),
-            championPicks: mergeChampionPicks(local.championPicks, remote.championPicks, resetCutoff: resetCutoff),
-            championResults: mergeChampionResults(local.championResults, remote.championResults, resetCutoff: resetCutoff),
-            settings: mergedSectionValue(
-                localValue: local.settings,
-                localSectionUpdatedAt: local.settingsUpdatedAt,
-                remoteValue: remote.settings,
-                remoteSectionUpdatedAt: remote.settingsUpdatedAt,
+            picks: mergePicks(
+                local.picks,
+                remote.picks,
+                resetCutoff: resetCutoff,
+                preferredLocalKeys: preference.preferredPickKeys
+            ),
+            results: mergeResults(
+                local.results,
+                remote.results,
+                resetCutoff: resetCutoff,
+                preferredLocalKeys: preference.preferredResultKeys
+            ),
+            championPicks: mergeChampionPicks(
+                local.championPicks,
+                remote.championPicks,
+                resetCutoff: resetCutoff,
+                preferredLocalKeys: preference.preferredChampionPickKeys
+            ),
+            championResults: mergeChampionResults(
+                local.championResults,
+                remote.championResults,
+                resetCutoff: resetCutoff,
+                preferredLocalSeries: preference.preferredChampionResultSeries
+            ),
+            settings: mergeSettings(
+                localSettings: local.settings,
+                localSettingsUpdatedAt: local.settingsUpdatedAt,
+                remoteSettings: remote.settings,
+                remoteSettingsUpdatedAt: remote.settingsUpdatedAt,
                 localStateUpdatedAt: local.updatedAt,
-                remoteStateUpdatedAt: remote.updatedAt
+                remoteStateUpdatedAt: remote.updatedAt,
+                preferLocalOverride: preference.preferLocalSettings
             )
         )
 
@@ -255,14 +334,20 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         remotePlayers: [Player],
         remotePlayersUpdatedAt: Date,
         localStateUpdatedAt: Date,
-        remoteStateUpdatedAt: Date
+        remoteStateUpdatedAt: Date,
+        preferLocalOverride: Bool
     ) -> [Player] {
-        let preferLocal = prefersLocalSection(
-            localSectionUpdatedAt: localPlayersUpdatedAt,
-            remoteSectionUpdatedAt: remotePlayersUpdatedAt,
-            localStateUpdatedAt: localStateUpdatedAt,
-            remoteStateUpdatedAt: remoteStateUpdatedAt
-        )
+        let preferLocal: Bool
+        if preferLocalOverride {
+            preferLocal = true
+        } else {
+            preferLocal = prefersLocalSection(
+                localSectionUpdatedAt: localPlayersUpdatedAt,
+                remoteSectionUpdatedAt: remotePlayersUpdatedAt,
+                localStateUpdatedAt: localStateUpdatedAt,
+                remoteStateUpdatedAt: remoteStateUpdatedAt
+            )
+        }
 
         var playersByID: [UUID: Player] = [:]
         if preferLocal {
@@ -284,6 +369,39 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         return Array(playersByID.values).sorted { lhs, rhs in
             lhs.id.uuidString < rhs.id.uuidString
         }
+    }
+
+    private func mergeSettings(
+        localSettings: AppSettings,
+        localSettingsUpdatedAt: Date,
+        remoteSettings: AppSettings,
+        remoteSettingsUpdatedAt: Date,
+        localStateUpdatedAt: Date,
+        remoteStateUpdatedAt: Date,
+        preferLocalOverride: Bool
+    ) -> AppSettings {
+        let preferLocal: Bool
+        if preferLocalOverride {
+            preferLocal = true
+        } else {
+            preferLocal = prefersLocalSection(
+                localSectionUpdatedAt: localSettingsUpdatedAt,
+                remoteSectionUpdatedAt: remoteSettingsUpdatedAt,
+                localStateUpdatedAt: localStateUpdatedAt,
+                remoteStateUpdatedAt: remoteStateUpdatedAt
+            )
+        }
+
+        let preferred = preferLocal ? localSettings : remoteSettings
+        let fallback = preferLocal ? remoteSettings : localSettings
+
+        var merged = preferred
+        var mergedBets = fallback.playerBetTextByPlayerID
+        for (playerID, betText) in preferred.playerBetTextByPlayerID {
+            mergedBets[playerID] = betText
+        }
+        merged.playerBetTextByPlayerID = mergedBets
+        return merged
     }
 
     private func mergedSectionValue<T>(
@@ -322,20 +440,57 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     private func mergePicks(
         _ local: [RacePick],
         _ remote: [RacePick],
-        resetCutoff: Date?
+        resetCutoff: Date?,
+        preferredLocalKeys: Set<PickKey>
     ) -> [RacePick] {
-        let filtered = (local + remote).filter { pick in
+        let filteredLocal = local.filter { pick in
+            guard let resetCutoff else { return true }
+            return pick.updatedAt >= resetCutoff
+        }
+        let filteredRemote = remote.filter { pick in
             guard let resetCutoff else { return true }
             return pick.updatedAt >= resetCutoff
         }
 
-        var picksByKey: [PickKey: RacePick] = [:]
-        for pick in filtered {
+        var localByKey: [PickKey: RacePick] = [:]
+        for pick in filteredLocal {
             let key = PickKey(pick: pick)
-            if let existing = picksByKey[key], existing.updatedAt > pick.updatedAt {
+            if let existing = localByKey[key], existing.updatedAt > pick.updatedAt {
                 continue
             }
-            picksByKey[key] = pick
+            localByKey[key] = pick
+        }
+
+        var remoteByKey: [PickKey: RacePick] = [:]
+        for pick in filteredRemote {
+            let key = PickKey(pick: pick)
+            if let existing = remoteByKey[key], existing.updatedAt > pick.updatedAt {
+                continue
+            }
+            remoteByKey[key] = pick
+        }
+
+        var picksByKey: [PickKey: RacePick] = [:]
+        let allKeys = Set(localByKey.keys).union(remoteByKey.keys)
+        for key in allKeys {
+            let localPick = localByKey[key]
+            let remotePick = remoteByKey[key]
+
+            if preferredLocalKeys.contains(key), let localPick {
+                picksByKey[key] = localPick
+                continue
+            }
+
+            switch (localPick, remotePick) {
+            case let (.some(localPick), .some(remotePick)):
+                picksByKey[key] = localPick.updatedAt >= remotePick.updatedAt ? localPick : remotePick
+            case let (.some(localPick), .none):
+                picksByKey[key] = localPick
+            case let (.none, .some(remotePick)):
+                picksByKey[key] = remotePick
+            case (.none, .none):
+                break
+            }
         }
 
         return Array(picksByKey.values).sorted { lhs, rhs in
@@ -352,20 +507,57 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     private func mergeResults(
         _ local: [RaceResult],
         _ remote: [RaceResult],
-        resetCutoff: Date?
+        resetCutoff: Date?,
+        preferredLocalKeys: Set<ResultKey>
     ) -> [RaceResult] {
-        let filtered = (local + remote).filter { result in
+        let filteredLocal = local.filter { result in
+            guard let resetCutoff else { return true }
+            return result.updatedAt >= resetCutoff
+        }
+        let filteredRemote = remote.filter { result in
             guard let resetCutoff else { return true }
             return result.updatedAt >= resetCutoff
         }
 
-        var resultsByKey: [ResultKey: RaceResult] = [:]
-        for result in filtered {
+        var localByKey: [ResultKey: RaceResult] = [:]
+        for result in filteredLocal {
             let key = ResultKey(result: result)
-            if let existing = resultsByKey[key], existing.updatedAt > result.updatedAt {
+            if let existing = localByKey[key], existing.updatedAt > result.updatedAt {
                 continue
             }
-            resultsByKey[key] = result
+            localByKey[key] = result
+        }
+
+        var remoteByKey: [ResultKey: RaceResult] = [:]
+        for result in filteredRemote {
+            let key = ResultKey(result: result)
+            if let existing = remoteByKey[key], existing.updatedAt > result.updatedAt {
+                continue
+            }
+            remoteByKey[key] = result
+        }
+
+        var resultsByKey: [ResultKey: RaceResult] = [:]
+        let allKeys = Set(localByKey.keys).union(remoteByKey.keys)
+        for key in allKeys {
+            let localResult = localByKey[key]
+            let remoteResult = remoteByKey[key]
+
+            if preferredLocalKeys.contains(key), let localResult {
+                resultsByKey[key] = localResult
+                continue
+            }
+
+            switch (localResult, remoteResult) {
+            case let (.some(localResult), .some(remoteResult)):
+                resultsByKey[key] = localResult.updatedAt >= remoteResult.updatedAt ? localResult : remoteResult
+            case let (.some(localResult), .none):
+                resultsByKey[key] = localResult
+            case let (.none, .some(remoteResult)):
+                resultsByKey[key] = remoteResult
+            case (.none, .none):
+                break
+            }
         }
 
         return Array(resultsByKey.values).sorted { lhs, rhs in
@@ -379,20 +571,57 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     private func mergeChampionPicks(
         _ local: [SeasonChampionPick],
         _ remote: [SeasonChampionPick],
-        resetCutoff: Date?
+        resetCutoff: Date?,
+        preferredLocalKeys: Set<ChampionPickKey>
     ) -> [SeasonChampionPick] {
-        let filtered = (local + remote).filter { pick in
+        let filteredLocal = local.filter { pick in
+            guard let resetCutoff else { return true }
+            return pick.updatedAt >= resetCutoff
+        }
+        let filteredRemote = remote.filter { pick in
             guard let resetCutoff else { return true }
             return pick.updatedAt >= resetCutoff
         }
 
-        var picksByKey: [ChampionPickKey: SeasonChampionPick] = [:]
-        for pick in filtered {
+        var localByKey: [ChampionPickKey: SeasonChampionPick] = [:]
+        for pick in filteredLocal {
             let key = ChampionPickKey(pick: pick)
-            if let existing = picksByKey[key], existing.updatedAt > pick.updatedAt {
+            if let existing = localByKey[key], existing.updatedAt > pick.updatedAt {
                 continue
             }
-            picksByKey[key] = pick
+            localByKey[key] = pick
+        }
+
+        var remoteByKey: [ChampionPickKey: SeasonChampionPick] = [:]
+        for pick in filteredRemote {
+            let key = ChampionPickKey(pick: pick)
+            if let existing = remoteByKey[key], existing.updatedAt > pick.updatedAt {
+                continue
+            }
+            remoteByKey[key] = pick
+        }
+
+        var picksByKey: [ChampionPickKey: SeasonChampionPick] = [:]
+        let allKeys = Set(localByKey.keys).union(remoteByKey.keys)
+        for key in allKeys {
+            let localPick = localByKey[key]
+            let remotePick = remoteByKey[key]
+
+            if preferredLocalKeys.contains(key), let localPick {
+                picksByKey[key] = localPick
+                continue
+            }
+
+            switch (localPick, remotePick) {
+            case let (.some(localPick), .some(remotePick)):
+                picksByKey[key] = localPick.updatedAt >= remotePick.updatedAt ? localPick : remotePick
+            case let (.some(localPick), .none):
+                picksByKey[key] = localPick
+            case let (.none, .some(remotePick)):
+                picksByKey[key] = remotePick
+            case (.none, .none):
+                break
+            }
         }
 
         return Array(picksByKey.values).sorted { lhs, rhs in
@@ -406,20 +635,57 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     private func mergeChampionResults(
         _ local: [SeasonChampionResult],
         _ remote: [SeasonChampionResult],
-        resetCutoff: Date?
+        resetCutoff: Date?,
+        preferredLocalSeries: Set<RaceSeries>
     ) -> [SeasonChampionResult] {
-        let filtered = (local + remote).filter { result in
+        let filteredLocal = local.filter { result in
+            guard let resetCutoff else { return true }
+            return result.updatedAt >= resetCutoff
+        }
+        let filteredRemote = remote.filter { result in
             guard let resetCutoff else { return true }
             return result.updatedAt >= resetCutoff
         }
 
-        var resultsByKey: [ChampionResultKey: SeasonChampionResult] = [:]
-        for result in filtered {
+        var localByKey: [ChampionResultKey: SeasonChampionResult] = [:]
+        for result in filteredLocal {
             let key = ChampionResultKey(result: result)
-            if let existing = resultsByKey[key], existing.updatedAt > result.updatedAt {
+            if let existing = localByKey[key], existing.updatedAt > result.updatedAt {
                 continue
             }
-            resultsByKey[key] = result
+            localByKey[key] = result
+        }
+
+        var remoteByKey: [ChampionResultKey: SeasonChampionResult] = [:]
+        for result in filteredRemote {
+            let key = ChampionResultKey(result: result)
+            if let existing = remoteByKey[key], existing.updatedAt > result.updatedAt {
+                continue
+            }
+            remoteByKey[key] = result
+        }
+
+        var resultsByKey: [ChampionResultKey: SeasonChampionResult] = [:]
+        let allKeys = Set(localByKey.keys).union(remoteByKey.keys)
+        for key in allKeys {
+            let localResult = localByKey[key]
+            let remoteResult = remoteByKey[key]
+
+            if preferredLocalSeries.contains(key.series), let localResult {
+                resultsByKey[key] = localResult
+                continue
+            }
+
+            switch (localResult, remoteResult) {
+            case let (.some(localResult), .some(remoteResult)):
+                resultsByKey[key] = localResult.updatedAt >= remoteResult.updatedAt ? localResult : remoteResult
+            case let (.some(localResult), .none):
+                resultsByKey[key] = localResult
+            case let (.none, .some(remoteResult)):
+                resultsByKey[key] = remoteResult
+            case (.none, .none):
+                break
+            }
         }
 
         return Array(resultsByKey.values).sorted { $0.series.rawValue < $1.series.rawValue }

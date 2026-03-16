@@ -1,3 +1,4 @@
+import CloudKit
 import XCTest
 @testable import Chicane
 
@@ -196,8 +197,46 @@ final class AppViewModelTests: XCTestCase {
             draft: PodiumDraft(p1: drivers[0].id, p2: drivers[1].id, p3: drivers[2].id)
         )
 
-        XCTAssertEqual(warning, "Saved locally, but shared league sync failed. Try Sync Now.")
+        XCTAssertTrue(warning?.hasPrefix("Saved locally, but shared league sync failed. Try Sync Now.") ?? false)
         XCTAssertNotNil(viewModel.pick(for: .formula1, eventID: event.id, playerID: player.id))
+    }
+
+    func testSavePickWarningIncludesCloudKitErrorCodeDetail() async throws {
+        let event = TestFixtures.event(id: "f1-2026-cloudkit-error", series: .formula1)
+        let drivers = [
+            TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
+            TestFixtures.driver(id: "f1-lando", series: .formula1, name: "Lando Norris", team: "McLaren"),
+            TestFixtures.driver(id: "f1-charles", series: .formula1, name: "Charles Leclerc", team: "Ferrari")
+        ]
+        let player = Player(id: UUID(), name: "Don")
+        let localRepository = LocalSeasonRepository(
+            store: FileStateStore(baseDirectoryURL: tempDir)
+        )
+        var localState = PersistedState.default
+        localState.players = [player]
+        localState.settings.leagueCode = "ABC123"
+        _ = try await localRepository.replaceState(localState)
+
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: drivers,
+            podiumNames: drivers.map(\.name),
+            seasonRepository: CloudSyncSeasonRepository(
+                localRepository: localRepository,
+                cloudStore: PermissionFailureLeagueSyncStore()
+            )
+        )
+
+        await viewModel.reload()
+
+        let warning = try await viewModel.savePick(
+            series: .formula1,
+            eventID: event.id,
+            playerID: player.id,
+            draft: PodiumDraft(p1: drivers[0].id, p2: drivers[1].id, p3: drivers[2].id)
+        )
+
+        XCTAssertTrue(warning?.contains("permissionFailure") ?? false)
     }
 
     private func makeViewModel(
@@ -245,5 +284,25 @@ private actor FailingLeagueSyncStore: LeagueSyncStore {
 
     func pushState(_ state: PersistedState, for code: String) async throws {
         throw MockError.simulated
+    }
+}
+
+private actor PermissionFailureLeagueSyncStore: LeagueSyncStore {
+    func createLeague(from state: PersistedState) async throws -> PersistedState {
+        var sharedState = state
+        sharedState.settings.leagueCode = "ABC123"
+        return sharedState
+    }
+
+    func joinLeague(code: String) async throws -> PersistedState {
+        throw CKError(.permissionFailure)
+    }
+
+    func fetchState(for code: String) async throws -> PersistedState? {
+        throw CKError(.permissionFailure)
+    }
+
+    func pushState(_ state: PersistedState, for code: String) async throws {
+        throw CKError(.permissionFailure)
     }
 }

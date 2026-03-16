@@ -111,6 +111,42 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(remote?.settings.leagueCode, "ABC123")
     }
 
+    func testSaveSettingsMergesPlayerBetsAcrossDevices() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let mom = Player(id: UUID(), name: "Mom")
+        let son = Player(id: UUID(), name: "Son")
+
+        var localState = PersistedState.default
+        localState.settings.leagueCode = "ABC123"
+        localState.players = [mom, son]
+        localState.updatedAt = date("2026-03-01T09:00:00Z")
+        localState.playersUpdatedAt = date("2026-03-01T08:00:00Z")
+        localState.settingsUpdatedAt = date("2026-03-01T09:00:00Z")
+        localState.settings.playerBetTextByPlayerID = [mom.id: "Steak dinner"]
+        _ = try await localRepo.replaceState(localState)
+
+        var remoteState = PersistedState.default
+        remoteState.settings.leagueCode = "ABC123"
+        remoteState.players = [mom, son]
+        remoteState.updatedAt = date("2026-03-01T08:50:00Z")
+        remoteState.playersUpdatedAt = date("2026-03-01T08:00:00Z")
+        remoteState.settingsUpdatedAt = date("2026-03-01T08:50:00Z")
+        remoteState.settings.playerBetTextByPlayerID = [son.id: "Ice cream"]
+        await cloudStore.seed(remoteState, for: "ABC123")
+
+        let saved = try await repo.saveSettings(localState.settings)
+
+        XCTAssertEqual(saved.settings.playerBetTextByPlayerID[mom.id], "Steak dinner")
+        XCTAssertEqual(saved.settings.playerBetTextByPlayerID[son.id], "Ice cream")
+
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertEqual(remote?.settings.playerBetTextByPlayerID[mom.id], "Steak dinner")
+        XCTAssertEqual(remote?.settings.playerBetTextByPlayerID[son.id], "Ice cream")
+    }
+
     func testSavingLocalPickDoesNotOverwriteNewerRemotePickForAnotherPlayer() async throws {
         let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
         let cloudStore = MemoryLeagueSyncStore()
@@ -239,6 +275,79 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(remote?.picks.count, 2)
     }
 
+    func testTwoDevicesConvergePlayersPicksAndBets() async throws {
+        let cloudStore = MemoryLeagueSyncStore()
+
+        let device1Repo = CloudSyncSeasonRepository(
+            localRepository: LocalSeasonRepository(
+                store: FileStateStore(baseDirectoryURL: tempDir.appendingPathComponent("device1", isDirectory: true))
+            ),
+            cloudStore: cloudStore
+        )
+        let device2Repo = CloudSyncSeasonRepository(
+            localRepository: LocalSeasonRepository(
+                store: FileStateStore(baseDirectoryURL: tempDir.appendingPathComponent("device2", isDirectory: true))
+            ),
+            cloudStore: cloudStore
+        )
+
+        let mom = Player(id: UUID(), name: "Mom")
+        let son = Player(id: UUID(), name: "Son")
+
+        _ = try await device1Repo.savePlayers([mom])
+        let createdLeague = try await device1Repo.createLeague()
+        guard let code = createdLeague.settings.leagueCode else {
+            XCTFail("Expected created league code")
+            return
+        }
+
+        _ = try await device2Repo.joinLeague(code: code)
+        _ = try await device2Repo.savePlayers([mom, son])
+        _ = try await device1Repo.refreshState()
+
+        let momPick = TestFixtures.pick(
+            series: .formula1,
+            eventID: "f1-r1",
+            playerID: mom.id,
+            p1: "a", p2: "b", p3: "c"
+        )
+        let sonPick = TestFixtures.pick(
+            series: .formula1,
+            eventID: "f1-r1",
+            playerID: son.id,
+            p1: "x", p2: "y", p3: "z"
+        )
+
+        _ = try await device1Repo.upsertPick(momPick)
+        _ = try await device2Repo.upsertPick(sonPick)
+
+        var device1Settings = try await device1Repo.loadState()
+        device1Settings.settings.playerBetTextByPlayerID = [mom.id: "Steak dinner"]
+        _ = try await device1Repo.saveSettings(device1Settings.settings)
+
+        var device2Settings = try await device2Repo.loadState()
+        device2Settings.settings.playerBetTextByPlayerID = [son.id: "Ice cream"]
+        _ = try await device2Repo.saveSettings(device2Settings.settings)
+
+        let device1Final = try await device1Repo.refreshState()
+        let device2Final = try await device2Repo.refreshState()
+
+        XCTAssertEqual(Set(device1Final.players.map(\.id)), Set([mom.id, son.id]))
+        XCTAssertEqual(Set(device2Final.players.map(\.id)), Set([mom.id, son.id]))
+
+        XCTAssertEqual(device1Final.picks.count, 2)
+        XCTAssertEqual(device2Final.picks.count, 2)
+        XCTAssertTrue(device1Final.picks.contains(where: { $0.playerID == mom.id }))
+        XCTAssertTrue(device1Final.picks.contains(where: { $0.playerID == son.id }))
+        XCTAssertTrue(device2Final.picks.contains(where: { $0.playerID == mom.id }))
+        XCTAssertTrue(device2Final.picks.contains(where: { $0.playerID == son.id }))
+
+        XCTAssertEqual(device1Final.settings.playerBetTextByPlayerID[mom.id], "Steak dinner")
+        XCTAssertEqual(device1Final.settings.playerBetTextByPlayerID[son.id], "Ice cream")
+        XCTAssertEqual(device2Final.settings.playerBetTextByPlayerID[mom.id], "Steak dinner")
+        XCTAssertEqual(device2Final.settings.playerBetTextByPlayerID[son.id], "Ice cream")
+    }
+
     func testResetKeepsOlderRemotePicksFromReappearing() async throws {
         let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
         let cloudStore = MemoryLeagueSyncStore()
@@ -337,6 +446,92 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(remote?.picks.first?.playerID, mom.id)
         let pushAttempts = await cloudStore.pushAttempts
         XCTAssertEqual(pushAttempts, 2)
+    }
+
+    func testUpsertPickPrefersExplicitLocalMutationWhenRemoteTimestampIsAhead() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let player = Player(id: UUID(), name: "Mom")
+        let eventID = "f1-r1"
+
+        var localState = PersistedState.default
+        localState.settings.leagueCode = "ABC123"
+        localState.players = [player]
+        localState.updatedAt = date("2026-03-01T10:00:00Z")
+        localState.playersUpdatedAt = localState.updatedAt
+        localState.picks = [
+            RacePick(
+                id: UUID(),
+                series: .formula1,
+                eventID: eventID,
+                playerID: player.id,
+                podium: Podium(p1: "a", p2: "b", p3: "c"),
+                updatedAt: date("2026-03-01T10:00:00Z")
+            )
+        ]
+        _ = try await localRepo.replaceState(localState)
+
+        var remoteState = localState
+        remoteState.updatedAt = date("2026-03-01T20:00:00Z")
+        remoteState.picks = [
+            RacePick(
+                id: localState.picks[0].id,
+                series: .formula1,
+                eventID: eventID,
+                playerID: player.id,
+                podium: Podium(p1: "x", p2: "y", p3: "z"),
+                updatedAt: date("2026-03-01T20:00:00Z")
+            )
+        ]
+        await cloudStore.seed(remoteState, for: "ABC123")
+
+        let localEdit = RacePick(
+            id: localState.picks[0].id,
+            series: .formula1,
+            eventID: eventID,
+            playerID: player.id,
+            podium: Podium(p1: "c", p2: "b", p3: "a"),
+            updatedAt: date("2026-03-01T10:01:00Z")
+        )
+
+        let saved = try await repo.upsertPick(localEdit)
+
+        XCTAssertEqual(saved.picks.first?.podium, localEdit.podium)
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertEqual(remote?.picks.first?.podium, localEdit.podium)
+    }
+
+    func testSaveSettingsPrefersExplicitLocalMutationWhenRemoteTimestampIsAhead() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let player = Player(id: UUID(), name: "Mom")
+
+        var localState = PersistedState.default
+        localState.settings.leagueCode = "ABC123"
+        localState.players = [player]
+        localState.updatedAt = date("2026-03-01T10:00:00Z")
+        localState.playersUpdatedAt = localState.updatedAt
+        localState.settingsUpdatedAt = localState.updatedAt
+        localState.settings.playerBetTextByPlayerID = [player.id: "Steak dinner"]
+        _ = try await localRepo.replaceState(localState)
+
+        var remoteState = localState
+        remoteState.updatedAt = date("2026-03-01T20:00:00Z")
+        remoteState.settingsUpdatedAt = date("2026-03-01T20:00:00Z")
+        remoteState.settings.playerBetTextByPlayerID = [player.id: "Ice cream"]
+        await cloudStore.seed(remoteState, for: "ABC123")
+
+        var localSettingsEdit = localState.settings
+        localSettingsEdit.playerBetTextByPlayerID = [player.id: "Tacos"]
+        let saved = try await repo.saveSettings(localSettingsEdit)
+
+        XCTAssertEqual(saved.settings.playerBetTextByPlayerID[player.id], "Tacos")
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertEqual(remote?.settings.playerBetTextByPlayerID[player.id], "Tacos")
     }
 
     func testRefreshStateReloadsExternalDiskChangesBeforeSync() async throws {

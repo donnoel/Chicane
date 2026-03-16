@@ -11,6 +11,10 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
         static let updatedAtField = "updatedAt"
         static let codeLength = 6
         static let createAttempts = 8
+        static let loadRecordAttempts = 4
+        static let loadRecordRetryDelayNanoseconds: UInt64 = 350_000_000
+        static let pushAttempts = 6
+        static let pushRetryDelayNanoseconds: UInt64 = 350_000_000
     }
 
     private let database: CKDatabase
@@ -68,24 +72,87 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
             throw RepositoryError.leagueNotConfigured
         }
 
-        let record = try await loadRecord(for: normalizedCode) ?? CKRecord(
+        var record = try await loadRecord(for: normalizedCode) ?? CKRecord(
             recordType: Constants.recordType,
             recordID: recordID(for: normalizedCode)
         )
+        var lastError: Error?
 
-        var sharedState = state
-        sharedState.settings.leagueCode = normalizedCode
-        try apply(sharedState, to: record)
-        _ = try await database.save(record)
-        logger.debug("Synced shared league \(normalizedCode, privacy: .public)")
+        for attempt in 1 ... Constants.pushAttempts {
+            do {
+                var sharedState = state
+                sharedState.settings.leagueCode = normalizedCode
+                try apply(sharedState, to: record)
+                _ = try await database.save(record)
+                logger.debug("Synced shared league \(normalizedCode, privacy: .public)")
+                return
+            } catch let error as CKError where error.code == .serverRecordChanged {
+                lastError = error
+                logger.error("Push conflict for league \(normalizedCode, privacy: .public) on attempt \(attempt, privacy: .public): \(error.localizedDescription, privacy: .public)")
+
+                let latestServerRecord =
+                    error.serverRecord
+                    ?? error.userInfo[CKRecordChangedErrorServerRecordKey] as? CKRecord
+
+                if let latestServerRecord {
+                    record = latestServerRecord
+                } else {
+                    record = try await loadRecord(for: normalizedCode) ?? CKRecord(
+                        recordType: Constants.recordType,
+                        recordID: recordID(for: normalizedCode)
+                    )
+                }
+
+                guard attempt < Constants.pushAttempts else {
+                    break
+                }
+            } catch let error as CKError where shouldRetry(error) {
+                lastError = error
+                logger.error("Transient push failure for league \(normalizedCode, privacy: .public) on attempt \(attempt, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                guard attempt < Constants.pushAttempts else {
+                    break
+                }
+
+                let retryDelay = retryDelayNanoseconds(
+                    for: error,
+                    fallback: Constants.pushRetryDelayNanoseconds
+                )
+                try? await Task.sleep(nanoseconds: retryDelay)
+
+                if let latestRecord = try await loadRecord(for: normalizedCode) {
+                    record = latestRecord
+                }
+            } catch {
+                throw error
+            }
+        }
+
+        throw lastError ?? RepositoryError.cloudSyncUnavailable
     }
 
     private func loadRecord(for code: String) async throws -> CKRecord? {
-        do {
-            return try await database.record(for: recordID(for: code))
-        } catch let error as CKError where error.code == .unknownItem {
-            return nil
+        var lastError: Error?
+        for attempt in 1 ... Constants.loadRecordAttempts {
+            do {
+                return try await database.record(for: recordID(for: code))
+            } catch let error as CKError where error.code == .unknownItem {
+                return nil
+            } catch let error as CKError where shouldRetry(error) {
+                lastError = error
+                logger.error("Transient load failure for league \(code, privacy: .public) on attempt \(attempt, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                guard attempt < Constants.loadRecordAttempts else {
+                    break
+                }
+                let retryDelay = retryDelayNanoseconds(
+                    for: error,
+                    fallback: Constants.loadRecordRetryDelayNanoseconds
+                )
+                try? await Task.sleep(nanoseconds: retryDelay)
+            } catch {
+                throw error
+            }
         }
+        throw lastError ?? RepositoryError.cloudSyncUnavailable
     }
 
     private func apply(_ state: PersistedState, to record: CKRecord) throws {
@@ -124,5 +191,25 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
     private func makeLeagueCode() -> String {
         let source = UUID().uuidString.replacingOccurrences(of: "-", with: "").uppercased()
         return String(source.prefix(Constants.codeLength))
+    }
+
+    private func shouldRetry(_ error: CKError) -> Bool {
+        switch error.code {
+        case .networkUnavailable, .networkFailure, .serviceUnavailable, .requestRateLimited, .zoneBusy:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func retryDelayNanoseconds(for error: CKError, fallback: UInt64) -> UInt64 {
+        guard let retryAfter = error.retryAfterSeconds, retryAfter > 0 else {
+            return fallback
+        }
+        let nanoseconds = retryAfter * 1_000_000_000
+        guard nanoseconds.isFinite, nanoseconds > 0 else {
+            return fallback
+        }
+        return UInt64(nanoseconds.rounded(.up))
     }
 }

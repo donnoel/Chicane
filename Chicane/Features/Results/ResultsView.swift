@@ -319,7 +319,10 @@ struct ResultsView: View {
                 eventID: selectedEventID,
                 lockResult: true
             )
-            viewModel.showInfo(warning ?? "Results updated and locked.")
+            viewModel.showSaveOutcome(
+                warning: warning,
+                successMessage: "Results updated and locked."
+            )
         } catch {
             if error is OfficialResultRepositoryError {
                 viewModel.showInfo("Official results aren't available yet. Try again later.")
@@ -334,7 +337,10 @@ struct ResultsView: View {
 
         do {
             let warning = try await viewModel.saveChampionResult(series: selectedSeries, driverID: championDraft)
-            viewModel.showInfo(warning ?? "Season champion saved. Bonus points are now included in standings.")
+            viewModel.showSaveOutcome(
+                warning: warning,
+                successMessage: "Season champion saved. Bonus points are now included in standings."
+            )
             hydrateChampionDraft()
         } catch {
             viewModel.showError(error.localizedDescription)

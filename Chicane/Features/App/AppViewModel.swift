@@ -48,6 +48,14 @@ final class AppViewModel: ObservableObject {
         errorMessage = message
     }
 
+    func showSaveOutcome(warning: String?, successMessage: String) {
+        if let warning, !warning.isEmpty {
+            showError(warning)
+        } else {
+            showInfo(successMessage)
+        }
+    }
+
     func loadIfNeeded() async {
         guard !hasLoaded else { return }
         await reload()
@@ -446,7 +454,13 @@ final class AppViewModel: ObservableObject {
             return nil
         } catch let warning as DeferredCloudSyncWarning {
             apply(state: warning.state)
-            return warning.errorDescription
+            let prefix = warning.errorDescription ?? "Saved locally, but shared league sync failed."
+            let detail = CloudSyncErrorFormatter.describe(warning.underlyingError)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !detail.isEmpty else {
+                return prefix
+            }
+            return "\(prefix) \(detail)"
         }
     }
 

@@ -30,7 +30,9 @@
   - If a shared league code is configured, the full season state is mirrored through CloudKit and refreshed on launch / foreground, plus periodic automatic pulls while the app is active. If that mirror step fails after a local save, the local save still stands and the UI must show a visible sync warning.
   - Joining a shared league should require explicit confirmation before replacing non-empty on-device season state.
   - Leaving a shared league should clear only the local league link so the same device can create or join a different league without wiping local season data.
-  - Shared league merges keep per-pick/per-result timestamps authoritative, merge players by `playerID` across devices (using section/overall timestamps to break same-player conflicts), and resolve settings from the newest section timestamp with newest-overall fallback on ties.
+  - Shared league merges keep per-pick/per-result timestamps authoritative, merge players by `playerID` across devices (using section/overall timestamps to break same-player conflicts), and resolve settings from the newest section timestamp while union-merging per-player bet text keys.
+  - For explicit local saves (pick/result/champion/settings/player/reset), that just-edited local key/section should win same-key conflicts during the push merge so iPhone/iPad edits by the same player are deterministic even with stale caches or clock skew.
+  - CloudKit transient failures and `serverRecordChanged` conflicts should retry before surfacing an error, and surfaced sync warnings should include actionable error-code detail.
   - Explicit `refreshState()` calls must bypass the warm local cache so restored or externally modified state can be reloaded from disk before sync.
   - Online refresh for calendars/drivers from official sources when reachable.
   - Seed data from bundled JSON in `Chicane/Resources/Seed` when online fetch fails.

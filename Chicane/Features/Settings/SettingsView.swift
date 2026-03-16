@@ -341,7 +341,8 @@ struct SettingsView: View {
                 Player(id: player.id, name: playerNames[player.id, default: player.name])
             }
             let warning = try await viewModel.savePlayers(updatedPlayers)
-            viewModel.showInfo(warning ?? "Player Names Saved")
+            sharedLeagueStatusMessage = warning
+            viewModel.showSaveOutcome(warning: warning, successMessage: "Player Names Saved")
         } catch {
             viewModel.showError(error.localizedDescription)
         }
@@ -351,7 +352,8 @@ struct SettingsView: View {
         do {
             let warning = try await viewModel.addPlayer(named: newPlayerName)
             newPlayerName = ""
-            viewModel.showInfo(warning ?? "Player Added")
+            sharedLeagueStatusMessage = warning
+            viewModel.showSaveOutcome(warning: warning, successMessage: "Player Added")
         } catch {
             viewModel.showError(error.localizedDescription)
         }
@@ -360,7 +362,8 @@ struct SettingsView: View {
     private func removePlayer(playerID: UUID) async {
         do {
             let warning = try await viewModel.removePlayers(withIDs: [playerID])
-            viewModel.showInfo(warning ?? "Player Removed")
+            sharedLeagueStatusMessage = warning
+            viewModel.showSaveOutcome(warning: warning, successMessage: "Player Removed")
         } catch {
             viewModel.showError(error.localizedDescription)
         }
@@ -379,9 +382,11 @@ struct SettingsView: View {
             settings.playerBetTextByPlayerID = sanitizedBets
         }) {
         case .success:
+            sharedLeagueStatusMessage = nil
             viewModel.showInfo("Player bets saved")
         case let .warning(warning):
-            viewModel.showInfo(warning)
+            sharedLeagueStatusMessage = warning
+            viewModel.showError(warning)
         case .failure:
             break
         }
@@ -405,7 +410,8 @@ struct SettingsView: View {
     private func resetSeason() async {
         do {
             let warning = try await viewModel.resetSeason()
-            viewModel.showInfo(warning ?? "Season Reset")
+            sharedLeagueStatusMessage = warning
+            viewModel.showSaveOutcome(warning: warning, successMessage: "Season Reset")
         } catch {
             viewModel.showError(error.localizedDescription)
         }

@@ -89,14 +89,17 @@ struct RootTabView: View {
         dismissBannerTask?.cancel()
         guard let banner = viewModel.banner else { return }
 
-        let seconds: UInt64
+        let seconds: UInt64?
         switch banner.style {
         case .info:
             seconds = 3
         case .error:
-            seconds = 6
+            // Keep errors on-screen until manually dismissed so users can read
+            // and report CloudKit sync failures accurately.
+            seconds = nil
         }
 
+        guard let seconds else { return }
         dismissBannerTask = Task {
             try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
             await MainActor.run {
