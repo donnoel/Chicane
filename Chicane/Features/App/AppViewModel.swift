@@ -12,6 +12,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var championResults: [SeasonChampionResult] = []
     @Published private(set) var driversBySeries: [RaceSeries: [Driver]] = [:]
     @Published private(set) var eventsBySeries: [RaceSeries: [RaceEvent]] = [:]
+    @Published private(set) var championshipLeadersBySeries: [RaceSeries: [ChampionshipLeader]] = [:]
     @Published private(set) var isLoading = false
     @Published private(set) var isSyncing = false
     @Published var errorMessage: String?
@@ -20,6 +21,7 @@ final class AppViewModel: ObservableObject {
     private let driverRepository: DriverRepository
     private let calendarRepository: CalendarRepository
     private let resultRepository: ResultRepository
+    private let championshipRepository: ChampionshipRepository
     private let seasonRepository: SeasonRepository
     private let scoringService = ScoringService()
     private let scoreboardCalculator = ScoreboardCalculator()
@@ -27,15 +29,23 @@ final class AppViewModel: ObservableObject {
 
     private var hasLoaded = false
 
+    private struct EventRoundKey: Hashable {
+        let series: RaceSeries
+        let season: Int
+        let round: Int
+    }
+
     init(
         driverRepository: DriverRepository,
         calendarRepository: CalendarRepository,
         resultRepository: ResultRepository,
+        championshipRepository: ChampionshipRepository = EmptyChampionshipRepository(),
         seasonRepository: SeasonRepository
     ) {
         self.driverRepository = driverRepository
         self.calendarRepository = calendarRepository
         self.resultRepository = resultRepository
+        self.championshipRepository = championshipRepository
         self.seasonRepository = seasonRepository
     }
 
@@ -80,11 +90,31 @@ final class AppViewModel: ObservableObject {
             let (resolvedF1Drivers, resolvedMotoGPDrivers, resolvedF1Events, resolvedMotoGPEvents) =
                 try await (f1Drivers, motoGPDrivers, f1Events, motoGPEvents)
 
+            // Preserve stable local IDs/titles when refresh switches from bundled
+            // source data to online source data.
+            let mergedF1Drivers = mergeDriversPreservingStableIDs(
+                existing: driversBySeries[.formula1] ?? [],
+                refreshed: resolvedF1Drivers
+            )
+            let mergedMotoGPDrivers = mergeDriversPreservingStableIDs(
+                existing: driversBySeries[.motoGP] ?? [],
+                refreshed: resolvedMotoGPDrivers
+            )
+            let mergedF1Events = mergeEventsPreservingStableIdentity(
+                existing: eventsBySeries[.formula1] ?? [],
+                refreshed: resolvedF1Events
+            )
+            let mergedMotoGPEvents = mergeEventsPreservingStableIdentity(
+                existing: eventsBySeries[.motoGP] ?? [],
+                refreshed: resolvedMotoGPEvents
+            )
+
             // All four succeeded — apply as a single synchronous batch.
-            driversBySeries[.formula1] = resolvedF1Drivers
-            driversBySeries[.motoGP]   = resolvedMotoGPDrivers
-            eventsBySeries[.formula1]  = resolvedF1Events
-            eventsBySeries[.motoGP]    = resolvedMotoGPEvents
+            driversBySeries[.formula1] = mergedF1Drivers
+            driversBySeries[.motoGP]   = mergedMotoGPDrivers
+            eventsBySeries[.formula1]  = mergedF1Events
+            eventsBySeries[.motoGP]    = mergedMotoGPEvents
+            await refreshChampionshipLeaders()
             hasLoaded = true
         } catch {
             logger.error("Failed loading app data: \(error.localizedDescription, privacy: .public)")
@@ -153,6 +183,10 @@ final class AppViewModel: ObservableObject {
             targetEventID: eventID,
             in: results
         )
+    }
+
+    func championshipLeaders(for series: RaceSeries) -> [ChampionshipLeader] {
+        championshipLeadersBySeries[series] ?? []
     }
 
     @discardableResult
@@ -232,7 +266,14 @@ final class AppViewModel: ObservableObject {
         }
 
         let draft = PodiumDraft(p1: ids[0], p2: ids[1], p3: ids[2])
-        return try await saveResult(series: series, eventID: eventID, draft: draft, lockResult: lockResult)
+        let warning = try await saveResult(
+            series: series,
+            eventID: eventID,
+            draft: draft,
+            lockResult: lockResult
+        )
+        await refreshChampionshipLeaders()
+        return warning
     }
 
     func standings(for scope: ScoreboardScope) -> [PlayerStanding] {
@@ -461,6 +502,82 @@ final class AppViewModel: ObservableObject {
                 return prefix
             }
             return "\(prefix) \(detail)"
+        }
+    }
+
+    private func refreshChampionshipLeaders() async {
+        async let f1Fetch = championshipRepository.topThree(for: .formula1)
+        async let motoGPFetch = championshipRepository.topThree(for: .motoGP)
+
+        let f1Leaders = try? await f1Fetch
+        let motoGPLeaders = try? await motoGPFetch
+
+        var updated = championshipLeadersBySeries
+        if let f1Leaders, f1Leaders.count == 3 {
+            updated[.formula1] = f1Leaders
+        }
+        if let motoGPLeaders, motoGPLeaders.count == 3 {
+            updated[.motoGP] = motoGPLeaders
+        }
+        championshipLeadersBySeries = updated
+    }
+
+    private func mergeDriversPreservingStableIDs(
+        existing: [Driver],
+        refreshed: [Driver]
+    ) -> [Driver] {
+        guard !existing.isEmpty else { return refreshed }
+
+        let existingIDByNameKey = existing.reduce(into: [String: String]()) { output, driver in
+            output[normalizedParticipantName(driver.name)] = driver.id
+        }
+
+        return refreshed.map { driver in
+            guard let stableID = existingIDByNameKey[normalizedParticipantName(driver.name)] else {
+                return driver
+            }
+            return Driver(
+                id: stableID,
+                series: driver.series,
+                name: driver.name,
+                team: driver.team,
+                number: driver.number
+            )
+        }
+    }
+
+    private func mergeEventsPreservingStableIdentity(
+        existing: [RaceEvent],
+        refreshed: [RaceEvent]
+    ) -> [RaceEvent] {
+        guard !existing.isEmpty else { return refreshed }
+
+        let existingByRound = existing.reduce(into: [EventRoundKey: RaceEvent]()) { output, event in
+            output[EventRoundKey(series: event.series, season: event.season, round: event.round)] = event
+        }
+
+        return refreshed.map { event in
+            let key = EventRoundKey(series: event.series, season: event.season, round: event.round)
+            guard let stableEvent = existingByRound[key] else {
+                return event
+            }
+
+            return RaceEvent(
+                id: stableEvent.id,
+                series: event.series,
+                season: event.season,
+                round: event.round,
+                title: stableEvent.title,
+                circuit: stableEvent.circuit,
+                raceDate: event.raceDate,
+                trackTimeZoneID: event.trackTimeZoneID ?? stableEvent.trackTimeZoneID
+            )
+        }
+        .sorted {
+            if $0.round == $1.round {
+                return $0.raceDate < $1.raceDate
+            }
+            return $0.round < $1.round
         }
     }
 

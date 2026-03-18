@@ -239,10 +239,129 @@ final class AppViewModelTests: XCTestCase {
         XCTAssertTrue(warning?.contains("permissionFailure") ?? false)
     }
 
+    func testUpdateResultFromOfficialSourceRefreshesChampionshipLeaders() async throws {
+        let event = TestFixtures.event(id: "f1-2026-refresh-championship", series: .formula1)
+        let drivers = [
+            TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
+            TestFixtures.driver(id: "f1-lando", series: .formula1, name: "Lando Norris", team: "McLaren"),
+            TestFixtures.driver(id: "f1-charles", series: .formula1, name: "Charles Leclerc", team: "Ferrari")
+        ]
+
+        let championshipRepository = MockChampionshipRepository()
+        await championshipRepository.setLeaders([
+            .formula1: [
+                ChampionshipLeader(series: .formula1, position: 1, name: "Lando Norris", team: "McLaren", points: 100),
+                ChampionshipLeader(series: .formula1, position: 2, name: "Max Verstappen", team: "Red Bull", points: 90),
+                ChampionshipLeader(series: .formula1, position: 3, name: "Charles Leclerc", team: "Ferrari", points: 80)
+            ],
+            .motoGP: [
+                ChampionshipLeader(series: .motoGP, position: 1, name: "Rider One", team: "Team One", points: 120),
+                ChampionshipLeader(series: .motoGP, position: 2, name: "Rider Two", team: "Team Two", points: 110),
+                ChampionshipLeader(series: .motoGP, position: 3, name: "Rider Three", team: "Team Three", points: 95)
+            ]
+        ])
+
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: drivers,
+            podiumNames: drivers.map(\.name),
+            championshipRepository: championshipRepository
+        )
+
+        await viewModel.reload()
+        let initialRequests = await championshipRepository.requestedSeries.count
+
+        _ = try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+
+        let finalRequests = await championshipRepository.requestedSeries.count
+        XCTAssertEqual(finalRequests, initialRequests + 2)
+        XCTAssertEqual(viewModel.championshipLeaders(for: .formula1).count, 3)
+        XCTAssertEqual(viewModel.championshipLeaders(for: .motoGP).count, 3)
+    }
+
+    func testReloadPreservesStableDriverAndEventIdentityAcrossSourceSwitch() async throws {
+        let oldDrivers = [
+            TestFixtures.driver(id: "f1-verstappen", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
+            TestFixtures.driver(id: "f1-leclerc", series: .formula1, name: "Charles Leclerc", team: "Ferrari"),
+            TestFixtures.driver(id: "f1-norris", series: .formula1, name: "Lando Norris", team: "McLaren")
+        ]
+        let refreshedDrivers = [
+            TestFixtures.driver(id: "f1-max-verstappen", series: .formula1, name: "Max Verstappen", team: "Oracle Red Bull Racing"),
+            TestFixtures.driver(id: "f1-charles-leclerc", series: .formula1, name: "Charles Leclerc", team: "Scuderia Ferrari HP"),
+            TestFixtures.driver(id: "f1-lando-norris", series: .formula1, name: "Lando Norris", team: "McLaren Formula 1 Team")
+        ]
+
+        let oldEvent = RaceEvent(
+            id: "f1-2026-australia",
+            series: .formula1,
+            season: 2026,
+            round: 1,
+            title: "Australian Grand Prix",
+            circuit: "Albert Park",
+            raceDate: Date(timeIntervalSince1970: 1_000)
+        )
+        let refreshedEvent = RaceEvent(
+            id: "f1-2026-australian-grand-prix",
+            series: .formula1,
+            season: 2026,
+            round: 1,
+            title: "Formula 1 Louis Vuitton Australian Grand Prix 2026",
+            circuit: "Melbourne Grand Prix Circuit",
+            raceDate: Date(timeIntervalSince1970: 2_000)
+        )
+
+        let seasonRepository = LocalSeasonRepository(
+            store: FileStateStore(baseDirectoryURL: tempDir)
+        )
+        let viewModel = AppViewModel(
+            driverRepository: SequencedDriverRepository(
+                queuedDrivers: [
+                    .formula1: [oldDrivers, refreshedDrivers],
+                    .motoGP: [[], []]
+                ]
+            ),
+            calendarRepository: SequencedCalendarRepository(
+                queuedEvents: [
+                    .formula1: [[oldEvent], [refreshedEvent]],
+                    .motoGP: [[], []]
+                ]
+            ),
+            resultRepository: MockResultRepository(),
+            seasonRepository: seasonRepository
+        )
+
+        let player = Player(id: UUID(), name: "Son")
+        await viewModel.reload()
+        try await viewModel.savePlayers([player])
+        _ = try await viewModel.savePick(
+            series: .formula1,
+            eventID: oldEvent.id,
+            playerID: player.id,
+            draft: PodiumDraft(
+                p1: oldDrivers[0].id,
+                p2: oldDrivers[1].id,
+                p3: oldDrivers[2].id
+            )
+        )
+
+        await viewModel.reload()
+
+        XCTAssertEqual(
+            viewModel.drivers(for: .formula1).map(\.id),
+            oldDrivers.map(\.id)
+        )
+        XCTAssertEqual(viewModel.events(for: .formula1).first?.id, oldEvent.id)
+        XCTAssertEqual(viewModel.events(for: .formula1).first?.title, oldEvent.title)
+        XCTAssertEqual(viewModel.events(for: .formula1).first?.raceDate, refreshedEvent.raceDate)
+        XCTAssertNotNil(viewModel.pick(for: .formula1, eventID: oldEvent.id, playerID: player.id))
+        XCTAssertNotNil(viewModel.pick(for: .formula1, eventID: refreshedEvent.id, playerID: player.id))
+    }
+
     private func makeViewModel(
         event: RaceEvent,
         drivers: [Driver],
         podiumNames: [String],
+        championshipRepository: ChampionshipRepository = EmptyChampionshipRepository(),
         seasonRepository: (any SeasonRepository)? = nil
     ) -> AppViewModel {
         let driverRepository = MockDriverRepository()
@@ -262,8 +381,59 @@ final class AppViewModelTests: XCTestCase {
             driverRepository: driverRepository,
             calendarRepository: calendarRepository,
             resultRepository: resultRepository,
+            championshipRepository: championshipRepository,
             seasonRepository: resolvedSeasonRepository
         )
+    }
+}
+
+private actor SequencedDriverRepository: DriverRepository {
+    private var queuedDrivers: [RaceSeries: [[Driver]]]
+
+    init(queuedDrivers: [RaceSeries: [[Driver]]]) {
+        self.queuedDrivers = queuedDrivers
+    }
+
+    func drivers(for series: RaceSeries) async throws -> [Driver] {
+        guard var queue = queuedDrivers[series], !queue.isEmpty else {
+            return []
+        }
+
+        if queue.count == 1 {
+            return queue[0]
+        }
+
+        let next = queue.removeFirst()
+        queuedDrivers[series] = queue
+        return next
+    }
+}
+
+private actor SequencedCalendarRepository: CalendarRepository {
+    private var queuedEvents: [RaceSeries: [[RaceEvent]]]
+
+    init(queuedEvents: [RaceSeries: [[RaceEvent]]]) {
+        self.queuedEvents = queuedEvents
+    }
+
+    func events(for series: RaceSeries) async throws -> [RaceEvent] {
+        guard var queue = queuedEvents[series], !queue.isEmpty else {
+            return []
+        }
+
+        if queue.count == 1 {
+            return queue[0]
+        }
+
+        let next = queue.removeFirst()
+        queuedEvents[series] = queue
+        return next
+    }
+
+    func allEvents() async throws -> [RaceEvent] {
+        let f1 = try await events(for: .formula1)
+        let motoGP = try await events(for: .motoGP)
+        return f1 + motoGP
     }
 }
 

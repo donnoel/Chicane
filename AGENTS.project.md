@@ -34,7 +34,9 @@
   - For explicit local saves (pick/result/champion/settings/player/reset), that just-edited local key/section should win same-key conflicts during the push merge so iPhone/iPad edits by the same player are deterministic even with stale caches or clock skew.
   - CloudKit transient failures and `serverRecordChanged` conflicts should retry before surfacing an error, and surfaced sync warnings should include actionable error-code detail.
   - Explicit `refreshState()` calls must bypass the warm local cache so restored or externally modified state can be reloaded from disk before sync.
+  - In-memory reloads should preserve stable event/participant identities across bundled/online source switches so existing picks/champion selections stay attached.
   - Online refresh for calendars/drivers from official sources when reachable.
+  - Official championship leaders (F1 + MotoGP top 3) refresh from official sources on app reload and after each successful "Fetch Results".
   - Seed data from bundled JSON in `Chicane/Resources/Seed` when online fetch fails.
   - User state persisted to application-support JSON file with atomic writes.
 
