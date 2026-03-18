@@ -11,6 +11,7 @@ struct ChicaneApp: App {
         let onlineDrivers = OnlineDriverRepository()
         let onlineCalendar = OnlineCalendarRepository()
         let onlineResults = OnlineResultRepository()
+        let onlineChampionships = OnlineChampionshipRepository()
         let localSeasonRepository = LocalSeasonRepository()
 
         let viewModel = AppViewModel(
@@ -23,6 +24,7 @@ struct ChicaneApp: App {
                 fallback: bundledCalendar
             ),
             resultRepository: onlineResults,
+            championshipRepository: onlineChampionships,
             seasonRepository: CloudSyncSeasonRepository(
                 localRepository: localSeasonRepository
             )

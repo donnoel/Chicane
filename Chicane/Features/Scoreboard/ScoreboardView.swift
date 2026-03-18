@@ -22,6 +22,7 @@ struct ScoreboardView: View {
                 .accessibilityLabel("Scoreboard scope")
 
                 standingsCard
+                officialChampionshipCard
                 historyCard
             }
             .padding(24)
@@ -117,6 +118,50 @@ struct ScoreboardView: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(ChicaneTheme.insetFill(for: colorScheme))
                     )
+                }
+            }
+        }
+        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
+    }
+
+    private var officialChampionshipCard: some View {
+        let seriesToShow: [RaceSeries]
+        if let selectedSeries = selectedScope.series {
+            seriesToShow = [selectedSeries]
+        } else {
+            seriesToShow = [.formula1, .motoGP]
+        }
+
+        return VStack(alignment: .leading, spacing: 18) {
+            Label("Official Championship Top 3", systemImage: "flag.checkered")
+                .font(.headline)
+
+            if seriesToShow.allSatisfy({ viewModel.championshipLeaders(for: $0).isEmpty }) {
+                Text("Leaders unavailable. Fetch Results to refresh.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(seriesToShow) { series in
+                    let leaders = viewModel.championshipLeaders(for: series)
+                    if !leaders.isEmpty {
+                        Text(series.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(ChicaneTheme.seriesColor(series))
+
+                        ForEach(leaders) { leader in
+                            HStack {
+                                Text("\(leader.position). \(leader.name)")
+                                    .font(.body.weight(.semibold))
+                                Spacer()
+                                Text("\(leader.points) pts")
+                                    .font(.body.weight(.bold))
+                            }
+
+                            Text(leader.team)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
         }

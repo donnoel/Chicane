@@ -200,21 +200,12 @@ struct PicksView: View {
     }
 
     private func initializeSelectionForSeries() {
-        // Once results exist, default to the most recently completed scored event so
-        // picks and results stay aligned when reviewing points after a race weekend.
-        if let recentScored = events
-            .filter({ viewModel.result(for: selectedSeries, eventID: $0.id) != nil })
-            .max(by: { $0.raceDate < $1.raceDate }) {
-            selectedEventID = recentScored.id
-            return
-        }
-
         let now = Date()
         // Default to the next upcoming event (most likely needs picks entered).
+        // If the season is complete, fall back to the most recent event.
         if let next = events.filter({ $0.raceDate >= now }).min(by: { $0.raceDate < $1.raceDate }) {
             selectedEventID = next.id
         } else {
-            // Season is over — pick the most recent event.
             selectedEventID = events.max(by: { $0.raceDate < $1.raceDate })?.id
         }
     }

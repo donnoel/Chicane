@@ -13,6 +13,16 @@ protocol ResultRepository: Sendable {
     func podium(for event: RaceEvent) async throws -> [String]
 }
 
+protocol ChampionshipRepository: Sendable {
+    func topThree(for series: RaceSeries) async throws -> [ChampionshipLeader]
+}
+
+struct EmptyChampionshipRepository: ChampionshipRepository {
+    func topThree(for series: RaceSeries) async throws -> [ChampionshipLeader] {
+        []
+    }
+}
+
 protocol SeasonRepository: Sendable {
     func loadState() async throws -> PersistedState
     func refreshState() async throws -> PersistedState

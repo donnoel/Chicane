@@ -38,6 +38,24 @@ final class MockResultRepository: ResultRepository, @unchecked Sendable {
     }
 }
 
+actor MockChampionshipRepository: ChampionshipRepository {
+    var stubbedLeaders: [RaceSeries: [ChampionshipLeader]] = [:]
+    private(set) var requestedSeries: [RaceSeries] = []
+    var errorToThrow: Error?
+
+    func setLeaders(_ leaders: [RaceSeries: [ChampionshipLeader]]) {
+        stubbedLeaders = leaders
+    }
+
+    func topThree(for series: RaceSeries) async throws -> [ChampionshipLeader] {
+        requestedSeries.append(series)
+        if let errorToThrow {
+            throw errorToThrow
+        }
+        return stubbedLeaders[series] ?? []
+    }
+}
+
 // MARK: - Factories
 
 enum TestFixtures {

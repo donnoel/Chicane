@@ -50,6 +50,20 @@ enum F1OfficialHTMLParser {
         )) ?? fallbackNeverMatchRegex
     }()
 
+    private static let standingsRowRegex: NSRegularExpression = {
+        (try? NSRegularExpression(
+            pattern: #"<tr[^>]*>(.*?)</tr>"#,
+            options: [.dotMatchesLineSeparators, .caseInsensitive]
+        )) ?? fallbackNeverMatchRegex
+    }()
+
+    private static let standingsCellRegex: NSRegularExpression = {
+        (try? NSRegularExpression(
+            pattern: #"<td[^>]*>(.*?)</td>"#,
+            options: [.dotMatchesLineSeparators, .caseInsensitive]
+        )) ?? fallbackNeverMatchRegex
+    }()
+
     private static let fallbackNeverMatchRegex: NSRegularExpression = {
         // A guaranteed non-matching regex used as a safe fallback when compilation fails.
         // Using an explicit pattern avoids defining an `init()` that would conflict with Obj-C.
@@ -237,6 +251,70 @@ enum F1OfficialHTMLParser {
         return (startDate, timeZoneID)
     }
 
+    static func parseTopThreeDriverStandings(from html: String) -> [ChampionshipLeader] {
+        guard
+            let bodyStart = html.range(of: "<tbody", options: .caseInsensitive),
+            let bodyEnd = html.range(
+                of: "</tbody>",
+                options: .caseInsensitive,
+                range: bodyStart.lowerBound..<html.endIndex
+            )
+        else {
+            return []
+        }
+
+        let bodyHTML = String(html[bodyStart.lowerBound..<bodyEnd.upperBound])
+        let bodyRange = NSRange(bodyHTML.startIndex..<bodyHTML.endIndex, in: bodyHTML)
+        let rowMatches = standingsRowRegex.matches(in: bodyHTML, range: bodyRange)
+
+        var leadersByPosition: [Int: ChampionshipLeader] = [:]
+
+        for rowMatch in rowMatches {
+            guard let rowHTML = bodyHTML.substring(for: rowMatch.range(at: 1)) else {
+                continue
+            }
+
+            let rowRange = NSRange(rowHTML.startIndex..<rowHTML.endIndex, in: rowHTML)
+            let cellMatches = standingsCellRegex.matches(in: rowHTML, range: rowRange)
+            guard cellMatches.count >= 5 else {
+                continue
+            }
+
+            guard
+                let positionCell = rowHTML.substring(for: cellMatches[0].range(at: 1)),
+                let position = Int(normalizedText(fromHTML: positionCell)),
+                (1...3).contains(position)
+            else {
+                continue
+            }
+
+            let driverCell = rowHTML.substring(for: cellMatches[1].range(at: 1)) ?? ""
+            let teamCell = rowHTML.substring(for: cellMatches[3].range(at: 1)) ?? ""
+            let pointsCell = rowHTML.substring(for: cellMatches[4].range(at: 1)) ?? ""
+
+            let name = parseDriverStandingName(from: driverCell)
+            guard !name.isEmpty else {
+                continue
+            }
+
+            let team = normalizedText(fromHTML: teamCell)
+            let points = Int(
+                normalizedText(fromHTML: pointsCell)
+                    .replacingOccurrences(of: ",", with: "")
+            ) ?? 0
+
+            leadersByPosition[position] = ChampionshipLeader(
+                series: .formula1,
+                position: position,
+                name: name,
+                team: team.isEmpty ? "F1" : team,
+                points: points
+            )
+        }
+
+        return [1, 2, 3].compactMap { leadersByPosition[$0] }
+    }
+
     private static func normalizedRaceTitle(
         from rawValue: String?,
         season: Int,
@@ -274,6 +352,28 @@ enum F1OfficialHTMLParser {
             return nil
         }
         return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    private static func parseDriverStandingName(from driverCellHTML: String) -> String {
+        var tokens = normalizedText(fromHTML: driverCellHTML)
+            .split(separator: " ")
+            .map(String.init)
+
+        if let last = tokens.last, last.count == 3, last.uppercased() == last {
+            tokens.removeLast()
+        }
+        tokens.removeAll { Int($0) != nil }
+        return tokens.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func normalizedText(fromHTML html: String) -> String {
+        html
+            .replacingOccurrences(of: #"<[^>]+>"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

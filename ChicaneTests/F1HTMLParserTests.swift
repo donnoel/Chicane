@@ -237,6 +237,54 @@ final class F1HTMLParserTests: XCTestCase {
         XCTAssertTrue(names.isEmpty)
     }
 
+    // MARK: - parseTopThreeDriverStandings
+
+    func testParseTopThreeDriverStandingsParsesTopThreeRows() {
+        let html = """
+        <table>
+            <tbody class="Table-module_tbody__KEiSx">
+                <tr class="Table-module_body-row__shKd-">
+                    <td>1</td>
+                    <td><a href="/en/results/2026/drivers/GEORUS01/george-russell"><span>George</span>&nbsp;<span>Russell</span><span>RUS</span></a></td>
+                    <td>GBR</td>
+                    <td><a href="/en/results/2026/team/Mercedes">Mercedes</a></td>
+                    <td>51</td>
+                </tr>
+                <tr class="Table-module_body-row__shKd-">
+                    <td>2</td>
+                    <td><a href="/en/results/2026/drivers/ANDANT01/kimi-antonelli"><span>Kimi</span>&nbsp;<span>Antonelli</span><span>ANT</span></a></td>
+                    <td>ITA</td>
+                    <td><a href="/en/results/2026/team/Mercedes">Mercedes</a></td>
+                    <td>47</td>
+                </tr>
+                <tr class="Table-module_body-row__shKd-">
+                    <td>3</td>
+                    <td><a href="/en/results/2026/drivers/CHALEC01/charles-leclerc"><span>Charles</span>&nbsp;<span>Leclerc</span><span>LEC</span></a></td>
+                    <td>MON</td>
+                    <td><a href="/en/results/2026/team/Ferrari">Ferrari</a></td>
+                    <td>34</td>
+                </tr>
+            </tbody>
+        </table>
+        """
+
+        let leaders = F1OfficialHTMLParser.parseTopThreeDriverStandings(from: html)
+
+        XCTAssertEqual(leaders.count, 3)
+        XCTAssertEqual(leaders[0].position, 1)
+        XCTAssertEqual(leaders[0].name, "George Russell")
+        XCTAssertEqual(leaders[0].team, "Mercedes")
+        XCTAssertEqual(leaders[0].points, 51)
+        XCTAssertEqual(leaders[2].position, 3)
+        XCTAssertEqual(leaders[2].name, "Charles Leclerc")
+    }
+
+    func testParseTopThreeDriverStandingsReturnsEmptyForMissingBody() {
+        let html = "<html><body>No standings table</body></html>"
+        let leaders = F1OfficialHTMLParser.parseTopThreeDriverStandings(from: html)
+        XCTAssertTrue(leaders.isEmpty)
+    }
+
     // MARK: - Helpers
 
     private func base64Context(_ dictionary: [String: String]) throws -> String {

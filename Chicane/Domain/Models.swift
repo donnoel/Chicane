@@ -415,6 +415,18 @@ struct PlayerStanding: Identifiable, Hashable, Sendable {
     let points: Int
 }
 
+struct ChampionshipLeader: Identifiable, Hashable, Sendable {
+    let series: RaceSeries
+    let position: Int
+    let name: String
+    let team: String
+    let points: Int
+
+    var id: String {
+        "\(series.rawValue)-\(position)-\(name)"
+    }
+}
+
 // MARK: - News
 
 struct NewsArticle: Identifiable, Sendable, Hashable {
