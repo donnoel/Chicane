@@ -239,6 +239,22 @@ final class AppViewModelTests: XCTestCase {
         XCTAssertTrue(warning?.contains("permissionFailure") ?? false)
     }
 
+    func testSyncNowUsesFormattedCloudKitPermissionMessage() async {
+        let viewModel = AppViewModel(
+            driverRepository: MockDriverRepository(),
+            calendarRepository: MockCalendarRepository(),
+            resultRepository: MockResultRepository(),
+            seasonRepository: ManualSyncPermissionFailureSeasonRepository()
+        )
+
+        await viewModel.reload()
+        await viewModel.syncLeagueIfNeeded(showBannerOnSuccess: true)
+
+        let bannerText = viewModel.banner?.text ?? ""
+        XCTAssertTrue(bannerText.contains("CloudKit permission failure (`permissionFailure`)"))
+        XCTAssertFalse(bannerText.contains("WRITE operation not permitted"))
+    }
+
     func testUpdateResultFromOfficialSourceRefreshesChampionshipLeaders() async throws {
         let event = TestFixtures.event(id: "f1-2026-refresh-championship", series: .formula1)
         let drivers = [
@@ -474,5 +490,84 @@ private actor PermissionFailureLeagueSyncStore: LeagueSyncStore {
 
     func pushState(_ state: PersistedState, for code: String) async throws {
         throw CKError(.permissionFailure)
+    }
+}
+
+private actor ManualSyncPermissionFailureSeasonRepository: SeasonRepository {
+    private var state: PersistedState
+
+    init() {
+        var initial = PersistedState.default
+        initial.settings.leagueCode = "ABC123"
+        state = initial
+    }
+
+    func loadState() async throws -> PersistedState {
+        state
+    }
+
+    func refreshState() async throws -> PersistedState {
+        let nested = NSError(
+            domain: CKError.errorDomain,
+            code: CKError.Code.permissionFailure.rawValue,
+            userInfo: [NSLocalizedDescriptionKey: "WRITE operation not permitted"]
+        )
+        let partial = NSError(
+            domain: CKError.errorDomain,
+            code: CKError.Code.partialFailure.rawValue,
+            userInfo: [CKPartialErrorsByItemIDKey: [CKRecord.ID(recordName: "league-ABC123"): nested]]
+        )
+        throw partial
+    }
+
+    func savePlayers(_ players: [Player]) async throws -> PersistedState {
+        state.players = players
+        return state
+    }
+
+    func saveSettings(_ settings: AppSettings) async throws -> PersistedState {
+        state.settings = settings
+        return state
+    }
+
+    func upsertPick(_ pick: RacePick) async throws -> PersistedState {
+        state.picks.removeAll { $0.id == pick.id }
+        state.picks.append(pick)
+        return state
+    }
+
+    func upsertResult(_ result: RaceResult) async throws -> PersistedState {
+        state.results.removeAll { $0.id == result.id }
+        state.results.append(result)
+        return state
+    }
+
+    func upsertChampionPick(_ pick: SeasonChampionPick) async throws -> PersistedState {
+        state.championPicks.removeAll { $0.id == pick.id }
+        state.championPicks.append(pick)
+        return state
+    }
+
+    func upsertChampionResult(_ result: SeasonChampionResult) async throws -> PersistedState {
+        state.championResults.removeAll { $0.id == result.id }
+        state.championResults.append(result)
+        return state
+    }
+
+    func resetSeason() async throws -> PersistedState {
+        state.picks = []
+        state.results = []
+        state.championPicks = []
+        state.championResults = []
+        return state
+    }
+
+    func createLeague() async throws -> PersistedState {
+        state
+    }
+
+    func joinLeague(code: String) async throws -> PersistedState {
+        state.settings.leagueCode = code
+        return state
     }
 }

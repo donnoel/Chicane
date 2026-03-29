@@ -41,6 +41,7 @@ enum RepositoryError: LocalizedError {
     case missingBundleResource(name: String)
     case invalidPodium
     case cloudSyncUnavailable
+    case cloudSyncPermissionDenied
     case leagueNotConfigured
     case leagueNotFound(code: String)
 
@@ -52,6 +53,8 @@ enum RepositoryError: LocalizedError {
             return "Pick 3 unique podium selections."
         case .cloudSyncUnavailable:
             return "iCloud league sync is not available right now."
+        case .cloudSyncPermissionDenied:
+            return "CloudKit shared league write permission is not enabled for this account/container."
         case .leagueNotConfigured:
             return "Create or join a shared league first."
         case let .leagueNotFound(code):

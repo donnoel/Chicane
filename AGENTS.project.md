@@ -28,6 +28,7 @@
 - Data flow/persistence:
   - Local state remains the offline source on disk and is saved atomically first.
   - If a shared league code is configured, the full season state is mirrored through CloudKit and refreshed on launch / foreground, plus periodic automatic pulls while the app is active. If that mirror step fails after a local save, the local save still stands and the UI must show a visible sync warning.
+  - CloudKit operational guardrail: for multi-account shared leagues, `LeagueState` public-database permissions must allow authenticated create/read/write in both Development and Production environments for container `iCloud.dn.chicane`.
   - Joining a shared league should require explicit confirmation before replacing non-empty on-device season state.
   - Leaving a shared league should clear only the local league link so the same device can create or join a different league without wiping local season data.
   - Shared league merges keep per-pick/per-result timestamps authoritative, merge players by `playerID` across devices (using section/overall timestamps to break same-player conflicts), and resolve settings from the newest section timestamp while union-merging per-player bet text keys.

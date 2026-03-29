@@ -139,7 +139,7 @@ final class AppViewModel: ObservableObject {
         } catch {
             logger.error("Failed syncing league: \(error.localizedDescription, privacy: .public)")
             if showBannerOnSuccess {
-                showError(error.localizedDescription)
+                showError(CloudSyncErrorFormatter.describe(error))
             }
         }
     }

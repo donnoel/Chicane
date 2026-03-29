@@ -1,3 +1,4 @@
+import CloudKit
 import XCTest
 @testable import Chicane
 
@@ -413,6 +414,38 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(stored.picks.first?.playerID, player.id)
     }
 
+    func testUpsertPickPermissionDeniedReturnsActionableLocalSaveWarning() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = PermissionDeniedPushLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let player = Player(id: UUID(), name: "Mom")
+        var linkedState = PersistedState.default
+        linkedState.settings.leagueCode = "ABC123"
+        linkedState.players = [player]
+        _ = try await localRepo.replaceState(linkedState)
+
+        let pick = TestFixtures.pick(
+            series: .formula1,
+            eventID: "f1-r1",
+            playerID: player.id,
+            p1: "a", p2: "b", p3: "c"
+        )
+
+        do {
+            _ = try await repo.upsertPick(pick)
+            XCTFail("Expected a local-save warning")
+        } catch let warning as DeferredCloudSyncWarning {
+            XCTAssertEqual(warning.state.picks.count, 1)
+            XCTAssertTrue(CloudSyncErrorFormatter.containsPermissionFailure(warning.underlyingError))
+            let detail = CloudSyncErrorFormatter.describe(warning.underlyingError)
+            XCTAssertTrue(detail.contains("Shared league writes are blocked"))
+            XCTAssertTrue(detail.contains("permissionFailure"))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testUpsertPickRetriesDeferredCloudPushAndSucceeds() async throws {
         let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
         let cloudStore = FlakyFirstPushMemoryLeagueSyncStore()
@@ -596,6 +629,30 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
     }
 }
 
+final class CloudSyncErrorFormatterTests: XCTestCase {
+    func testDescribePermissionFailureCloudKitError() {
+        let detail = CloudSyncErrorFormatter.describe(CKError(.permissionFailure))
+        XCTAssertTrue(detail.contains("CloudKit permission failure (`permissionFailure`)"))
+    }
+
+    func testDescribeNestedPartialFailureFindsPermissionFailure() {
+        let nested = NSError(
+            domain: CKError.errorDomain,
+            code: CKError.Code.permissionFailure.rawValue,
+            userInfo: [NSLocalizedDescriptionKey: "WRITE operation not permitted"]
+        )
+        let partial = NSError(
+            domain: CKError.errorDomain,
+            code: CKError.Code.partialFailure.rawValue,
+            userInfo: [CKPartialErrorsByItemIDKey: [CKRecord.ID(recordName: "league-ABC123"): nested]]
+        )
+
+        let detail = CloudSyncErrorFormatter.describe(partial)
+        XCTAssertTrue(detail.contains("CloudKit permission failure (`permissionFailure`)"))
+        XCTAssertTrue(CloudSyncErrorFormatter.containsPermissionFailure(partial))
+    }
+}
+
 private actor MemoryLeagueSyncStore: LeagueSyncStore {
     private var states: [String: PersistedState] = [:]
 
@@ -655,6 +712,32 @@ private actor FailingMemoryLeagueSyncStore: LeagueSyncStore {
 
     func pushState(_ state: PersistedState, for code: String) async throws {
         throw MockError.simulated
+    }
+}
+
+private actor PermissionDeniedPushLeagueSyncStore: LeagueSyncStore {
+    func createLeague(from state: PersistedState) async throws -> PersistedState {
+        var sharedState = state
+        sharedState.settings.leagueCode = "ABC123"
+        return sharedState
+    }
+
+    func joinLeague(code: String) async throws -> PersistedState {
+        var state = PersistedState.default
+        state.settings.leagueCode = normalize(code)
+        return state
+    }
+
+    func fetchState(for code: String) async throws -> PersistedState? {
+        nil
+    }
+
+    func pushState(_ state: PersistedState, for code: String) async throws {
+        throw RepositoryError.cloudSyncPermissionDenied
+    }
+
+    private func normalize(_ code: String) -> String {
+        code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
 }
 

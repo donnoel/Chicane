@@ -37,7 +37,11 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
 
             let record = CKRecord(recordType: Constants.recordType, recordID: recordID(for: code))
             try apply(sharedState, to: record)
-            _ = try await database.save(record)
+            do {
+                _ = try await database.save(record)
+            } catch {
+                throw translatedWriteError(error)
+            }
             return sharedState
         }
 
@@ -123,7 +127,7 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
                     record = latestRecord
                 }
             } catch {
-                throw error
+                throw translatedWriteError(error)
             }
         }
 
@@ -211,5 +215,12 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
             return fallback
         }
         return UInt64(nanoseconds.rounded(.up))
+    }
+
+    private func translatedWriteError(_ error: Error) -> Error {
+        if CloudSyncErrorFormatter.containsPermissionFailure(error) {
+            return RepositoryError.cloudSyncPermissionDenied
+        }
+        return error
     }
 }

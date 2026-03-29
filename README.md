@@ -186,6 +186,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 - All picks, results, season champion choices, players, and settings are stored on-device first.
   - Location: `~/Library/Application Support/Chicane/season_state_v1.json`
 - When a shared league code is enabled, the same season state is mirrored to iCloud CloudKit so other phones can pull it automatically.
+- CloudKit setup requirement for cross-account leagues: in the `iCloud.dn.chicane` container, `LeagueState` in the public database must allow authenticated users to create/read/write in both Development and Production schemas.
 - Shared league state is auto-polled while the app is active, so manual `Sync Now` is optional.
 - Shared sync merges picks/results by item timestamp, unions players by `playerID` across devices (breaking same-player conflicts by newest section/overall timestamp), and resolves settings from the newest section change while union-merging per-player bet text keys.
 - During explicit local saves, the just-edited local key/section is preferred on same-key conflicts so iPhone/iPad updates for one player converge predictably.
