@@ -50,6 +50,13 @@ enum F1OfficialHTMLParser {
         )) ?? fallbackNeverMatchRegex
     }()
 
+    private static let raceJSONLDStartDateRegex: NSRegularExpression = {
+        (try? NSRegularExpression(
+            pattern: #"\"name\":\"Race - [^\"]+\".*?\"startDate\":\"([^\"]+)\""#,
+            options: [.dotMatchesLineSeparators]
+        )) ?? fallbackNeverMatchRegex
+    }()
+
     private static let standingsRowRegex: NSRegularExpression = {
         (try? NSRegularExpression(
             pattern: #"<tr[^>]*>(.*?)</tr>"#,
@@ -72,6 +79,18 @@ enum F1OfficialHTMLParser {
     }()
 
     private static let raceSessionDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private static let raceJSONLDDateFormatterWithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let raceJSONLDDateFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return formatter
@@ -236,7 +255,7 @@ enum F1OfficialHTMLParser {
         return components.date
     }
 
-    static func parseRaceSessionDetails(fromRacePageHTML html: String) -> (startDate: Date, timeZoneID: String)? {
+    static func parseRaceSessionDetails(fromRacePageHTML html: String) -> (startDate: Date, timeZoneID: String?)? {
         let range = NSRange(html.startIndex..<html.endIndex, in: html)
         guard
             let match = raceSessionRegex.firstMatch(in: html, range: range),
@@ -245,10 +264,23 @@ enum F1OfficialHTMLParser {
             let timeZoneID = html.substring(for: match.range(at: 3)),
             let startDate = raceSessionDateFormatter.date(from: "\(startTime)\(gmtOffset)")
         else {
-            return nil
+            guard let startDate = parseRaceStartDateFromJSONLD(in: html) else {
+                return nil
+            }
+            // JSON-LD fallback provides an authoritative UTC start date but no
+            // IANA track time-zone identifier.
+            return (startDate, nil)
         }
 
         return (startDate, timeZoneID)
+    }
+
+    private static func parseRaceStartDateFromJSONLD(in html: String) -> Date? {
+        guard let value = raceJSONLDStartDateRegex.firstCapture(in: html) else {
+            return nil
+        }
+        return raceJSONLDDateFormatterWithFractionalSeconds.date(from: value)
+            ?? raceJSONLDDateFormatter.date(from: value)
     }
 
     static func parseTopThreeDriverStandings(from html: String) -> [ChampionshipLeader] {

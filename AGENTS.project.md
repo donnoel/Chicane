@@ -37,6 +37,7 @@
   - Explicit `refreshState()` calls must bypass the warm local cache so restored or externally modified state can be reloaded from disk before sync.
   - In-memory reloads should preserve stable event/participant identities across bundled/online source switches so existing picks/champion selections stay attached.
   - Online refresh for calendars/drivers from official sources when reachable.
+  - Next-race countdown should prefer official race-session start times (F1 race page session start; MotoGP `RAC` session date) rather than day-level placeholders or weekend-end timestamps.
   - Official championship leaders (F1 + MotoGP top 3) refresh from official sources on app reload and after each successful "Fetch Results".
   - Seed data from bundled JSON in `Chicane/Resources/Seed` when online fetch fails.
   - User state persisted to application-support JSON file with atomic writes.

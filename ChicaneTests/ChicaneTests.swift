@@ -364,6 +364,28 @@ final class ChicaneTests: XCTestCase {
         XCTAssertEqual(selected?.id, "race-event")
     }
 
+    func testMotoGPRaceSessionDatePrefersRACSessionDate() {
+        let repository = OnlineCalendarRepository()
+        let expectedRaceDate = Date(timeIntervalSince1970: 1_774_800_000)
+        let sessions = [
+            MotoGPRaceSessionPayload(type: "Q", date: Date(timeIntervalSince1970: 1_774_700_000), status: "FINISHED"),
+            MotoGPRaceSessionPayload(type: "RAC", date: expectedRaceDate, status: "NOT-STARTED"),
+            MotoGPRaceSessionPayload(type: "WUP", date: Date(timeIntervalSince1970: 1_774_750_000), status: "FINISHED")
+        ]
+
+        XCTAssertEqual(repository.preferredMotoGPRaceSessionDate(from: sessions), expectedRaceDate)
+    }
+
+    func testMotoGPRaceSessionDateIgnoresCancelledRaceSession() {
+        let repository = OnlineCalendarRepository()
+        let sessions = [
+            MotoGPRaceSessionPayload(type: "RAC", date: Date(timeIntervalSince1970: 1_774_800_000), status: "CANCELLED"),
+            MotoGPRaceSessionPayload(type: "Q", date: Date(timeIntervalSince1970: 1_774_700_000), status: "FINISHED")
+        ]
+
+        XCTAssertNil(repository.preferredMotoGPRaceSessionDate(from: sessions))
+    }
+
     private func base64Context(_ dictionary: [String: String]) throws -> String {
         let data = try JSONSerialization.data(withJSONObject: dictionary)
         return data.base64EncodedString()

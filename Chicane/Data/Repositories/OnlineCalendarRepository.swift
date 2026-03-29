@@ -84,7 +84,7 @@ struct OnlineCalendarRepository: CalendarRepository {
             title: event.title,
             circuit: event.circuit,
             raceDate: details.startDate,
-            trackTimeZoneID: details.timeZoneID
+            trackTimeZoneID: details.timeZoneID ?? event.trackTimeZoneID
         )
         return updatedEvents
     }
@@ -103,7 +103,7 @@ struct OnlineCalendarRepository: CalendarRepository {
         let seasonYear = try await resolvedMotoGPSeasonYear()
         let currentSeasonEvents = try await fetchMotoGPEvents(for: seasonYear)
         if !currentSeasonEvents.isEmpty {
-            return currentSeasonEvents
+            return await enrichUpcomingMotoGPEvent(in: currentSeasonEvents, seasonYear: seasonYear)
         }
 
         let fallbackYear = calendar.component(.year, from: Date())
@@ -115,7 +115,7 @@ struct OnlineCalendarRepository: CalendarRepository {
         guard !fallbackEvents.isEmpty else {
             throw RemoteDataError.emptyPayload(source: "MotoGP calendar")
         }
-        return fallbackEvents
+        return await enrichUpcomingMotoGPEvent(in: fallbackEvents, seasonYear: fallbackYear)
     }
 
     private func resolvedMotoGPSeasonYear() async throws -> Int {
@@ -178,11 +178,183 @@ struct OnlineCalendarRepository: CalendarRepository {
 
         return mapped
     }
+
+    private func enrichUpcomingMotoGPEvent(in events: [RaceEvent], seasonYear: Int) async -> [RaceEvent] {
+        let now = Date()
+        guard let eventIndex = events.firstIndex(where: { calendar.isDateInToday($0.raceDate) || $0.raceDate >= now }) else {
+            return events
+        }
+
+        let event = events[eventIndex]
+        guard
+            let toadEventUUID = motoGPEventUUID(from: event.id),
+            let seasonUUID = try? await resolvedMotoGPResultsSeasonUUID(for: seasonYear),
+            let resultsEvent = try? await resolvedMotoGPResultsEvent(
+                seasonUUID: seasonUUID,
+                toadEventUUID: toadEventUUID,
+                fallbackRound: event.round
+            ),
+            let categoryUUID = try? await resolvedMotoGPCategoryUUID(eventUUID: resultsEvent.id),
+            let sessions = try? await fetchMotoGPResultSessions(
+                eventUUID: resultsEvent.id,
+                categoryUUID: categoryUUID
+            ),
+            let raceStartDate = preferredMotoGPRaceSessionDate(from: sessions)
+        else {
+            return events
+        }
+
+        var updated = events
+        updated[eventIndex] = RaceEvent(
+            id: event.id,
+            series: event.series,
+            season: event.season,
+            round: event.round,
+            title: event.title,
+            circuit: event.circuit,
+            raceDate: raceStartDate,
+            trackTimeZoneID: event.trackTimeZoneID
+        )
+        return updated
+    }
+
+    func preferredMotoGPRaceSessionDate(from sessions: [MotoGPRaceSessionPayload]) -> Date? {
+        let raceSessions = sessions.filter { $0.type.uppercased() == "RAC" }
+        let activeRaceSessions = raceSessions.filter { session in
+            let status = session.status?.uppercased() ?? ""
+            return status != "CANCELLED"
+        }
+        return activeRaceSessions.compactMap(\.date).min()
+    }
+
+    private func resolvedMotoGPResultsSeasonUUID(for seasonYear: Int) async throws -> String? {
+        guard let url = URL(string: "https://api.pulselive.motogp.com/motogp/v1/results/seasons") else {
+            return nil
+        }
+
+        let seasons = try await client.fetchJSON([MotoGPResultsSeasonPayload].self, from: url)
+        if let matched = seasons.first(where: { $0.year == seasonYear }) {
+            return matched.id
+        }
+        if let current = seasons.first(where: { $0.current }) {
+            return current.id
+        }
+        return seasons.max(by: { $0.year < $1.year })?.id
+    }
+
+    private func resolvedMotoGPResultsEvent(
+        seasonUUID: String,
+        toadEventUUID: String,
+        fallbackRound: Int
+    ) async throws -> CalendarMotoGPResultsEventPayload? {
+        guard var components = URLComponents(string: "https://api.pulselive.motogp.com/motogp/v1/results/events") else {
+            return nil
+        }
+        components.queryItems = [URLQueryItem(name: "seasonUuid", value: seasonUUID)]
+        guard let url = components.url else {
+            return nil
+        }
+
+        let events = try await client.fetchJSON([CalendarMotoGPResultsEventPayload].self, from: url)
+        let toadMatches = events.filter { $0.toadAPIUUID == toadEventUUID }
+        if let bestToadMatch = preferredMotoGPResultsEvent(from: toadMatches) {
+            return bestToadMatch
+        }
+
+        let roundMatches = events.filter { $0.sequence == fallbackRound }
+        return preferredMotoGPResultsEvent(from: roundMatches)
+    }
+
+    private func preferredMotoGPResultsEvent(
+        from candidates: [CalendarMotoGPResultsEventPayload]
+    ) -> CalendarMotoGPResultsEventPayload? {
+        candidates.first(where: { !$0.test }) ?? candidates.first
+    }
+
+    private func resolvedMotoGPCategoryUUID(eventUUID: String) async throws -> String? {
+        guard var components = URLComponents(string: "https://api.pulselive.motogp.com/motogp/v1/results/categories") else {
+            return nil
+        }
+        components.queryItems = [URLQueryItem(name: "eventUuid", value: eventUUID)]
+        guard let url = components.url else {
+            return nil
+        }
+
+        let categories = try await client.fetchJSON([MotoGPResultCategoryPayload].self, from: url)
+        return categories.first(where: { $0.legacyID == 3 })?.id
+            ?? categories.first(where: { $0.name.localizedCaseInsensitiveContains("MotoGP") })?.id
+    }
+
+    private func fetchMotoGPResultSessions(
+        eventUUID: String,
+        categoryUUID: String
+    ) async throws -> [MotoGPRaceSessionPayload] {
+        guard var components = URLComponents(string: "https://api.pulselive.motogp.com/motogp/v1/results/sessions") else {
+            return []
+        }
+        components.queryItems = [
+            URLQueryItem(name: "eventUuid", value: eventUUID),
+            URLQueryItem(name: "categoryUuid", value: categoryUUID)
+        ]
+        guard let url = components.url else {
+            return []
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try await client.fetchJSON([MotoGPRaceSessionPayload].self, from: url, decoder: decoder)
+    }
+
+    private func motoGPEventUUID(from eventID: String) -> String? {
+        guard eventID.hasPrefix("mgp-") else {
+            return nil
+        }
+        let raw = String(eventID.dropFirst(4))
+        return raw.isEmpty ? nil : raw
+    }
 }
 
 private struct MotoGPSeasonPayload: Decodable {
     let year: Int
     let current: Bool
+}
+
+private struct MotoGPResultsSeasonPayload: Decodable {
+    let id: String
+    let year: Int
+    let current: Bool
+}
+
+private struct CalendarMotoGPResultsEventPayload: Decodable {
+    let id: String
+    let toadAPIUUID: String?
+    let test: Bool
+    let sequence: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case toadAPIUUID = "toad_api_uuid"
+        case test
+        case sequence
+    }
+}
+
+private struct MotoGPResultCategoryPayload: Decodable {
+    let id: String
+    let name: String
+    let legacyID: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case legacyID = "legacy_id"
+    }
+}
+
+struct MotoGPRaceSessionPayload: Decodable {
+    let type: String
+    let date: Date?
+    let status: String?
 }
 
 private struct MotoGPEventPayload: Decodable {

@@ -157,6 +157,20 @@ final class F1HTMLParserTests: XCTestCase {
         XCTAssertNil(F1OfficialHTMLParser.parseRaceSessionDetails(fromRacePageHTML: html))
     }
 
+    func testParseRaceSessionDetailsFallsBackToJSONLDRaceStartDate() {
+        let html = #"""
+        <script type="application/ld+json">{"@context":"http://schema.org","@type":"SportsEvent","subEvent":[{"@type":"SportsEvent","name":"Practice 1 - Miami Grand Prix","startDate":"2026-05-01T16:30:00.000Z"},{"@type":"SportsEvent","name":"Race - Miami Grand Prix","startDate":"2026-05-03T20:00:00.000Z"}]}</script>
+        """#
+
+        let details = F1OfficialHTMLParser.parseRaceSessionDetails(fromRacePageHTML: html)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let expectedDate = formatter.date(from: "2026-05-03T20:00:00.000Z")
+
+        XCTAssertEqual(details?.startDate, expectedDate)
+        XCTAssertNil(details?.timeZoneID)
+    }
+
     // MARK: - parseF1PodiumNames — malformed HTML
 
     func testParseF1PodiumNamesReturnsEmptyForNoTable() {
