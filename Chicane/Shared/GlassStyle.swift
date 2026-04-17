@@ -107,9 +107,9 @@ enum ChicaneTheme {
     static func groupedFill(for colorScheme: ColorScheme) -> Color {
         switch colorScheme {
         case .dark:
-            return Color.white.opacity(0.08)
+            return Color.white.opacity(0.10)
         default:
-            return Color.white.opacity(0.76)
+            return Color.white.opacity(0.88)
         }
     }
 
@@ -118,7 +118,52 @@ enum ChicaneTheme {
         case .dark:
             return Color.white.opacity(0.10)
         default:
-            return Color.black.opacity(0.07)
+            return Color.black.opacity(0.06)
+        }
+    }
+
+    static func sectionFill(for colorScheme: ColorScheme) -> AnyShapeStyle {
+        switch colorScheme {
+        case .dark:
+            return AnyShapeStyle(.regularMaterial)
+        default:
+            return AnyShapeStyle(Color.white.opacity(0.78))
+        }
+    }
+
+    static func sectionStroke(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.white.opacity(0.10)
+        default:
+            return Color.white.opacity(0.72)
+        }
+    }
+
+    static func fieldFill(for colorScheme: ColorScheme) -> AnyShapeStyle {
+        switch colorScheme {
+        case .dark:
+            return AnyShapeStyle(Color.white.opacity(0.12))
+        default:
+            return AnyShapeStyle(Color.white.opacity(0.94))
+        }
+    }
+
+    static func fieldStroke(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.white.opacity(0.08)
+        default:
+            return Color.black.opacity(0.05)
+        }
+    }
+
+    static func fieldShadow(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.black.opacity(0.10)
+        default:
+            return Color.black.opacity(0.06)
         }
     }
 
@@ -214,6 +259,38 @@ struct LiquidGlassBackground: View {
     }
 }
 
+struct NeutralAppBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            Color(uiColor: .systemGroupedBackground)
+            Circle()
+                .fill(ChicaneTheme.motoBlue.opacity(colorScheme == .dark ? 0.10 : 0.08))
+                .frame(width: 360, height: 360)
+                .blur(radius: 90)
+                .offset(x: 180, y: -250)
+
+            Circle()
+                .fill(ChicaneTheme.f1Red.opacity(colorScheme == .dark ? 0.08 : 0.05))
+                .frame(width: 300, height: 300)
+                .blur(radius: 90)
+                .offset(x: -180, y: -320)
+
+            LinearGradient(
+                colors: [
+                    Color(uiColor: colorScheme == .dark ? .secondarySystemBackground : .systemBackground).opacity(0.55),
+                    Color.clear,
+                    Color(uiColor: .systemGroupedBackground).opacity(0.35)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .ignoresSafeArea()
+    }
+}
+
 struct GlassCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -298,6 +375,40 @@ struct GroupedCardModifier: ViewModifier {
     }
 }
 
+struct SectionCardModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    var accentColor: Color? = nil
+
+    func body(content: Content) -> some View {
+        content
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(ChicaneTheme.sectionFill(for: colorScheme))
+            )
+            .overlay(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(ChicaneTheme.sectionStroke(for: colorScheme), lineWidth: 0.8)
+            }
+            .overlay(alignment: .top) {
+                if let accentColor {
+                    Capsule(style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [accentColor.opacity(0.95), accentColor.opacity(0.25)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: 84, height: 4)
+                        .padding(.top, 10)
+                }
+            }
+            .shadow(color: ChicaneTheme.cardShadow(for: colorScheme), radius: 10, x: 0, y: 6)
+    }
+}
+
 extension View {
     /// Plain glass card — neutral border, unchanged call sites work without modification.
     func glassCard() -> some View {
@@ -317,17 +428,30 @@ extension View {
         modifier(GroupedCardModifier(accentColor: accent))
     }
 
+    func sectionCard() -> some View {
+        modifier(SectionCardModifier())
+    }
+
+    func sectionCard(accent: Color) -> some View {
+        modifier(SectionCardModifier(accentColor: accent))
+    }
+
     /// Applies the shared light-blue gradient behind any view, hiding the
     /// system navigation-bar tint so the gradient shows through edge-to-edge.
     func chicaneBackground() -> some View {
         self
-            .background(LiquidGlassBackground().ignoresSafeArea())
-            .toolbarBackground(.hidden, for: .navigationBar)
+            .background(NeutralAppBackground())
     }
 
     /// Parallax variant — orbs drift at different rates relative to `scrollOffset`.
     /// Pass the value captured by `.trackingScrollOffset` on the scroll content.
     func chicaneBackground(scrollOffset: CGFloat) -> some View {
+        self
+            .background(NeutralAppBackground())
+    }
+
+    /// Premium branded backdrop for hero-forward screens.
+    func chicanePremiumBackground(scrollOffset: CGFloat = 0) -> some View {
         self
             .background(LiquidGlassBackground(scrollOffset: scrollOffset).ignoresSafeArea())
             .toolbarBackground(.hidden, for: .navigationBar)

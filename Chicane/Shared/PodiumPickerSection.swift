@@ -27,9 +27,10 @@ struct PodiumPickerSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.headline.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
                 .accessibilityAddTraits(.isHeader)
 
             positionPicker(title: "P1", position: 1, selection: $draft.p1)
@@ -51,7 +52,7 @@ struct PodiumPickerSection: View {
         position: Int,
         selection: Binding<String?>
     ) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             // Medal — glows when a driver is assigned to this slot
             PodiumMedalView(
                 position: position,
@@ -74,12 +75,13 @@ struct PodiumPickerSection: View {
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(ChicaneTheme.groupedFill(for: colorScheme))
+                    .fill(ChicaneTheme.fieldFill(for: colorScheme))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
+                            .strokeBorder(ChicaneTheme.fieldStroke(for: colorScheme), lineWidth: 0.8)
                     )
             )
+            .shadow(color: ChicaneTheme.fieldShadow(for: colorScheme), radius: 4, x: 0, y: 2)
             .accessibilityLabel("\(title) selection")
             .accessibilityHint("Select a \(participantSingular)")
         }

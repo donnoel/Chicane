@@ -12,7 +12,7 @@ struct PicksView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 EventPickerHeader(
                     title: "Podium Picks",
                     selectedSeries: $selectedSeries,
@@ -35,7 +35,8 @@ struct PicksView: View {
                     .groupedCard()
                 }
             }
-            .padding(20)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 18)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Picks")
@@ -104,60 +105,95 @@ struct PicksView: View {
     }
 
     private var playerCards: some View {
-        ForEach(viewModel.players) { player in
-            VStack(alignment: .leading, spacing: 16) {
-                ChampionPickerSection(
-                    title: "\(player.name)'s World Champion",
-                    drivers: drivers,
-                    participantSingular: participantSingular,
-                    selection: championBinding(for: player.id),
-                    isDisabled: championPicksAreLocked
-                )
+        VStack(alignment: .leading, spacing: 18) {
+            ForEach(viewModel.players) { player in
+                playerCard(for: player)
+            }
+        }
+    }
 
-                Button("Save \(player.name)'s Champion Pick") {
-                    Task {
-                        await saveChampionPick(for: player)
-                    }
-                }
-                .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
-                .disabled(championDraftsByPlayer[player.id] == nil || championPicksAreLocked)
-                .accessibilityLabel("Save world champion pick for \(player.name)")
+    private func playerCard(for player: Player) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(spacing: 12) {
+                Text(initials(from: player.name))
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(
+                        Circle()
+                            .fill(ChicaneTheme.seriesColor(selectedSeries))
+                    )
 
-                if championPicksAreLocked {
-                    Label("Locked. The official season champion has been entered for this series.", systemImage: "lock.fill")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                } else if viewModel.championPick(for: selectedSeries, playerID: player.id) != nil {
-                    Label("Saved. Update it anytime before the season champion is entered.", systemImage: "flag.checkered.circle.fill")
-                        .font(.footnote)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(player.name)
+                        .font(.title3.weight(.semibold))
+                    Text("Champion and podium picks")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
-                PodiumPickerSection(
-                    title: "\(player.name)'s Podium",
-                    drivers: drivers,
-                    participantSingular: participantSingular,
-                    participantPlural: participantPlural,
-                    draft: binding(for: player.id)
-                )
+                Spacer()
+            }
 
-                Button("Save \(player.name)'s Picks") {
-                    Task {
-                        await savePick(for: player)
-                    }
-                }
-                .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
-                .disabled(!(draftsByPlayer[player.id] ?? .empty).isComplete)
-                .accessibilityLabel("Save picks for \(player.name)")
+            ChampionPickerSection(
+                title: "World Champion",
+                drivers: drivers,
+                participantSingular: participantSingular,
+                selection: championBinding(for: player.id),
+                isDisabled: championPicksAreLocked
+            )
 
-                if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
-                    Label("Saved. Edit and save again anytime before results are locked.", systemImage: "checkmark.circle.fill")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+            Button("Save \(player.name)'s Champion Pick") {
+                Task {
+                    await saveChampionPick(for: player)
                 }
             }
-            .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
+            .disabled(championDraftsByPlayer[player.id] == nil || championPicksAreLocked)
+            .accessibilityLabel("Save world champion pick for \(player.name)")
+
+            if championPicksAreLocked {
+                Label("Locked. The official season champion has been entered for this series.", systemImage: "lock.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else if viewModel.championPick(for: selectedSeries, playerID: player.id) != nil {
+                Label("Saved. Update it anytime before the season champion is entered.", systemImage: "flag.checkered.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider().opacity(0.35)
+
+            PodiumPickerSection(
+                title: "Podium Picks",
+                drivers: drivers,
+                participantSingular: participantSingular,
+                participantPlural: participantPlural,
+                draft: binding(for: player.id)
+            )
+
+            Button("Save \(player.name)'s Picks") {
+                Task {
+                    await savePick(for: player)
+                }
+            }
+            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
+            .disabled(!(draftsByPlayer[player.id] ?? .empty).isComplete)
+            .accessibilityLabel("Save picks for \(player.name)")
+
+            if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
+                Label("Saved. Edit and save again anytime before results are locked.", systemImage: "checkmark.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
+        .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+    }
+
+    private func initials(from name: String) -> String {
+        let words = name.split(separator: " ")
+        let letters = words.prefix(2).compactMap { $0.first }.map(String.init).joined()
+        return letters.isEmpty ? "?" : letters.uppercased()
     }
 
     private func binding(for playerID: UUID) -> Binding<PodiumDraft> {

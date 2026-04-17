@@ -13,7 +13,7 @@ struct ResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 EventPickerHeader(
                     title: "Race Results Podium",
                     selectedSeries: $selectedSeries,
@@ -22,12 +22,9 @@ struct ResultsView: View {
                     eventPickerLabel: "Event result"
                 )
 
-                seasonChampionCard
-
                 if let selectedEvent {
                     EventSummaryCard(event: selectedEvent)
-                    resultEditorCard
-                    pointsCard
+                    resultsContent
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("No event selected", systemImage: "calendar")
@@ -39,7 +36,8 @@ struct ResultsView: View {
                     .groupedCard()
                 }
             }
-            .padding(20)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 18)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Results")
@@ -94,6 +92,8 @@ struct ResultsView: View {
 
     private var resultEditorCard: some View {
         VStack(alignment: .leading, spacing: 16) {
+            Text("Official Event Result")
+                .font(.headline.weight(.semibold))
             if let currentResult {
                 resultStatusLabel
 
@@ -128,11 +128,13 @@ struct ResultsView: View {
                 .accessibilityHint("Fetches the official top three and locks this result")
             }
         }
-        .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+        .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private var seasonChampionCard: some View {
         VStack(alignment: .leading, spacing: 16) {
+            Text("Season Champion")
+                .font(.headline.weight(.semibold))
             if let currentChampionResult {
                 Label(
                     currentChampionResult.isLocked ? "Season champion is locked" : "Season champion saved",
@@ -166,7 +168,15 @@ struct ResultsView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
-        .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+        .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+    }
+
+    private var resultsContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            seasonChampionCard
+            resultEditorCard
+            pointsCard
+        }
     }
 
     private var resultStatusLabel: some View {
@@ -205,8 +215,13 @@ struct ResultsView: View {
                 .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(ChicaneTheme.groupedFill(for: colorScheme))
+                        .fill(ChicaneTheme.fieldFill(for: colorScheme))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(ChicaneTheme.fieldStroke(for: colorScheme), lineWidth: 0.8)
+                        )
                 )
+                .shadow(color: ChicaneTheme.fieldShadow(for: colorScheme), radius: 4, x: 0, y: 2)
                 .accessibilityLabel("\(title) \(label)")
         }
     }
@@ -251,9 +266,9 @@ struct ResultsView: View {
             }
         } ?? false
 
-        return VStack(alignment: .leading, spacing: 14) {
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Event Points")
-                .font(.headline)
+                .font(.headline.weight(.semibold))
 
             if points.isEmpty {
                 Text("Fetch official results to compute points.")
@@ -272,10 +287,13 @@ struct ResultsView: View {
                         AnimatedScoreText(value: points[player.id, default: 0])
                             .font(.body.weight(.bold))
                     }
+                    if player.id != viewModel.players.last?.id {
+                        Divider().opacity(0.4)
+                    }
                 }
             }
         }
-        .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+        .sectionCard()
     }
 
     private func initializeIfNeeded() {

@@ -37,8 +37,7 @@ struct NewsView: View {
 
     private var entryGateOverlay: some View {
         ZStack {
-            Rectangle()
-                .fill(.regularMaterial)
+            Color.black.opacity(0.18)
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 18) {
@@ -58,7 +57,7 @@ struct NewsView: View {
                 .buttonStyle(LargeActionButtonStyle())
                 .accessibilityHint("Opens the news feed")
             }
-            .groupedCard(accent: ChicaneTheme.glowAmber)
+            .glassCard(accent: ChicaneTheme.glowAmber)
             .padding(24)
         }
         .transition(.opacity)
@@ -68,7 +67,7 @@ struct NewsView: View {
 
     private var newsFeed: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 20) {
                 Picker("Series", selection: $selectedSeries) {
                     ForEach(RaceSeries.allCases) { series in
                         Text(series.title).tag(series)
@@ -86,7 +85,8 @@ struct NewsView: View {
                     articleList
                 }
             }
-            .padding(20)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 18)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .chicaneBackground(scrollOffset: scrollOffset)
@@ -104,12 +104,16 @@ struct NewsView: View {
     // MARK: Article list
 
     private var articleList: some View {
-        VStack(spacing: 10) {
-            ForEach(currentArticles) { article in
+        VStack(spacing: 0) {
+            ForEach(Array(currentArticles.enumerated()), id: \.element.id) { index, article in
                 ArticleRowView(article: article)
                     .onTapGesture { openURL(article.url) }
+                if index < currentArticles.count - 1 {
+                    Divider()
+                }
             }
         }
+        .sectionCard()
     }
 
     // MARK: State cards
@@ -126,7 +130,7 @@ struct NewsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
-        .groupedCard()
+        .sectionCard()
     }
 
     private func errorCard(message: String) -> some View {
@@ -142,7 +146,7 @@ struct NewsView: View {
             }
             .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
         }
-        .groupedCard()
+        .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private var emptyCard: some View {
@@ -153,7 +157,7 @@ struct NewsView: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
         }
-        .groupedCard()
+        .sectionCard()
     }
 
     // MARK: Data loading
@@ -198,8 +202,6 @@ struct NewsView: View {
 // MARK: - Article Row
 
 private struct ArticleRowView: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     let article: NewsArticle
 
     var body: some View {
@@ -236,19 +238,8 @@ private struct ArticleRowView: View {
                     .foregroundStyle(ChicaneTheme.seriesColor(article.series))
             }
         }
-        .padding(14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(ChicaneTheme.groupedFill(for: colorScheme))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(
-                            ChicaneTheme.seriesColor(article.series).opacity(0.15),
-                            lineWidth: 0.8
-                        )
-                )
-        )
         .contentShape(Rectangle())
     }
 }

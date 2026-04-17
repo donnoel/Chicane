@@ -16,9 +16,9 @@ struct EventPickerHeader: View {
     var eventPickerLabel: String = "Race event"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.title3.weight(.semibold))
+                .font(.title2.weight(.bold))
 
             Picker("Series", selection: $selectedSeries) {
                 ForEach(RaceSeries.allCases) { series in
@@ -41,14 +41,16 @@ struct EventPickerHeader: View {
             .frame(minHeight: 48)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(ChicaneTheme.groupedFill(for: colorScheme))
+                    .fill(ChicaneTheme.fieldFill(for: colorScheme))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
+                            .strokeBorder(ChicaneTheme.fieldStroke(for: colorScheme), lineWidth: 0.8)
                     )
             )
+            .shadow(color: ChicaneTheme.fieldShadow(for: colorScheme), radius: 4, x: 0, y: 2)
             .accessibilityLabel(eventPickerLabel)
         }
+        .padding(.bottom, 8)
     }
 }
 
@@ -68,7 +70,7 @@ struct EventSummaryCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(event.title)
-                    .font(.headline.weight(.semibold))
+                    .font(.title3.weight(.semibold))
                 Spacer()
                 Text(event.series.shortTitle)
                     .font(.caption.weight(.bold))
@@ -90,6 +92,6 @@ struct EventSummaryCard: View {
             Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
                 .font(.subheadline)
         }
-        .groupedCard(accent: ChicaneTheme.seriesColor(event.series))
+        .sectionCard(accent: ChicaneTheme.seriesColor(event.series))
     }
 }

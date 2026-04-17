@@ -36,9 +36,9 @@ struct SettingsView: View {
         }
         .tint(.accentColor)
         .scrollContentBackground(.hidden)
+        .background(NeutralAppBackground())
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground()
         .task {
             hydrateLocalState()
         }

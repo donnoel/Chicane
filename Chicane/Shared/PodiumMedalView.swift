@@ -67,8 +67,8 @@ struct PodiumMedalView: View {
         )
         // Glow shadow — appears with a spring when a driver is selected
         .shadow(
-            color: isSelected ? glowColor.opacity(0.36) : .clear,
-            radius: isSelected ? 6 : 0,
+            color: isSelected ? glowColor.opacity(0.50) : .clear,
+            radius: isSelected ? 9 : 0,
             x: 0, y: 2
         )
         .animation(.spring(response: 0.30, dampingFraction: 0.78), value: isSelected)

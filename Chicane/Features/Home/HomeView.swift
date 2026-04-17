@@ -24,12 +24,13 @@ struct HomeView: View {
                 standingsCard
                 betCard
             }
-            .padding(20)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 18)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground(scrollOffset: scrollOffset)
+        .chicanePremiumBackground(scrollOffset: scrollOffset)
         .refreshable {
             await viewModel.reload()
             // If reload failed it will have shown an error banner already.
@@ -40,13 +41,13 @@ struct HomeView: View {
     }
     
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Image(systemName: "flag.checkered.2.crossed")
-                    .font(.title3.weight(.bold))
+                    .font(.title2.weight(.bold))
                     .foregroundStyle(ChicaneTheme.actionGradient)
                 Text("The Podium")
-                    .font(.title.weight(.bold))
+                    .font(.largeTitle.weight(.bold))
                     .minimumScaleFactor(0.8)
             }
             Text("Friendly picks for Formula 1 and MotoGP")
@@ -93,6 +94,9 @@ struct HomeView: View {
                             .font(.body.weight(.bold))
                     }
                     .padding(.vertical, 4)
+                    if index < standings.count - 1 {
+                        Divider().opacity(0.35)
+                    }
                 }
             }
             
@@ -100,12 +104,12 @@ struct HomeView: View {
                 .font(.body.weight(.semibold))
                 .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
         }
-        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .sectionCard(accent: ChicaneTheme.scopeColor(selectedScope))
         .accessibilityElement(children: .contain)
     }
     
     private var betCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Label("Bet Ledger", systemImage: "sparkles.rectangle.stack.fill")
                     .font(.headline)
@@ -121,7 +125,7 @@ struct HomeView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else {
-                LazyVGrid(columns: betLedgerColumns, spacing: 10) {
+                LazyVGrid(columns: betLedgerColumns, spacing: 12) {
                     ForEach(Array(viewModel.players.enumerated()), id: \.element.id) { index, player in
                         let betText = playerBetText(for: player)
                         PlayerBetLedgerRow(
@@ -133,7 +137,7 @@ struct HomeView: View {
                 }
             }
         }
-        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .sectionCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
     private var betLedgerColumns: [GridItem] {
@@ -168,8 +172,6 @@ struct HomeView: View {
 }
 
 private struct PlayerBetLedgerRow: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     let playerName: String
     let betText: String?
     let accentColor: Color
@@ -214,11 +216,11 @@ private struct PlayerBetLedgerRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(ChicaneTheme.groupedFill(for: colorScheme))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.thinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(accentColor.opacity(0.20), lineWidth: 0.8)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(accentColor.opacity(0.14), lineWidth: 0.8)
                 )
         )
     }

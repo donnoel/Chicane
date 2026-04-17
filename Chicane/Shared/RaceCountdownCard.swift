@@ -33,7 +33,7 @@ struct RaceCountdownCard: View {
 
     @ViewBuilder
     private func cardContent(remaining: TimeInterval, isRaceWeekend: Bool, now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
 
             // Header row with label + series badge
             HStack {
@@ -50,7 +50,7 @@ struct RaceCountdownCard: View {
 
             // Race name and circuit
             Text(event.title)
-                .font(.title3.weight(.semibold))
+                .font(.title2.weight(.semibold))
             Text(event.circuit)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -156,14 +156,14 @@ struct CountdownUnitView: View {
                 .padding(.horizontal, 4)
                 .background {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(ChicaneTheme.groupedFill(for: colorScheme))
+                        .fill(ChicaneTheme.fieldFill(for: colorScheme))
                         .overlay {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(accentColor?.opacity(0.32) ?? ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
+                                .strokeBorder(accentColor?.opacity(0.34) ?? ChicaneTheme.fieldStroke(for: colorScheme), lineWidth: 0.8)
                         }
                 }
                 // Soft coloured glow behind each pill when active
-                .shadow(color: accentColor?.opacity(0.14) ?? .clear, radius: 4, x: 0, y: 2)
+                .shadow(color: accentColor?.opacity(0.18) ?? ChicaneTheme.fieldShadow(for: colorScheme), radius: 6, x: 0, y: 3)
 
             Text(label)
                 .font(.system(size: 9, weight: .semibold, design: .rounded))

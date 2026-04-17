@@ -8,9 +8,9 @@ struct ScoreboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 Text("Season Scoreboard")
-                    .font(.title3.weight(.semibold))
+                    .font(.title2.weight(.bold))
 
                 Picker("Scope", selection: $selectedScope) {
                     ForEach(ScoreboardScope.allCases) { scope in
@@ -25,7 +25,8 @@ struct ScoreboardView: View {
                 officialChampionshipCard
                 historyCard
             }
-            .padding(20)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 18)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Scoreboard")
@@ -60,6 +61,9 @@ struct ScoreboardView: View {
                         AnimatedScoreText(value: standing.points)
                             .font(.body.weight(.bold))
                     }
+                    if index < standings.count - 1 {
+                        Divider().opacity(0.35)
+                    }
                 }
 
                 Text(viewModel.leaderText(for: selectedScope))
@@ -67,7 +71,7 @@ struct ScoreboardView: View {
                     .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
             }
         }
-        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .sectionCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
     private var historyCard: some View {
@@ -115,13 +119,17 @@ struct ScoreboardView: View {
                     }
                     .padding(14)
                     .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(ChicaneTheme.groupedFill(for: colorScheme))
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(.thinMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .strokeBorder(ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
+                            )
                     )
                 }
             }
         }
-        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .sectionCard()
     }
 
     private var officialChampionshipCard: some View {
@@ -147,6 +155,7 @@ struct ScoreboardView: View {
                         Text(series.title)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(ChicaneTheme.seriesColor(series))
+                            .padding(.bottom, 2)
 
                         ForEach(leaders) { leader in
                             HStack {
@@ -156,15 +165,17 @@ struct ScoreboardView: View {
                                 Text("\(leader.points) pts")
                                     .font(.body.weight(.bold))
                             }
+                            Divider().opacity(0.2)
 
                             Text(leader.team)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .padding(.bottom, 6)
                         }
                     }
                 }
             }
         }
-        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .sectionCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 }
