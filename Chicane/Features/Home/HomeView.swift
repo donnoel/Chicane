@@ -21,8 +21,7 @@ struct HomeView: View {
                 .accessibilityLabel("Standings series")
                 
                 nextRaceCard
-                standingsCard
-                betCard
+                supportingModules
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 18)
@@ -56,6 +55,21 @@ struct HomeView: View {
         }
     }
     
+    @ViewBuilder
+    private var supportingModules: some View {
+        if horizontalSizeClass == .regular {
+            HStack(alignment: .top, spacing: 14) {
+                standingsCard
+                betCard
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 16) {
+                standingsCard
+                betCard
+            }
+        }
+    }
+
     @ViewBuilder
     private var nextRaceCard: some View {
         if let event = viewModel.nextEvent(for: selectedScope) {

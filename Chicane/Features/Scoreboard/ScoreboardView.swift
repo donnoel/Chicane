@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ScoreboardView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
     @State private var selectedScope: ScoreboardScope = .combined
     @State private var scrollOffset: CGFloat = 0
@@ -22,8 +23,7 @@ struct ScoreboardView: View {
                 .accessibilityLabel("Scoreboard scope")
 
                 standingsCard
-                officialChampionshipCard
-                historyCard
+                scoreboardDetailLayout
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 18)
@@ -37,6 +37,21 @@ struct ScoreboardView: View {
             // If reload failed it will have shown an error banner already.
             if viewModel.banner == nil {
                 viewModel.showInfo("Updated")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var scoreboardDetailLayout: some View {
+        if horizontalSizeClass == .regular {
+            HStack(alignment: .top, spacing: 14) {
+                officialChampionshipCard
+                historyCard
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 18) {
+                officialChampionshipCard
+                historyCard
             }
         }
     }

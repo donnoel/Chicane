@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PicksView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
 
     @State private var selectedSeries: RaceSeries = .formula1
@@ -105,11 +106,28 @@ struct PicksView: View {
     }
 
     private var playerCards: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            ForEach(viewModel.players) { player in
-                playerCard(for: player)
+        Group {
+            if horizontalSizeClass == .regular {
+                LazyVGrid(columns: playerColumns, spacing: 16) {
+                    ForEach(viewModel.players) { player in
+                        playerCard(for: player)
+                    }
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 18) {
+                    ForEach(viewModel.players) { player in
+                        playerCard(for: player)
+                    }
+                }
             }
         }
+    }
+
+    private var playerColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 14, alignment: .top),
+            GridItem(.flexible(), spacing: 14, alignment: .top)
+        ]
     }
 
     private func playerCard(for player: Player) -> some View {

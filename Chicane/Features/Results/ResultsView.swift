@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ResultsView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
     @Environment(\.colorScheme) private var colorScheme
 
@@ -173,9 +174,17 @@ struct ResultsView: View {
 
     private var resultsContent: some View {
         VStack(alignment: .leading, spacing: 18) {
-            seasonChampionCard
             resultEditorCard
-            pointsCard
+
+            if horizontalSizeClass == .regular {
+                HStack(alignment: .top, spacing: 14) {
+                    seasonChampionCard
+                    pointsCard
+                }
+            } else {
+                seasonChampionCard
+                pointsCard
+            }
         }
     }
 
