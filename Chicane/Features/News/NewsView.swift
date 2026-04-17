@@ -4,6 +4,7 @@ import SwiftUI
 
 struct NewsView: View {
     @Environment(\.openURL) private var openURL
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showsEntryGate = true
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var articlesBySeriesF1:      [NewsArticle] = []
@@ -67,7 +68,9 @@ struct NewsView: View {
 
     private var newsFeed: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 22) {
+                feedHeader
+
                 Picker("Series", selection: $selectedSeries) {
                     ForEach(RaceSeries.allCases) { series in
                         Text(series.title).tag(series)
@@ -104,16 +107,23 @@ struct NewsView: View {
     // MARK: Article list
 
     private var articleList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(currentArticles.enumerated()), id: \.element.id) { index, article in
+        LazyVStack(spacing: 14) {
+            ForEach(currentArticles) { article in
                 ArticleRowView(article: article)
                     .onTapGesture { openURL(article.url) }
-                if index < currentArticles.count - 1 {
-                    Divider()
-                }
+                    .frame(maxWidth: horizontalSizeClass == .regular ? 760 : .infinity, alignment: .leading)
             }
         }
-        .sectionCard()
+    }
+
+    private var feedHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Pit Wall")
+                .font(.title2.weight(.bold))
+            Text("Spoiler-safe entry, then a cleaner reading list for the latest F1 and MotoGP stories.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
     }
 
     // MARK: State cards
@@ -205,8 +215,8 @@ private struct ArticleRowView: View {
     let article: NewsArticle
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
                 Text(article.series.shortTitle)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
@@ -220,26 +230,34 @@ private struct ArticleRowView: View {
             }
 
             Text(article.title)
-                .font(.body.weight(.semibold))
+                .font(.headline.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(3)
 
             if !article.description.isEmpty {
                 Text(article.description)
-                    .font(.footnote)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(3)
             }
 
             HStack {
-                Spacer()
                 Label("Read more", systemImage: "arrow.up.right")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(ChicaneTheme.seriesColor(article.series))
+                Spacer()
             }
         }
-        .padding(.vertical, 12)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.thinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
+                )
+        )
     }
 }

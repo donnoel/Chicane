@@ -23,8 +23,7 @@ struct ResultsView: View {
                     eventPickerLabel: "Event result"
                 )
 
-                if let selectedEvent {
-                    EventSummaryCard(event: selectedEvent)
+                if selectedEvent != nil {
                     resultsContent
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
@@ -91,22 +90,27 @@ struct ResultsView: View {
         Dictionary(uniqueKeysWithValues: viewModel.drivers(for: selectedSeries).map { ($0.id, $0) })
     }
 
-    private var resultEditorCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Official Event Result")
-                .font(.headline.weight(.semibold))
+    private var resultFeatureCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            if let selectedEvent {
+                resultHeroHeader(for: selectedEvent)
+            }
+
             if let currentResult {
                 resultStatusLabel
-
                 officialPodiumSection(for: currentResult.podium)
 
                 Text("Official results are locked once retrieved.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Tap below to fetch the official top three for this event.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Official Event Result")
+                        .font(.headline.weight(.semibold))
+                    Text("Tap below to fetch the official top three for this event.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
 
                 Button {
                     Task {
@@ -129,7 +133,7 @@ struct ResultsView: View {
                 .accessibilityHint("Fetches the official top three and locks this result")
             }
         }
-        .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+        .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private var seasonChampionCard: some View {
@@ -174,7 +178,7 @@ struct ResultsView: View {
 
     private var resultsContent: some View {
         VStack(alignment: .leading, spacing: 18) {
-            resultEditorCard
+            resultFeatureCard
 
             if horizontalSizeClass == .regular {
                 HStack(alignment: .top, spacing: 14) {
@@ -182,8 +186,7 @@ struct ResultsView: View {
                     pointsCard
                 }
             } else {
-                seasonChampionCard
-                pointsCard
+                supportCard
             }
         }
     }
@@ -199,8 +202,37 @@ struct ResultsView: View {
         .accessibilityElement(children: .combine)
     }
 
+    private func resultHeroHeader(for event: RaceEvent) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Official Event Result")
+                        .font(.headline.weight(.semibold))
+                    Text(event.title)
+                        .font(.title2.weight(.bold))
+                    Text("Round \(event.round) · \(event.circuit)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text(event.series.shortTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(ChicaneTheme.seriesColor(event.series), in: Capsule())
+            }
+
+            Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private func officialPodiumSection(for podium: Podium) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: horizontalSizeClass == .regular ? 20 : 14) {
             Text("Official Podium")
                 .font(.title3.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
@@ -303,6 +335,92 @@ struct ResultsView: View {
             }
         }
         .sectionCard()
+    }
+
+    private var supportCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            seasonChampionSection
+            Divider().opacity(0.24)
+            pointsSection
+        }
+        .groupedCard()
+    }
+
+    private var seasonChampionSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Season Champion")
+                .font(.headline.weight(.semibold))
+
+            if let currentChampionResult {
+                Label(
+                    currentChampionResult.isLocked ? "Season champion is locked" : "Season champion saved",
+                    systemImage: currentChampionResult.isLocked ? "lock.fill" : "checkmark.seal.fill"
+                )
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(currentChampionResult.isLocked ? .green : .orange)
+            }
+
+            ChampionPickerSection(
+                title: "Season Champion",
+                drivers: viewModel.drivers(for: selectedSeries),
+                participantSingular: participantSingular,
+                selection: $championDraft,
+                isDisabled: currentChampionResult?.isLocked ?? false
+            )
+
+            Button("Save Season Champion") {
+                Task {
+                    await saveChampionResult()
+                }
+            }
+            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
+            .disabled(championDraft == nil || (currentChampionResult?.isLocked ?? false))
+
+            Text(
+                currentChampionResult?.isLocked == true
+                ? "The season champion is final. Matching picks already receive the 5-point bonus."
+                : "This awards 5 bonus points to each player whose world champion pick matches."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private var pointsSection: some View {
+        let points = selectedEventID.map { viewModel.eventPoints(series: selectedSeries, eventID: $0) } ?? [:]
+        let hasAnySavedPickForEvent = selectedEventID.map { eventID in
+            viewModel.players.contains { player in
+                viewModel.pick(for: selectedSeries, eventID: eventID, playerID: player.id) != nil
+            }
+        } ?? false
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Event Points")
+                .font(.headline.weight(.semibold))
+
+            if points.isEmpty {
+                Text("Fetch official results to compute points.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            } else if !hasAnySavedPickForEvent {
+                Text("No saved picks for this event.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(viewModel.players) { player in
+                    HStack {
+                        Text(player.name)
+                            .font(.body.weight(.medium))
+                        Spacer()
+                        AnimatedScoreText(value: points[player.id, default: 0])
+                            .font(.body.weight(.bold))
+                    }
+                    if player.id != viewModel.players.last?.id {
+                        Divider().opacity(0.4)
+                    }
+                }
+            }
+        }
     }
 
     private func initializeIfNeeded() {

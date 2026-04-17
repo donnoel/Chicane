@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var viewModel: AppViewModel
     @State private var selectedScope: ScoreboardScope = .combined
     @State private var scrollOffset: CGFloat = 0
@@ -58,12 +59,13 @@ struct HomeView: View {
     @ViewBuilder
     private var supportingModules: some View {
         if horizontalSizeClass == .regular {
-            HStack(alignment: .top, spacing: 14) {
+            HStack(alignment: .top, spacing: 20) {
                 standingsCard
+                    .frame(maxWidth: 330)
                 betCard
             }
         } else {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 22) {
                 standingsCard
                 betCard
             }
@@ -90,44 +92,82 @@ struct HomeView: View {
     private var standingsCard: some View {
         let standings = viewModel.standings(for: selectedScope)
         
-        return VStack(alignment: .leading, spacing: 14) {
-            Label("Current Standings", systemImage: "chart.bar")
-                .font(.headline)
-            
+        return VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Current Standings")
+                        .font(.headline.weight(.semibold))
+                    Text(selectedScope.title)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chart.bar.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
+            }
+
+            if let leader = standings.first {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Leader")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    HStack(alignment: .lastTextBaseline) {
+                        Text(leader.player.name)
+                            .font(.title3.weight(.bold))
+                        Spacer()
+                        AnimatedScoreText(value: leader.points)
+                            .font(.title2.weight(.bold))
+                    }
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(ChicaneTheme.fieldFill(for: colorScheme))
+                )
+            }
+
             if standings.isEmpty {
                 Text("No scores yet")
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(Array(standings.enumerated()), id: \.element.id) { index, standing in
-                    HStack {
-                        Text("\(index + 1). \(standing.player.name)")
-                            .font(.body.weight(.semibold))
-                        Spacer()
-                        AnimatedScoreText(value: standing.points)
-                            .font(.body.weight(.bold))
-                    }
-                    .padding(.vertical, 4)
-                    if index < standings.count - 1 {
-                        Divider().opacity(0.35)
+                VStack(spacing: 0) {
+                    ForEach(Array(standings.dropFirst().enumerated()), id: \.element.id) { index, standing in
+                        HStack(spacing: 12) {
+                            Text(standing.player.name)
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            AnimatedScoreText(value: standing.points)
+                                .font(.subheadline.weight(.bold))
+                        }
+                        .padding(.vertical, 10)
+
+                        if index < standings.dropFirst().count - 1 {
+                            Divider().opacity(0.3)
+                        }
                     }
                 }
             }
-            
+
             Text(viewModel.leaderText(for: selectedScope))
-                .font(.body.weight(.semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
         }
-        .sectionCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
         .accessibilityElement(children: .contain)
     }
     
     private var betCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Label("Bet Ledger", systemImage: "sparkles.rectangle.stack.fill")
-                    .font(.headline)
-                    .foregroundStyle(ChicaneTheme.actionGradient)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bet Ledger")
+                        .font(.headline.weight(.semibold))
+                    Text("Who owes what this week")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
                 Text("\(viewModel.players.count) players")
                     .font(.caption.weight(.semibold))
@@ -138,6 +178,7 @@ struct HomeView: View {
                 Text("Add players in Settings to track each player's bet.")
                     .font(.body)
                     .foregroundStyle(.secondary)
+                    .padding(.top, 6)
             } else {
                 LazyVGrid(columns: betLedgerColumns, spacing: 12) {
                     ForEach(Array(viewModel.players.enumerated()), id: \.element.id) { index, player in
@@ -151,7 +192,7 @@ struct HomeView: View {
                 }
             }
         }
-        .sectionCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .padding(.top, 4)
     }
 
     private var betLedgerColumns: [GridItem] {
@@ -193,47 +234,53 @@ private struct PlayerBetLedgerRow: View {
     var body: some View {
         let hasBet = (betText?.isEmpty == false)
 
-        HStack(alignment: .top, spacing: 12) {
-            Text(initials(from: playerName))
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
-                .background(
-                    Circle()
-                        .fill(accentColor)
-                        .overlay(
-                            Circle().strokeBorder(.white.opacity(0.22), lineWidth: 1)
-                        )
-                )
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(initials(from: playerName))
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 30, height: 30)
+                    .background(
+                        Circle()
+                            .fill(accentColor)
+                            .overlay(
+                                Circle().strokeBorder(.white.opacity(0.22), lineWidth: 1)
+                            )
+                    )
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(playerName)
-                    .font(.subheadline.weight(.semibold))
-                Text(hasBet ? (betText ?? "") : "No personal bet entered")
-                    .font(.subheadline)
-                    .foregroundStyle(hasBet ? .primary : .secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(playerName)
+                        .font(.subheadline.weight(.semibold))
+                    Text(hasBet ? "Personal wager saved" : "Needs a personal wager")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Label(hasBet ? "Set" : "Missing", systemImage: hasBet ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(hasBet ? accentColor : .orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill((hasBet ? accentColor : .orange).opacity(0.16))
+                    )
             }
 
-            Spacer(minLength: 8)
-
-            Label(hasBet ? "Set" : "Missing", systemImage: hasBet ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(hasBet ? accentColor : .orange)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill((hasBet ? accentColor : .orange).opacity(0.16))
-                )
+            Text(hasBet ? (betText ?? "") : "No personal bet entered")
+                .font(.body)
+                .foregroundStyle(hasBet ? .primary : .secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
+        .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(.thinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .strokeBorder(accentColor.opacity(0.14), lineWidth: 0.8)
                 )
         )

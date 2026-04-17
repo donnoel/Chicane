@@ -34,6 +34,8 @@ struct SettingsView: View {
             syncSection
             resetSection
         }
+        .formStyle(.grouped)
+        .listSectionSpacing(.compact)
         .tint(.accentColor)
         .scrollContentBackground(.hidden)
         .background(NeutralAppBackground())
@@ -81,9 +83,9 @@ struct SettingsView: View {
     }
 
     private var playerSection: some View {
-        Section("Players") {
+        Section {
             ForEach(viewModel.players) { player in
-                HStack(spacing: 10) {
+                HStack(spacing: 12) {
                     TextField("Player name", text: binding(for: player.id))
                         .textInputAutocapitalization(.words)
                         .disableAutocorrection(true)
@@ -91,27 +93,26 @@ struct SettingsView: View {
                         .accessibilityLabel("Name for \(player.name)")
 
                     if viewModel.players.count > 1 {
-                        Button("Remove", role: .destructive) {
+                        Button(role: .destructive) {
                             Task {
                                 await removePlayer(playerID: player.id)
                             }
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.title3)
                         }
-                        .buttonStyle(.bordered)
-                        .frame(minHeight: 44)
+                        .buttonStyle(.plain)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .accessibilityLabel("Remove \(player.name)")
                     }
                 }
+                .frame(minHeight: 44)
             }
-
-            Button("Save Player Names") {
-                Task {
-                    await savePlayerNames()
-                }
-            }
-            .buttonStyle(.bordered)
-            .frame(minHeight: 44)
-            .disabled(hasBlankPlayerNames)
 
             HStack(spacing: 10) {
+                Image(systemName: "person.badge.plus")
+                    .foregroundStyle(.secondary)
+
                 TextField("Add Player", text: $newPlayerName)
                     .textInputAutocapitalization(.words)
                     .disableAutocorrection(true)
@@ -119,29 +120,46 @@ struct SettingsView: View {
                     .onSubmit {
                         Task { await addPlayer() }
                     }
+
                 Button("Add") {
                     Task {
                         await addPlayer()
                     }
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.regular)
                 .frame(minHeight: 44)
                 .disabled(newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
+            .frame(minHeight: 44)
+
+            actionRow(
+                title: "Save Player Names",
+                systemImage: "checkmark.circle"
+            ) {
+                Task {
+                    await savePlayerNames()
+                }
+            }
+            .disabled(hasBlankPlayerNames)
+        } header: {
+            Text("Players")
+        } footer: {
+            Text("Names appear across picks, results, standings, and shared league sync.")
         }
     }
 
     private var playerBetSection: some View {
-        Section("Player Bets") {
+        Section {
             if viewModel.players.isEmpty {
                 Text("Add players first, then set what each person is betting.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(viewModel.players) { player in
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(player.name)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.footnote.weight(.semibold))
                             .foregroundStyle(.secondary)
                         TextField(
                             "What \(player.name) is betting",
@@ -149,24 +167,29 @@ struct SettingsView: View {
                             axis: .vertical
                         )
                         .focused($focusedField, equals: .playerBet(player.id))
-                        .lineLimit(1...3)
+                        .lineLimit(1...2)
                     }
-                    .padding(.vertical, 4)
+                    .frame(minHeight: 44, alignment: .leading)
                 }
 
-                Button("Save player bets") {
+                actionRow(
+                    title: "Save Player Bets",
+                    systemImage: "checkmark.circle"
+                ) {
                     Task {
                         await savePlayerBets()
                     }
                 }
-                .buttonStyle(.bordered)
-                .frame(minHeight: 44)
             }
+        } header: {
+            Text("Player Bets")
+        } footer: {
+            Text("These notes show in Bet Ledger on Home.")
         }
     }
 
     private var syncSection: some View {
-        Section("Shared League") {
+        Section {
             if let code = activeLeagueCode {
                 if viewModel.isSyncing {
                     ProgressView("Syncing league…")
@@ -182,25 +205,34 @@ struct SettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                Button("Copy League Code") {
-                    UIPasteboard.general.string = code
-                    viewModel.showInfo("League Code Copied")
+                actionRow(
+                    title: "Copy League Code",
+                    systemImage: "doc.on.doc"
+                ) {
+                    if let code = activeLeagueCode {
+                        UIPasteboard.general.string = code
+                        viewModel.showInfo("League Code Copied")
+                    }
                 }
-                .frame(minHeight: 44)
 
-                Button("Sync Now") {
+                actionRow(
+                    title: "Sync Now",
+                    systemImage: "arrow.triangle.2.circlepath"
+                ) {
                     Task {
                         sharedLeagueStatusMessage = nil
                         await viewModel.syncLeagueIfNeeded(showBannerOnSuccess: true)
                     }
                 }
-                .buttonStyle(.bordered)
-                .frame(minHeight: 44)
 
-                Button("Leave Shared League", role: .destructive) {
+                Divider().opacity(0.25)
+
+                destructiveRow(
+                    title: "Leave Shared League",
+                    systemImage: "rectangle.portrait.and.arrow.right"
+                ) {
                     showLeaveLeagueConfirmation = true
                 }
-                .frame(minHeight: 44)
             } else {
                 if viewModel.isSyncing {
                     ProgressView("Connecting to league…")
@@ -235,6 +267,7 @@ struct SettingsView: View {
                     .frame(minHeight: 44)
                     .disabled(joinLeagueCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+                .frame(minHeight: 44)
             }
 
             if let sharedLeagueStatusMessage, !sharedLeagueStatusMessage.isEmpty {
@@ -242,13 +275,54 @@ struct SettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.red)
             }
+        } header: {
+            Text("Shared League")
+        } footer: {
+            Text("Shared leagues sync through iCloud and can replace local season state when joining.")
         }
     }
 
     private var resetSection: some View {
-        Section("Season") {
-            Button("Reset Season", role: .destructive) {
+        Section {
+            destructiveRow(
+                title: "Reset Season",
+                systemImage: "arrow.counterclockwise"
+            ) {
                 showResetConfirmation = true
+            }
+        } header: {
+            Text("Season")
+        } footer: {
+            Text("This clears race picks, race results, and champion selections, but keeps players and settings.")
+        }
+    }
+
+    private func actionRow(
+        title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .foregroundStyle(.secondary)
+                Text(title)
+                Spacer()
+            }
+            .frame(minHeight: 44)
+        }
+    }
+
+    private func destructiveRow(
+        title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: .destructive, action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                Text(title)
+                Spacer()
             }
             .frame(minHeight: 44)
         }

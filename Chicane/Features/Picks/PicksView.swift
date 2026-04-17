@@ -105,61 +105,105 @@ struct PicksView: View {
         championDraftsBySeries[selectedSeries] ?? [:]
     }
 
+    private var isPhoneLayout: Bool {
+        horizontalSizeClass != .regular
+    }
+
     private var playerCards: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 20) {
+            ForEach(viewModel.players) { player in
+                playerCard(for: player)
+            }
+        }
+    }
+
+    private func playerCard(for player: Player) -> some View {
+        VStack(alignment: .leading, spacing: isPhoneLayout ? 14 : 16) {
+            playerHeader(for: player)
+
             if horizontalSizeClass == .regular {
-                LazyVGrid(columns: playerColumns, spacing: 16) {
-                    ForEach(viewModel.players) { player in
-                        playerCard(for: player)
-                    }
+                HStack(alignment: .top, spacing: 18) {
+                    championPane(for: player, grouped: true)
+                        .frame(maxWidth: 290, alignment: .leading)
+                    podiumPane(for: player, grouped: true)
                 }
             } else {
-                VStack(alignment: .leading, spacing: 18) {
-                    ForEach(viewModel.players) { player in
-                        playerCard(for: player)
-                    }
+                championPane(for: player, grouped: false)
+                Divider().opacity(0.22)
+                podiumPane(for: player, grouped: false)
+            }
+        }
+        .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+    }
+
+    private func playerHeader(for player: Player) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(initials(from: player.name))
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(
+                    Circle()
+                        .fill(ChicaneTheme.seriesColor(selectedSeries))
+                )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(player.name)
+                    .font(.title3.weight(.bold))
+                Text(selectedEvent?.title ?? "Champion and podium picks")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if isPhoneLayout {
+                statusBadge(
+                    title: playerSummaryStatus(for: player),
+                    tint: playerStatusTint(for: player)
+                )
+            } else {
+                VStack(alignment: .trailing, spacing: 8) {
+                    statusBadge(
+                        title: championPicksAreLocked
+                            ? "Champion Locked"
+                            : (viewModel.championPick(for: selectedSeries, playerID: player.id) != nil ? "Champion Saved" : "Champion Open"),
+                        tint: championPicksAreLocked
+                            ? .green
+                            : (viewModel.championPick(for: selectedSeries, playerID: player.id) != nil ? ChicaneTheme.seriesColor(selectedSeries) : .secondary)
+                    )
+
+                    statusBadge(
+                        title: viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil ? "Podium Saved" : "Podium Open",
+                        tint: viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil ? ChicaneTheme.seriesColor(selectedSeries) : .secondary
+                    )
                 }
             }
         }
     }
 
-    private var playerColumns: [GridItem] {
-        [
-            GridItem(.flexible(), spacing: 14, alignment: .top),
-            GridItem(.flexible(), spacing: 14, alignment: .top)
-        ]
-    }
-
-    private func playerCard(for player: Player) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 12) {
-                Text(initials(from: player.name))
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 38, height: 38)
-                    .background(
-                        Circle()
-                            .fill(ChicaneTheme.seriesColor(selectedSeries))
-                    )
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(player.name)
-                        .font(.title3.weight(.semibold))
-                    Text("Champion and podium picks")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
+    @ViewBuilder
+    private func championPane(for player: Player, grouped: Bool) -> some View {
+        let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 10 : 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("World Champion")
+                    .font(.headline.weight(.semibold))
                 Spacer()
+                statusBadge(
+                    title: championPicksAreLocked ? "Locked" : "Season pick",
+                    tint: championPicksAreLocked ? .green : .secondary
+                )
             }
 
             ChampionPickerSection(
-                title: "World Champion",
+                title: "Champion pick",
                 drivers: drivers,
                 participantSingular: participantSingular,
                 selection: championBinding(for: player.id),
                 isDisabled: championPicksAreLocked
             )
+
+            championStatusText(for: player)
 
             Button("Save \(player.name)'s Champion Pick") {
                 Task {
@@ -169,26 +213,36 @@ struct PicksView: View {
             .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
             .disabled(championDraftsByPlayer[player.id] == nil || championPicksAreLocked)
             .accessibilityLabel("Save world champion pick for \(player.name)")
+        }
 
-            if championPicksAreLocked {
-                Label("Locked. The official season champion has been entered for this series.", systemImage: "lock.fill")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            } else if viewModel.championPick(for: selectedSeries, playerID: player.id) != nil {
-                Label("Saved. Update it anytime before the season champion is entered.", systemImage: "flag.checkered.circle.fill")
-                    .font(.footnote)
+        if grouped {
+            content.groupedCard()
+        } else {
+            content
+        }
+    }
+
+    @ViewBuilder
+    private func podiumPane(for player: Player, grouped: Bool) -> some View {
+        let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 10 : 12) {
+            HStack {
+                Text("Race Podium")
+                    .font(.headline.weight(.semibold))
+                Spacer()
+                Text("Pick P1, P2, P3")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
 
-            Divider().opacity(0.35)
-
             PodiumPickerSection(
-                title: "Podium Picks",
+                title: "Podium picks",
                 drivers: drivers,
                 participantSingular: participantSingular,
                 participantPlural: participantPlural,
                 draft: binding(for: player.id)
             )
+
+            podiumStatusText(for: player)
 
             Button("Save \(player.name)'s Picks") {
                 Task {
@@ -198,14 +252,85 @@ struct PicksView: View {
             .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
             .disabled(!(draftsByPlayer[player.id] ?? .empty).isComplete)
             .accessibilityLabel("Save picks for \(player.name)")
+        }
 
-            if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
-                Label("Saved. Edit and save again anytime before results are locked.", systemImage: "checkmark.circle.fill")
+        if grouped {
+            content.groupedCard()
+        } else {
+            content
+        }
+    }
+
+    private func playerSummaryStatus(for player: Player) -> String {
+        let championSaved = viewModel.championPick(for: selectedSeries, playerID: player.id) != nil
+        let podiumSaved = viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil
+
+        if championPicksAreLocked && podiumSaved {
+            return "Ready"
+        }
+        if championSaved && podiumSaved {
+            return "Ready"
+        }
+        if championSaved || podiumSaved {
+            return "In Progress"
+        }
+        return "Open"
+    }
+
+    private func playerStatusTint(for player: Player) -> Color {
+        let summary = playerSummaryStatus(for: player)
+        switch summary {
+        case "Ready":
+            return ChicaneTheme.seriesColor(selectedSeries)
+        case "In Progress":
+            return .secondary
+        default:
+            return .secondary
+        }
+    }
+
+    private func championStatusText(for player: Player) -> some View {
+        Group {
+            if championPicksAreLocked {
+                Label("Locked once the official season champion is entered.", systemImage: "lock.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else if viewModel.championPick(for: selectedSeries, playerID: player.id) != nil {
+                Label("Saved and still editable until the season champion is entered.", systemImage: "flag.checkered.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                Label("Choose one \(participantSingular) for the season title.", systemImage: "person.crop.square")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
-        .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+    }
+
+    private func podiumStatusText(for player: Player) -> some View {
+        Group {
+            if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
+                Label("Saved. Edit and save again anytime before results are locked.", systemImage: "checkmark.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                Label("Choose three unique \(participantPlural) in finishing order.", systemImage: "list.number")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func statusBadge(title: String, tint: Color) -> some View {
+        Text(title)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(tint.opacity(0.12))
+            )
     }
 
     private func initials(from name: String) -> String {
