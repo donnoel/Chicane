@@ -12,7 +12,7 @@ struct PicksView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
+            VStack(alignment: .leading, spacing: 24) {
                 EventPickerHeader(
                     title: "Podium Picks",
                     selectedSeries: $selectedSeries,
@@ -32,10 +32,10 @@ struct PicksView: View {
                             .font(.body)
                             .foregroundStyle(.secondary)
                     }
-                    .glassCard()
+                    .groupedCard()
                 }
             }
-            .padding(24)
+            .padding(20)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Picks")
@@ -105,7 +105,7 @@ struct PicksView: View {
 
     private var playerCards: some View {
         ForEach(viewModel.players) { player in
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 16) {
                 ChampionPickerSection(
                     title: "\(player.name)'s World Champion",
                     drivers: drivers,
@@ -119,7 +119,7 @@ struct PicksView: View {
                         await saveChampionPick(for: player)
                     }
                 }
-                .buttonStyle(LargeActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
+                .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
                 .disabled(championDraftsByPlayer[player.id] == nil || championPicksAreLocked)
                 .accessibilityLabel("Save world champion pick for \(player.name)")
 
@@ -146,7 +146,7 @@ struct PicksView: View {
                         await savePick(for: player)
                     }
                 }
-                .buttonStyle(LargeActionButtonStyle())
+                .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
                 .disabled(!(draftsByPlayer[player.id] ?? .empty).isComplete)
                 .accessibilityLabel("Save picks for \(player.name)")
 
@@ -156,7 +156,7 @@ struct PicksView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+            .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
         }
     }
 

@@ -6,6 +6,8 @@ import SwiftUI
 /// picker in a consistent layout. Callers bind `selectedSeries` and
 /// `selectedEventID` and pass the appropriate event list.
 struct EventPickerHeader: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let title: String
     @Binding var selectedSeries: RaceSeries
     @Binding var selectedEventID: String?
@@ -14,9 +16,9 @@ struct EventPickerHeader: View {
     var eventPickerLabel: String = "Race event"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.title2.weight(.bold))
+                .font(.title3.weight(.semibold))
 
             Picker("Series", selection: $selectedSeries) {
                 ForEach(RaceSeries.allCases) { series in
@@ -38,8 +40,12 @@ struct EventPickerHeader: View {
             .padding(.horizontal, 12)
             .frame(minHeight: 48)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.regularMaterial)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(ChicaneTheme.groupedFill(for: colorScheme))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
+                    )
             )
             .accessibilityLabel(eventPickerLabel)
         }
@@ -59,10 +65,10 @@ struct EventSummaryCard: View {
     var subtitleOpacity: Double = 1.0
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(event.title)
-                    .font(.title3.weight(.semibold))
+                    .font(.headline.weight(.semibold))
                 Spacer()
                 Text(event.series.shortTitle)
                     .font(.caption.weight(.bold))
@@ -72,7 +78,7 @@ struct EventSummaryCard: View {
                     .background(ChicaneTheme.seriesColor(event.series), in: Capsule())
             }
             Text("Round \(event.round) · \(event.circuit)")
-                .font(.body)
+                .font(.subheadline)
                 .foregroundStyle(Color.secondary.opacity(subtitleOpacity))
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 if let trackLocalTime = event.trackLocalTimeString(at: context.date) {
@@ -82,8 +88,8 @@ struct EventSummaryCard: View {
                 }
             }
             Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
-                .font(.body)
+                .font(.subheadline)
         }
-        .glassCard(accent: ChicaneTheme.seriesColor(event.series))
+        .groupedCard(accent: ChicaneTheme.seriesColor(event.series))
     }
 }

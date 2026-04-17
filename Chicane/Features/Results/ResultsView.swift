@@ -13,7 +13,7 @@ struct ResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
+            VStack(alignment: .leading, spacing: 24) {
                 EventPickerHeader(
                     title: "Race Results Podium",
                     selectedSeries: $selectedSeries,
@@ -36,10 +36,10 @@ struct ResultsView: View {
                             .font(.body)
                             .foregroundStyle(.secondary)
                     }
-                    .glassCard()
+                    .groupedCard()
                 }
             }
-            .padding(24)
+            .padding(20)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Results")
@@ -93,7 +93,7 @@ struct ResultsView: View {
     }
 
     private var resultEditorCard: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: 16) {
             if let currentResult {
                 resultStatusLabel
 
@@ -128,11 +128,11 @@ struct ResultsView: View {
                 .accessibilityHint("Fetches the official top three and locks this result")
             }
         }
-        .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+        .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private var seasonChampionCard: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: 16) {
             if let currentChampionResult {
                 Label(
                     currentChampionResult.isLocked ? "Season champion is locked" : "Season champion saved",
@@ -155,7 +155,7 @@ struct ResultsView: View {
                     await saveChampionResult()
                 }
             }
-            .buttonStyle(LargeActionButtonStyle())
+            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
             .disabled(championDraft == nil || (currentChampionResult?.isLocked ?? false))
 
             Text(
@@ -166,7 +166,7 @@ struct ResultsView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
-        .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+        .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private var resultStatusLabel: some View {
@@ -205,7 +205,7 @@ struct ResultsView: View {
                 .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(ChicaneTheme.insetFill(for: colorScheme))
+                        .fill(ChicaneTheme.groupedFill(for: colorScheme))
                 )
                 .accessibilityLabel("\(title) \(label)")
         }
@@ -251,7 +251,7 @@ struct ResultsView: View {
             }
         } ?? false
 
-        return VStack(alignment: .leading, spacing: 18) {
+        return VStack(alignment: .leading, spacing: 14) {
             Text("Event Points")
                 .font(.headline)
 
@@ -275,7 +275,7 @@ struct ResultsView: View {
                 }
             }
         }
-        .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+        .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private func initializeIfNeeded() {

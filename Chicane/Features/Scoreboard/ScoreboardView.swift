@@ -8,9 +8,9 @@ struct ScoreboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
+            VStack(alignment: .leading, spacing: 24) {
                 Text("Season Scoreboard")
-                    .font(.title2.weight(.bold))
+                    .font(.title3.weight(.semibold))
 
                 Picker("Scope", selection: $selectedScope) {
                     ForEach(ScoreboardScope.allCases) { scope in
@@ -25,7 +25,7 @@ struct ScoreboardView: View {
                 officialChampionshipCard
                 historyCard
             }
-            .padding(24)
+            .padding(20)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Scoreboard")
@@ -43,7 +43,7 @@ struct ScoreboardView: View {
     private var standingsCard: some View {
         let standings = viewModel.standings(for: selectedScope)
 
-        return VStack(alignment: .leading, spacing: 18) {
+        return VStack(alignment: .leading, spacing: 14) {
             Label("Season Totals", systemImage: "trophy")
                 .font(.headline)
 
@@ -55,10 +55,10 @@ struct ScoreboardView: View {
                 ForEach(Array(standings.enumerated()), id: \.element.id) { index, standing in
                     HStack {
                         Text("\(index + 1). \(standing.player.name)")
-                            .font(.title3.weight(.semibold))
+                            .font(.body.weight(.semibold))
                         Spacer()
                         AnimatedScoreText(value: standing.points)
-                            .font(.title3.weight(.bold))
+                            .font(.body.weight(.bold))
                     }
                 }
 
@@ -67,13 +67,13 @@ struct ScoreboardView: View {
                     .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
             }
         }
-        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
     private var historyCard: some View {
         let history = viewModel.history(for: selectedScope)
 
-        return VStack(alignment: .leading, spacing: 18) {
+        return VStack(alignment: .leading, spacing: 14) {
             Label("Event History", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                 .font(.headline)
 
@@ -113,15 +113,15 @@ struct ScoreboardView: View {
                             }
                         }
                     }
-                    .padding(16)
+                    .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(ChicaneTheme.insetFill(for: colorScheme))
+                            .fill(ChicaneTheme.groupedFill(for: colorScheme))
                     )
                 }
             }
         }
-        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
     private var officialChampionshipCard: some View {
@@ -132,7 +132,7 @@ struct ScoreboardView: View {
             seriesToShow = [.formula1, .motoGP]
         }
 
-        return VStack(alignment: .leading, spacing: 18) {
+        return VStack(alignment: .leading, spacing: 14) {
             Label("Official Championship Top 3", systemImage: "flag.checkered")
                 .font(.headline)
 
@@ -165,6 +165,6 @@ struct ScoreboardView: View {
                 }
             }
         }
-        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 }

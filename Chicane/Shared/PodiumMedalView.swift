@@ -50,7 +50,7 @@ struct PodiumMedalView: View {
             Text("\(position)")
                 .font(.system(size: 15, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.28), radius: 1.5, x: 0, y: 1)
+                .shadow(color: .black.opacity(0.22), radius: 1.0, x: 0, y: 1)
         }
         .frame(width: 38, height: 38)
         // Thin outer ring — white highlight fading to medal colour
@@ -67,11 +67,11 @@ struct PodiumMedalView: View {
         )
         // Glow shadow — appears with a spring when a driver is selected
         .shadow(
-            color: isSelected ? glowColor.opacity(0.70) : .clear,
-            radius: isSelected ? 12 : 0,
+            color: isSelected ? glowColor.opacity(0.36) : .clear,
+            radius: isSelected ? 6 : 0,
             x: 0, y: 2
         )
-        .animation(.spring(response: 0.38, dampingFraction: 0.68), value: isSelected)
+        .animation(.spring(response: 0.30, dampingFraction: 0.78), value: isSelected)
     }
 
     // MARK: - Colour definitions

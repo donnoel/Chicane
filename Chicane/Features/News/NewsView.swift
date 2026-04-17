@@ -21,7 +21,7 @@ struct NewsView: View {
     var body: some View {
         ZStack {
             newsFeed
-                .blur(radius: showsEntryGate ? 22 : 0)
+                .blur(radius: showsEntryGate ? 14 : 0)
                 .allowsHitTesting(!showsEntryGate)
 
             if showsEntryGate {
@@ -38,12 +38,12 @@ struct NewsView: View {
     private var entryGateOverlay: some View {
         ZStack {
             Rectangle()
-                .fill(.ultraThinMaterial)
+                .fill(.regularMaterial)
                 .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 18) {
                 Label("News may contain spoilers", systemImage: "exclamationmark.triangle.fill")
-                    .font(.title2.weight(.bold))
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(ChicaneTheme.glowAmber)
 
                 Text("Latest stories can reveal recent race results. Tap below when you're ready to continue.")
@@ -58,7 +58,7 @@ struct NewsView: View {
                 .buttonStyle(LargeActionButtonStyle())
                 .accessibilityHint("Opens the news feed")
             }
-            .glassCard(accent: ChicaneTheme.glowAmber)
+            .groupedCard(accent: ChicaneTheme.glowAmber)
             .padding(24)
         }
         .transition(.opacity)
@@ -68,7 +68,7 @@ struct NewsView: View {
 
     private var newsFeed: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
+            VStack(alignment: .leading, spacing: 22) {
                 Picker("Series", selection: $selectedSeries) {
                     ForEach(RaceSeries.allCases) { series in
                         Text(series.title).tag(series)
@@ -86,7 +86,7 @@ struct NewsView: View {
                     articleList
                 }
             }
-            .padding(24)
+            .padding(20)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .chicaneBackground(scrollOffset: scrollOffset)
@@ -104,7 +104,7 @@ struct NewsView: View {
     // MARK: Article list
 
     private var articleList: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 10) {
             ForEach(currentArticles) { article in
                 ArticleRowView(article: article)
                     .onTapGesture { openURL(article.url) }
@@ -126,7 +126,7 @@ struct NewsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
-        .glassCard()
+        .groupedCard()
     }
 
     private func errorCard(message: String) -> some View {
@@ -140,9 +140,9 @@ struct NewsView: View {
             Button("Try again") {
                 Task { await loadArticles() }
             }
-            .buttonStyle(LargeActionButtonStyle())
+            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
         }
-        .glassCard()
+        .groupedCard()
     }
 
     private var emptyCard: some View {
@@ -153,7 +153,7 @@ struct NewsView: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
         }
-        .glassCard()
+        .groupedCard()
     }
 
     // MARK: Data loading
@@ -198,10 +198,12 @@ struct NewsView: View {
 // MARK: - Article Row
 
 private struct ArticleRowView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let article: NewsArticle
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(article.series.shortTitle)
                     .font(.caption.weight(.bold))
@@ -234,20 +236,19 @@ private struct ArticleRowView: View {
                     .foregroundStyle(ChicaneTheme.seriesColor(article.series))
             }
         }
-        .padding(18)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.regularMaterial)
+                .fill(ChicaneTheme.groupedFill(for: colorScheme))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(
-                            ChicaneTheme.seriesColor(article.series).opacity(0.25),
-                            lineWidth: 1
+                            ChicaneTheme.seriesColor(article.series).opacity(0.15),
+                            lineWidth: 0.8
                         )
                 )
         )
-        .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 3)
         .contentShape(Rectangle())
     }
 }

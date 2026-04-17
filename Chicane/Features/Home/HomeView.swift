@@ -8,7 +8,7 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
+            VStack(alignment: .leading, spacing: 24) {
                 header
                 
                 Picker("Series", selection: $selectedScope) {
@@ -24,7 +24,7 @@ struct HomeView: View {
                 standingsCard
                 betCard
             }
-            .padding(24)
+            .padding(20)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("")
@@ -43,14 +43,14 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
                 Image(systemName: "flag.checkered.2.crossed")
-                    .font(.title2.weight(.bold))
+                    .font(.title3.weight(.bold))
                     .foregroundStyle(ChicaneTheme.actionGradient)
                 Text("The Podium")
-                    .font(.largeTitle.weight(.bold))
+                    .font(.title.weight(.bold))
                     .minimumScaleFactor(0.8)
             }
             Text("Friendly picks for Formula 1 and MotoGP")
-                .font(.callout)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
     }
@@ -68,14 +68,14 @@ struct HomeView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
-            .glassCard()
+            .groupedCard()
         }
     }
     
     private var standingsCard: some View {
         let standings = viewModel.standings(for: selectedScope)
         
-        return VStack(alignment: .leading, spacing: 20) {
+        return VStack(alignment: .leading, spacing: 14) {
             Label("Current Standings", systemImage: "chart.bar")
                 .font(.headline)
             
@@ -87,12 +87,12 @@ struct HomeView: View {
                 ForEach(Array(standings.enumerated()), id: \.element.id) { index, standing in
                     HStack {
                         Text("\(index + 1). \(standing.player.name)")
-                            .font(.title3.weight(.semibold))
+                            .font(.body.weight(.semibold))
                         Spacer()
                         AnimatedScoreText(value: standing.points)
-                            .font(.title3.weight(.bold))
+                            .font(.body.weight(.bold))
                     }
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 4)
                 }
             }
             
@@ -100,12 +100,12 @@ struct HomeView: View {
                 .font(.body.weight(.semibold))
                 .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
         }
-        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
         .accessibilityElement(children: .contain)
     }
     
     private var betCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Bet Ledger", systemImage: "sparkles.rectangle.stack.fill")
                     .font(.headline)
@@ -133,7 +133,7 @@ struct HomeView: View {
                 }
             }
         }
-        .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
     private var betLedgerColumns: [GridItem] {
@@ -168,6 +168,8 @@ struct HomeView: View {
 }
 
 private struct PlayerBetLedgerRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let playerName: String
     let betText: String?
     let accentColor: Color
@@ -213,10 +215,10 @@ private struct PlayerBetLedgerRow: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(ChicaneTheme.groupedFill(for: colorScheme))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(accentColor.opacity(0.28), lineWidth: 1)
+                        .strokeBorder(accentColor.opacity(0.20), lineWidth: 0.8)
                 )
         )
     }

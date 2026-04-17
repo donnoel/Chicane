@@ -74,9 +74,9 @@ enum ChicaneTheme {
     static func highlightFill(for colorScheme: ColorScheme) -> Color {
         switch colorScheme {
         case .dark:
-            return Color.white.opacity(0.10)
+            return Color.white.opacity(0.08)
         default:
-            return Color.white.opacity(0.30)
+            return Color.white.opacity(0.20)
         }
     }
 
@@ -84,13 +84,13 @@ enum ChicaneTheme {
         switch colorScheme {
         case .dark:
             return [
-                Color.white.opacity(0.08),
+                Color.white.opacity(0.06),
                 Color.white.opacity(0.02)
             ]
         default:
             return [
-                Color.white.opacity(0.18),
-                Color.white.opacity(0.04)
+                Color.white.opacity(0.12),
+                Color.white.opacity(0.03)
             ]
         }
     }
@@ -98,18 +98,36 @@ enum ChicaneTheme {
     static func insetFill(for colorScheme: ColorScheme) -> Color {
         switch colorScheme {
         case .dark:
-            return Color.white.opacity(0.12)
+            return Color.white.opacity(0.10)
         default:
-            return Color.black.opacity(0.05)
+            return Color.black.opacity(0.04)
+        }
+    }
+
+    static func groupedFill(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.white.opacity(0.08)
+        default:
+            return Color.white.opacity(0.76)
+        }
+    }
+
+    static func groupedStroke(for colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color.white.opacity(0.10)
+        default:
+            return Color.black.opacity(0.07)
         }
     }
 
     static func cardShadow(for colorScheme: ColorScheme) -> Color {
         switch colorScheme {
         case .dark:
-            return Color.black.opacity(0.34)
+            return Color.black.opacity(0.24)
         default:
-            return Color.black.opacity(0.14)
+            return Color.black.opacity(0.09)
         }
     }
 }
@@ -169,27 +187,29 @@ struct LiquidGlassBackground: View {
             // Being furthest "back" in the scene it moves the least.
             Circle()
                 .fill(ChicaneTheme.upperBloomColor(for: colorScheme))
-                .frame(width: 360)
-                .blur(radius: 90)
-                .offset(x: 170, y: -230 - scrollOffset * 0.18)
+                .frame(width: 320)
+                .blur(radius: 78)
+                .opacity(colorScheme == .dark ? 0.9 : 0.72)
+                .offset(x: 155, y: -210 - scrollOffset * 0.10)
 
             // Seafoam bloom — lower-left.
             // Moves at 0.12x in the opposite vertical direction, increasing
             // the perceived separation between the two orbs as you scroll.
             Circle()
                 .fill(ChicaneTheme.lowerBloomColor(for: colorScheme))
-                .frame(width: 340)
-                .blur(radius: 95)
-                .offset(x: -160, y: 300 + scrollOffset * 0.12)
+                .frame(width: 300)
+                .blur(radius: 82)
+                .opacity(colorScheme == .dark ? 0.9 : 0.7)
+                .offset(x: -145, y: 280 + scrollOffset * 0.08)
 
             // White highlight capsule — centre.
             // Barely moves (0.06x) — it's the "closest" layer so has the
             // largest parallax but we keep it gentle so it stays centred.
             Capsule()
                 .fill(ChicaneTheme.highlightFill(for: colorScheme))
-                .frame(width: 320, height: 90)
-                .blur(radius: 70)
-                .offset(x: 20, y: 80 - scrollOffset * 0.06)
+                .frame(width: 280, height: 78)
+                .blur(radius: 56)
+                .offset(x: 12, y: 86 - scrollOffset * 0.04)
         }
     }
 }
@@ -208,28 +228,28 @@ struct GlassCardModifier: ViewModifier {
     private var strokeColors: [Color] {
         if let accent = accentColor {
             return [
-                accent.opacity(0.70),
-                accent.opacity(0.38),
-                colorScheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.18)
+                accent.opacity(0.45),
+                accent.opacity(0.24),
+                colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.10)
             ]
         } else {
             return [
-                Color.primary.opacity(0.35),
-                ChicaneTheme.motoBlue.opacity(0.22),
-                ChicaneTheme.f1Red.opacity(0.22)
+                Color.primary.opacity(0.15),
+                ChicaneTheme.motoBlue.opacity(0.10),
+                ChicaneTheme.f1Red.opacity(0.10)
             ]
         }
     }
 
     func body(content: Content) -> some View {
         content
-            .padding(24)
+            .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.regularMaterial)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(.thinMaterial)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(
                                 LinearGradient(
                                     colors: ChicaneTheme.cardSheen(for: colorScheme),
@@ -240,19 +260,41 @@ struct GlassCardModifier: ViewModifier {
                     )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(
                         LinearGradient(
                             colors: strokeColors,
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: 1
+                        lineWidth: 0.8
                     )
                     // Smooth spring transition whenever accentColor changes
                     .animation(.spring(response: 0.45, dampingFraction: 0.85), value: accentColor)
             )
-            .shadow(color: ChicaneTheme.cardShadow(for: colorScheme), radius: 16, x: 0, y: 8)
+            .shadow(color: ChicaneTheme.cardShadow(for: colorScheme), radius: 8, x: 0, y: 4)
+    }
+}
+
+struct GroupedCardModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    var accentColor: Color? = nil
+
+    func body(content: Content) -> some View {
+        content
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(ChicaneTheme.groupedFill(for: colorScheme))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(
+                        (accentColor ?? ChicaneTheme.groupedStroke(for: colorScheme)).opacity(0.32),
+                        lineWidth: 0.8
+                    )
+            )
     }
 }
 
@@ -265,6 +307,14 @@ extension View {
     /// Reactive glass card — border stroke animates to reflect `accent`.
     func glassCard(accent: Color) -> some View {
         modifier(GlassCardModifier(accentColor: accent))
+    }
+
+    func groupedCard() -> some View {
+        modifier(GroupedCardModifier())
+    }
+
+    func groupedCard(accent: Color) -> some View {
+        modifier(GroupedCardModifier(accentColor: accent))
     }
 
     /// Applies the shared light-blue gradient behind any view, hiding the
@@ -289,28 +339,52 @@ struct LargeActionButtonStyle: ButtonStyle {
     var tint: Color? = nil
 
     func makeBody(configuration: Configuration) -> some View {
-        let opacity = configuration.isPressed ? 0.88 : 1.0
+        let opacity = configuration.isPressed ? 0.90 : 1.0
         let fill: AnyShapeStyle = if let tint {
             AnyShapeStyle(tint.opacity(opacity))
         } else {
             AnyShapeStyle(LinearGradient(
-                colors: [ChicaneTheme.f1Red.opacity(opacity), ChicaneTheme.motoBlue.opacity(opacity)],
+                colors: [ChicaneTheme.f1Red.opacity(0.90 * opacity), ChicaneTheme.motoBlue.opacity(0.90 * opacity)],
                 startPoint: .leading,
                 endPoint: .trailing
             ))
         }
 
         return configuration.label
-            .font(.headline)
-            .frame(minHeight: 48)
+            .font(.subheadline.weight(.semibold))
+            .frame(minHeight: 46)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(fill)
             )
             .foregroundStyle(.white)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .shadow(color: (tint ?? ChicaneTheme.motoBlue).opacity(0.35), radius: 8, x: 0, y: 4)
+            .shadow(color: (tint ?? ChicaneTheme.motoBlue).opacity(0.18), radius: 4, x: 0, y: 2)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+struct SecondaryActionButtonStyle: ButtonStyle {
+    var tint: Color? = nil
+
+    func makeBody(configuration: Configuration) -> some View {
+        let base = tint ?? .accentColor
+        let backgroundOpacity = configuration.isPressed ? 0.16 : 0.12
+
+        return configuration.label
+            .font(.subheadline.weight(.semibold))
+            .frame(minHeight: 46)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(base)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(base.opacity(backgroundOpacity))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(base.opacity(0.28), lineWidth: 1)
+            )
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

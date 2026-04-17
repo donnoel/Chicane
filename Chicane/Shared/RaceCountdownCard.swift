@@ -21,9 +21,9 @@ struct RaceCountdownCard: View {
                 .glassCard(accent: seriesColor)
                 // Coloured glow that fades in as race weekend approaches
                 .shadow(
-                    color: isRaceWeekend ? seriesColor.opacity(0.45) : .clear,
-                    radius: isRaceWeekend ? 26 : 0,
-                    x: 0, y: 8
+                    color: isRaceWeekend ? seriesColor.opacity(0.16) : .clear,
+                    radius: isRaceWeekend ? 12 : 0,
+                    x: 0, y: 4
                 )
                 .animation(.easeInOut(duration: 0.8), value: isRaceWeekend)
         }
@@ -33,7 +33,7 @@ struct RaceCountdownCard: View {
 
     @ViewBuilder
     private func cardContent(remaining: TimeInterval, isRaceWeekend: Bool, now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 14) {
 
             // Header row with label + series badge
             HStack {
@@ -50,9 +50,9 @@ struct RaceCountdownCard: View {
 
             // Race name and circuit
             Text(event.title)
-                .font(.title2.weight(.semibold))
+                .font(.title3.weight(.semibold))
             Text(event.circuit)
-                .font(.body)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
             if let trackLocalTime = event.trackLocalTimeString(at: now) {
                 Label("Track now: \(trackLocalTime)", systemImage: "clock")
@@ -80,7 +80,7 @@ struct RaceCountdownCard: View {
         let minutes = (Int(remaining) % 3600) / 60
         let seconds = Int(remaining) % 60
 
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 if !showSeconds {
                     CountdownUnitView(
@@ -113,7 +113,7 @@ struct RaceCountdownCard: View {
                 RaceWeekendBadge(color: seriesColor)
             } else {
                 Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
-                    .font(.body)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
@@ -137,6 +137,8 @@ struct RaceCountdownCard: View {
 /// A single glass pill showing a two-digit value and a short label below.
 /// Tinted with `accentColor` during race weekend; neutral otherwise.
 struct CountdownUnitView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let value: Int
     let label: String
     var accentColor: Color?
@@ -154,28 +156,14 @@ struct CountdownUnitView: View {
                 .padding(.horizontal, 4)
                 .background {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay {
-                            // Specular highlight on the top edge
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.white.opacity(0.22), .clear],
-                                        startPoint: .top,
-                                        endPoint: .center
-                                    )
-                                )
-                        }
+                        .fill(ChicaneTheme.groupedFill(for: colorScheme))
                         .overlay {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(
-                                    accentColor?.opacity(0.35) ?? Color.primary.opacity(0.12),
-                                    lineWidth: 1
-                                )
+                                .strokeBorder(accentColor?.opacity(0.32) ?? ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
                         }
                 }
                 // Soft coloured glow behind each pill when active
-                .shadow(color: accentColor?.opacity(0.22) ?? .clear, radius: 8, x: 0, y: 2)
+                .shadow(color: accentColor?.opacity(0.14) ?? .clear, radius: 4, x: 0, y: 2)
 
             Text(label)
                 .font(.system(size: 9, weight: .semibold, design: .rounded))
@@ -189,6 +177,8 @@ struct CountdownUnitView: View {
 
 /// Pulsing dot + "Race weekend" label shown when within 72 h of race start.
 private struct RaceWeekendBadge: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let color: Color
     @State private var pulsing = false
 
@@ -200,7 +190,7 @@ private struct RaceWeekendBadge: View {
                 .scaleEffect(pulsing ? 1.35 : 1.0)
                 .opacity(pulsing ? 0.55 : 1.0)
                 .animation(
-                    .easeInOut(duration: 0.85).repeatForever(autoreverses: true),
+                    reduceMotion ? .none : .easeInOut(duration: 0.85).repeatForever(autoreverses: true),
                     value: pulsing
                 )
                 .onAppear { pulsing = true }

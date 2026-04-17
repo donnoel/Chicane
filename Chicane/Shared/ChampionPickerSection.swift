@@ -24,9 +24,9 @@ struct ChampionPickerSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.title3.weight(.semibold))
+                .font(.headline.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
 
             Picker(title, selection: $selection) {
@@ -43,7 +43,11 @@ struct ChampionPickerSection: View {
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(ChicaneTheme.insetFill(for: colorScheme))
+                    .fill(ChicaneTheme.groupedFill(for: colorScheme))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
+                    )
             )
             .accessibilityLabel(title)
             .accessibilityHint("Select a \(participantSingular)")

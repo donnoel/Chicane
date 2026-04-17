@@ -107,7 +107,7 @@ struct SettingsView: View {
                     await savePlayerNames()
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.bordered)
             .frame(minHeight: 44)
             .disabled(hasBlankPlayerNames)
 
@@ -124,7 +124,7 @@ struct SettingsView: View {
                         await addPlayer()
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .frame(minHeight: 44)
                 .disabled(newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
@@ -159,7 +159,7 @@ struct SettingsView: View {
                         await savePlayerBets()
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .frame(minHeight: 44)
             }
         }
@@ -194,7 +194,7 @@ struct SettingsView: View {
                         await viewModel.syncLeagueIfNeeded(showBannerOnSuccess: true)
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .frame(minHeight: 44)
 
                 Button("Leave Shared League", role: .destructive) {
@@ -231,7 +231,7 @@ struct SettingsView: View {
                             await joinLeague()
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                     .frame(minHeight: 44)
                     .disabled(joinLeagueCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }

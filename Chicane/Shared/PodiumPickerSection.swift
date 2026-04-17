@@ -27,9 +27,9 @@ struct PodiumPickerSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.title3.weight(.semibold))
+                .font(.headline.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
 
             positionPicker(title: "P1", position: 1, selection: $draft.p1)
@@ -38,7 +38,7 @@ struct PodiumPickerSection: View {
 
             if draft.hasDuplicates {
                 Text("Pick 3 unique \(participantPlural)")
-                    .font(.body.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(ChicaneTheme.f1Red)
                     .accessibilityLabel("Error: Pick 3 unique \(participantPlural)")
             }
@@ -51,7 +51,7 @@ struct PodiumPickerSection: View {
         position: Int,
         selection: Binding<String?>
     ) -> some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             // Medal — glows when a driver is assigned to this slot
             PodiumMedalView(
                 position: position,
@@ -74,7 +74,11 @@ struct PodiumPickerSection: View {
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(ChicaneTheme.insetFill(for: colorScheme))
+                    .fill(ChicaneTheme.groupedFill(for: colorScheme))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
+                    )
             )
             .accessibilityLabel("\(title) selection")
             .accessibilityHint("Select a \(participantSingular)")
