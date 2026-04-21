@@ -139,7 +139,7 @@ struct PicksView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(player.name)
                     .font(.title3.weight(.bold))
-                Text("Race podium picks")
+                Text("Podium picks")
                     .font(isPhoneLayout ? .footnote : .subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -206,7 +206,7 @@ struct PicksView: View {
     @ViewBuilder
     private func podiumPane(for player: Player, grouped: Bool) -> some View {
         let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 8 : 12) {
-            Text("Race Podium")
+            Text("Podium")
                 .font(.headline.weight(.semibold))
 
             PodiumPickerSection(
@@ -218,16 +218,6 @@ struct PicksView: View {
             )
 
             podiumStatusText(for: player)
-
-            Button(isPhoneLayout ? "Save Picks" : "Save \(player.name)'s Picks") {
-                Task {
-                    await savePick(for: player)
-                }
-            }
-            .font(.callout.weight(.semibold))
-            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
-            .disabled(!(draftsByPlayer[player.id] ?? .empty).isComplete)
-            .accessibilityLabel("Save picks for \(player.name)")
         }
 
         if grouped {
@@ -275,7 +265,7 @@ struct PicksView: View {
     private func podiumStatusText(for player: Player) -> some View {
         Group {
             if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
-                Label("Saved. Edit and save again anytime before results are locked.", systemImage: "checkmark.circle.fill")
+                Label("Saved automatically. Edit anytime before results are locked.", systemImage: "checkmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -307,7 +297,11 @@ struct PicksView: View {
     private func binding(for playerID: UUID) -> Binding<PodiumDraft> {
         Binding(
             get: { draftsByPlayer[playerID] ?? .empty },
-            set: { draftsByPlayer[playerID] = $0 }
+            set: { newDraft in
+                draftsByPlayer[playerID] = newDraft
+                guard let player = viewModel.players.first(where: { $0.id == playerID }) else { return }
+                autosavePickIfNeeded(for: player, draft: newDraft)
+            }
         )
     }
 
@@ -427,6 +421,24 @@ struct PicksView: View {
 
     private func hydrateAvailableChampionPicks() {
         hydrateChampionDrafts()
+    }
+
+    private func autosavePickIfNeeded(for player: Player, draft: PodiumDraft) {
+        guard let selectedEventID else { return }
+        guard draft.isComplete else { return }
+
+        let savedDraft: PodiumDraft
+        if let savedPick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
+            savedDraft = PodiumDraft(podium: savedPick.podium)
+        } else {
+            savedDraft = .empty
+        }
+
+        guard savedDraft != draft else { return }
+
+        Task {
+            await savePick(for: player)
+        }
     }
 
     private func saveChampionPick(for player: Player) async {
