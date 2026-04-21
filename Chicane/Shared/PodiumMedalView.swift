@@ -24,7 +24,7 @@ struct PodiumMedalView: View {
                         colors: sweepColors,
                         center: .center,
                         startAngle: .degrees(-55),
-                        endAngle:   .degrees(305)
+                        endAngle: .degrees(305)
                     )
                 )
 
@@ -45,12 +45,6 @@ struct PodiumMedalView: View {
                 .frame(width: 26, height: 9)
                 .blur(radius: 2.5)
                 .offset(y: -11)
-
-            // Position number
-            Text("\(position)")
-                .font(.system(size: 15, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.22), radius: 1.0, x: 0, y: 1)
         }
         .frame(width: 38, height: 38)
         // Thin outer ring — white highlight fading to medal colour
