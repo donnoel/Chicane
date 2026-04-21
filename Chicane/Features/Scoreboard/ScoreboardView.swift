@@ -6,6 +6,7 @@ struct ScoreboardView: View {
     @EnvironmentObject private var viewModel: AppViewModel
     @State private var selectedScope: ScoreboardScope = .combined
     @State private var scrollOffset: CGFloat = 0
+    @State private var championDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
 
     var body: some View {
         ScrollView {
@@ -44,6 +45,18 @@ struct ScoreboardView: View {
                 viewModel.showInfo("Updated")
             }
         }
+        .task {
+            hydrateChampionDrafts()
+        }
+        .onChange(of: selectedScope) {
+            hydrateChampionDrafts()
+        }
+        .onChange(of: viewModel.players) {
+            hydrateChampionDrafts()
+        }
+        .onChange(of: viewModel.championPicks) {
+            hydrateChampionDrafts()
+        }
     }
 
     @ViewBuilder
@@ -51,6 +64,7 @@ struct ScoreboardView: View {
         if horizontalSizeClass == .regular {
             HStack(alignment: .top, spacing: 20) {
                 VStack(alignment: .leading, spacing: 18) {
+                    seasonChampionPicksCard
                     officialChampionshipCard
                 }
                 .frame(maxWidth: 320, alignment: .leading)
@@ -59,6 +73,7 @@ struct ScoreboardView: View {
             }
         } else {
             VStack(alignment: .leading, spacing: 18) {
+                seasonChampionPicksCard
                 officialChampionshipCard
                 historyCard
             }
@@ -131,6 +146,60 @@ struct ScoreboardView: View {
             }
         }
         .glassCard(accent: ChicaneTheme.scopeColor(selectedScope))
+    }
+
+    private var seasonChampionPicksCard: some View {
+        let seriesToShow = championSeriesToShow
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("Season Champion Picks")
+                .font(.headline.weight(.semibold))
+
+            if viewModel.players.isEmpty {
+                Text("No players yet")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(seriesToShow) { series in
+                    VStack(alignment: .leading, spacing: 12) {
+                        if seriesToShow.count > 1 {
+                            Text(series.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(ChicaneTheme.seriesColor(series))
+                        }
+
+                        let participants = viewModel.drivers(for: series)
+                        let picksAreLocked = viewModel.championResult(for: series)?.isLocked ?? false
+
+                        ForEach(viewModel.players) { player in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(player.name)
+                                    .font(.subheadline.weight(.semibold))
+
+                                ChampionPickerSection(
+                                    title: "Champion pick",
+                                    drivers: participants,
+                                    participantSingular: series == .motoGP ? "rider" : "driver",
+                                    selection: championBinding(for: series, playerID: player.id),
+                                    isDisabled: picksAreLocked
+                                )
+
+                                championStatusText(for: player, series: series)
+                            }
+
+                            if player.id != viewModel.players.last?.id {
+                                Divider().opacity(0.24)
+                            }
+                        }
+                    }
+
+                    if series != seriesToShow.last {
+                        Divider().opacity(0.28)
+                    }
+                }
+            }
+        }
+        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
     private var historyCard: some View {
@@ -246,5 +315,121 @@ struct ScoreboardView: View {
             }
         }
         .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
+    }
+
+    private var championSeriesToShow: [RaceSeries] {
+        if let selectedSeries = selectedScope.series {
+            return [selectedSeries]
+        } else {
+            return [.formula1, .motoGP]
+        }
+    }
+
+    private func championBinding(for series: RaceSeries, playerID: UUID) -> Binding<String?> {
+        Binding(
+            get: { championDraft(for: series, playerID: playerID) },
+            set: { newValue in
+                setChampionDraft(newValue, for: series, playerID: playerID)
+                guard let player = viewModel.players.first(where: { $0.id == playerID }) else { return }
+                autosaveChampionPickIfNeeded(for: player, series: series, driverID: newValue)
+            }
+        )
+    }
+
+    private func championDraft(for series: RaceSeries, playerID: UUID) -> String? {
+        championDraftsBySeries[series]?[playerID]
+    }
+
+    private func setChampionDraft(_ driverID: String?, for series: RaceSeries, playerID: UUID) {
+        var drafts = championDraftsBySeries[series] ?? [:]
+        if let driverID {
+            drafts[playerID] = driverID
+        } else {
+            drafts.removeValue(forKey: playerID)
+        }
+        championDraftsBySeries[series] = drafts
+    }
+
+    private func hydrateChampionDrafts() {
+        let currentPlayerIDs = Set(viewModel.players.map(\.id))
+        championDraftsBySeries = championDraftsBySeries.reduce(into: [RaceSeries: [UUID: String]]()) { output, entry in
+            let filtered = entry.value.filter { currentPlayerIDs.contains($0.key) }
+            if !filtered.isEmpty {
+                output[entry.key] = filtered
+            }
+        }
+
+        for series in RaceSeries.allCases {
+            var updated = championDraftsBySeries[series] ?? [:]
+            for player in viewModel.players {
+                let savedSelection = viewModel.championPick(for: series, playerID: player.id)?.driverID
+                let currentSelection = updated[player.id]
+
+                if currentSelection == nil || currentSelection == savedSelection {
+                    if let savedSelection {
+                        updated[player.id] = savedSelection
+                    } else {
+                        updated.removeValue(forKey: player.id)
+                    }
+                }
+            }
+            championDraftsBySeries[series] = updated
+        }
+    }
+
+    private func autosaveChampionPickIfNeeded(for player: Player, series: RaceSeries, driverID: String?) {
+        guard let driverID else { return }
+        guard viewModel.championResult(for: series)?.isLocked != true else { return }
+
+        let savedDriverID = viewModel.championPick(for: series, playerID: player.id)?.driverID
+        guard savedDriverID != driverID else { return }
+
+        Task {
+            await saveChampionPick(for: player, series: series)
+        }
+    }
+
+    private func championStatusText(for player: Player, series: RaceSeries) -> some View {
+        Group {
+            if viewModel.championResult(for: series)?.isLocked == true {
+                Label("Locked once the official season champion is entered.", systemImage: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if viewModel.championPick(for: series, playerID: player.id) != nil {
+                Label("Saved automatically and still editable until the season champion is entered.", systemImage: "flag.checkered.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Label(
+                    "Choose one \(series == .motoGP ? "rider" : "driver") for the season title.",
+                    systemImage: "person.crop.square"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func saveChampionPick(for player: Player, series: RaceSeries) async {
+        guard let driverID = championDraft(for: series, playerID: player.id) else { return }
+
+        do {
+            let warning = try await viewModel.saveChampionPick(
+                series: series,
+                playerID: player.id,
+                driverID: driverID
+            )
+            viewModel.showSaveOutcome(
+                warning: warning,
+                successMessage: "Saved \(player.name)'s world champion pick."
+            )
+            setChampionDraft(
+                viewModel.championPick(for: series, playerID: player.id)?.driverID,
+                for: series,
+                playerID: player.id
+            )
+        } catch {
+            viewModel.showError(error.localizedDescription)
+        }
     }
 }
