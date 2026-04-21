@@ -151,7 +151,7 @@ struct ScoreboardView: View {
     private var seasonChampionPicksCard: some View {
         let seriesToShow = championSeriesToShow
 
-        return VStack(alignment: .leading, spacing: 16) {
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Season Champion Picks")
                 .font(.headline.weight(.semibold))
 
@@ -161,7 +161,7 @@ struct ScoreboardView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(seriesToShow) { series in
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
                         if seriesToShow.count > 1 {
                             Text(series.title)
                                 .font(.subheadline.weight(.semibold))
@@ -172,12 +172,12 @@ struct ScoreboardView: View {
                         let picksAreLocked = viewModel.championResult(for: series)?.isLocked ?? false
 
                         ForEach(viewModel.players) { player in
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text(player.name)
                                     .font(.subheadline.weight(.semibold))
 
                                 ChampionPickerSection(
-                                    title: "Champion pick",
+                                    title: "",
                                     drivers: participants,
                                     participantSingular: series == .motoGP ? "rider" : "driver",
                                     selection: championBinding(for: series, playerID: player.id),
@@ -393,19 +393,14 @@ struct ScoreboardView: View {
         Group {
             if viewModel.championResult(for: series)?.isLocked == true {
                 Label("Locked once the official season champion is entered.", systemImage: "lock.fill")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             } else if viewModel.championPick(for: series, playerID: player.id) != nil {
-                Label("Saved automatically and still editable until the season champion is entered.", systemImage: "flag.checkered.circle.fill")
-                    .font(.caption)
+                Label("Saved automatically", systemImage: "flag.checkered.circle.fill")
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             } else {
-                Label(
-                    "Choose one \(series == .motoGP ? "rider" : "driver") for the season title.",
-                    systemImage: "person.crop.square"
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                EmptyView()
             }
         }
     }
