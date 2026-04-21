@@ -14,7 +14,7 @@ struct ResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 18) {
                 EventPickerHeader(
                     title: "Race Results Podium",
                     selectedSeries: $selectedSeries,
@@ -36,8 +36,8 @@ struct ResultsView: View {
                     .groupedCard()
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 18)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Results")
@@ -91,7 +91,7 @@ struct ResultsView: View {
     }
 
     private var resultFeatureCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             if let selectedEvent {
                 resultHeroHeader(for: selectedEvent)
             }
@@ -100,8 +100,8 @@ struct ResultsView: View {
                 resultStatusLabel
                 officialPodiumSection(for: currentResult.podium)
 
-                Text("Official results are locked once retrieved.")
-                    .font(.footnote)
+                Text("Official results stay locked once retrieved.")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 10) {
@@ -137,7 +137,7 @@ struct ResultsView: View {
     }
 
     private var seasonChampionCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Season Champion")
                 .font(.headline.weight(.semibold))
             if let currentChampionResult {
@@ -145,7 +145,7 @@ struct ResultsView: View {
                     currentChampionResult.isLocked ? "Season champion is locked" : "Season champion saved",
                     systemImage: currentChampionResult.isLocked ? "lock.fill" : "checkmark.seal.fill"
                 )
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(currentChampionResult.isLocked ? .green : .orange)
             }
 
@@ -153,35 +153,27 @@ struct ResultsView: View {
                 title: "Season Champion",
                 drivers: viewModel.drivers(for: selectedSeries),
                 participantSingular: participantSingular,
-                selection: $championDraft,
+                selection: championAutoSaveBinding,
                 isDisabled: currentChampionResult?.isLocked ?? false
             )
 
-            Button("Save Season Champion") {
-                Task {
-                    await saveChampionResult()
-                }
-            }
-            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
-            .disabled(championDraft == nil || (currentChampionResult?.isLocked ?? false))
-
             Text(
                 currentChampionResult?.isLocked == true
-                ? "The season champion is final. Matching picks already receive the 5-point bonus."
-                : "This awards 5 bonus points to each player whose world champion pick matches."
+                ? "Champion bonus is locked into standings."
+                : "Matching picks receive a 5-point season bonus."
             )
-                .font(.footnote)
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private var resultsContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             resultFeatureCard
 
             if horizontalSizeClass == .regular {
-                HStack(alignment: .top, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
                     seasonChampionCard
                     pointsCard
                 }
@@ -338,7 +330,7 @@ struct ResultsView: View {
     }
 
     private var supportCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
             seasonChampionSection
             Divider().opacity(0.24)
             pointsSection
@@ -347,7 +339,7 @@ struct ResultsView: View {
     }
 
     private var seasonChampionSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Season Champion")
                 .font(.headline.weight(.semibold))
 
@@ -364,24 +356,16 @@ struct ResultsView: View {
                 title: "Season Champion",
                 drivers: viewModel.drivers(for: selectedSeries),
                 participantSingular: participantSingular,
-                selection: $championDraft,
+                selection: championAutoSaveBinding,
                 isDisabled: currentChampionResult?.isLocked ?? false
             )
 
-            Button("Save Season Champion") {
-                Task {
-                    await saveChampionResult()
-                }
-            }
-            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
-            .disabled(championDraft == nil || (currentChampionResult?.isLocked ?? false))
-
             Text(
                 currentChampionResult?.isLocked == true
-                ? "The season champion is final. Matching picks already receive the 5-point bonus."
-                : "This awards 5 bonus points to each player whose world champion pick matches."
+                ? "Champion bonus is locked into standings."
+                : "Matching picks receive a 5-point season bonus."
             )
-            .font(.footnote)
+            .font(.caption)
             .foregroundStyle(.secondary)
         }
     }
@@ -450,6 +434,26 @@ struct ResultsView: View {
 
     private func hydrateChampionDraft() {
         championDraft = currentChampionResult?.driverID
+    }
+
+    private var championAutoSaveBinding: Binding<String?> {
+        Binding(
+            get: { championDraft },
+            set: { newValue in
+                championDraft = newValue
+                autosaveChampionResultIfNeeded(driverID: newValue)
+            }
+        )
+    }
+
+    private func autosaveChampionResultIfNeeded(driverID: String?) {
+        guard let driverID else { return }
+        guard currentChampionResult?.isLocked != true else { return }
+        guard currentChampionResult?.driverID != driverID else { return }
+
+        Task {
+            await saveChampionResult()
+        }
     }
 
     private func updateResults() async {
