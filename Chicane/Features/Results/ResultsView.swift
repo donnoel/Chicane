@@ -7,7 +7,6 @@ struct ResultsView: View {
 
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
-    @State private var championDraft: String?
     @State private var isUpdatingResults = false
     @State private var scrollOffset: CGFloat = 0
     @State private var hasInitialized = false
@@ -53,10 +52,6 @@ struct ResultsView: View {
         }
         .onChange(of: selectedSeries) {
             initializeSelectionForSeries()
-            hydrateChampionDraft()
-        }
-        .onChange(of: viewModel.championResults) {
-            hydrateChampionDraft()
         }
     }
 
@@ -104,10 +99,8 @@ struct ResultsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Official Event Result")
-                        .font(.headline.weight(.semibold))
-                    Text("Tap below to fetch the official top three for this event.")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Fetch the official top three for this event.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }
@@ -149,19 +142,21 @@ struct ResultsView: View {
                     .foregroundStyle(currentChampionResult.isLocked ? .green : .orange)
             }
 
-            ChampionPickerSection(
-                title: "Season Champion",
-                drivers: viewModel.drivers(for: selectedSeries),
-                participantSingular: participantSingular,
-                selection: championAutoSaveBinding,
-                isDisabled: currentChampionResult?.isLocked ?? false
-            )
+            if let currentChampionResult,
+               let champion = participantsByID[currentChampionResult.driverID] {
+                Text("Official season champion")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
 
-            Text(
-                currentChampionResult?.isLocked == true
-                ? "Champion bonus is locked into standings."
-                : "Matching picks receive a 5-point season bonus."
-            )
+                Text("\(champion.name) (\(champion.team))")
+                    .font(.body.weight(.semibold))
+            } else {
+                Text("This will be filled in automatically at the end of the season.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text("Matching picks receive a 5-point season bonus.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -186,7 +181,7 @@ struct ResultsView: View {
     private var resultStatusLabel: some View {
         HStack {
             Label("Official result is locked", systemImage: "lock.fill")
-                .font(.headline)
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.green)
 
             Spacer()
@@ -195,13 +190,13 @@ struct ResultsView: View {
     }
 
     private func resultHeroHeader(for event: RaceEvent) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Official Event Result")
                         .font(.headline.weight(.semibold))
                     Text(event.title)
-                        .font(.title2.weight(.bold))
+                        .font(.title3.weight(.bold))
                     Text("Round \(event.round) · \(event.circuit)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -226,7 +221,7 @@ struct ResultsView: View {
     private func officialPodiumSection(for podium: Podium) -> some View {
         VStack(alignment: .leading, spacing: horizontalSizeClass == .regular ? 20 : 14) {
             Text("Official Podium")
-                .font(.title3.weight(.semibold))
+                .font(.headline.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
 
             officialPodiumRow(position: 1, title: "P1", participantID: podium.p1)
@@ -301,7 +296,7 @@ struct ResultsView: View {
 
         return VStack(alignment: .leading, spacing: 12) {
             Text("Event Points")
-                .font(.headline.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
 
             if points.isEmpty {
                 Text("Fetch official results to compute points.")
@@ -339,9 +334,9 @@ struct ResultsView: View {
     }
 
     private var seasonChampionSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Season Champion")
-                .font(.headline.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
 
             if let currentChampionResult {
                 Label(
@@ -352,21 +347,23 @@ struct ResultsView: View {
                 .foregroundStyle(currentChampionResult.isLocked ? .green : .orange)
             }
 
-            ChampionPickerSection(
-                title: "Season Champion",
-                drivers: viewModel.drivers(for: selectedSeries),
-                participantSingular: participantSingular,
-                selection: championAutoSaveBinding,
-                isDisabled: currentChampionResult?.isLocked ?? false
-            )
+            if let currentChampionResult,
+               let champion = participantsByID[currentChampionResult.driverID] {
+                Text("Official season champion")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
 
-            Text(
-                currentChampionResult?.isLocked == true
-                ? "Champion bonus is locked into standings."
-                : "Matching picks receive a 5-point season bonus."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+                Text("\(champion.name) (\(champion.team))")
+                    .font(.body.weight(.semibold))
+            } else {
+                Text("This will be filled in automatically at the end of the season.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text("Matching picks receive a 5-point season bonus.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -380,7 +377,7 @@ struct ResultsView: View {
 
         return VStack(alignment: .leading, spacing: 12) {
             Text("Event Points")
-                .font(.headline.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
 
             if points.isEmpty {
                 Text("Fetch official results to compute points.")
@@ -412,7 +409,6 @@ struct ResultsView: View {
             initializeSelectionForSeries()
         }
         ensureValidSelection()
-        hydrateChampionDraft()
     }
 
     private func initializeSelectionForSeries() {
@@ -432,29 +428,6 @@ struct ResultsView: View {
         }
     }
 
-    private func hydrateChampionDraft() {
-        championDraft = currentChampionResult?.driverID
-    }
-
-    private var championAutoSaveBinding: Binding<String?> {
-        Binding(
-            get: { championDraft },
-            set: { newValue in
-                championDraft = newValue
-                autosaveChampionResultIfNeeded(driverID: newValue)
-            }
-        )
-    }
-
-    private func autosaveChampionResultIfNeeded(driverID: String?) {
-        guard let driverID else { return }
-        guard currentChampionResult?.isLocked != true else { return }
-        guard currentChampionResult?.driverID != driverID else { return }
-
-        Task {
-            await saveChampionResult()
-        }
-    }
 
     private func updateResults() async {
         guard let selectedEventID else { return }
@@ -481,18 +454,4 @@ struct ResultsView: View {
         }
     }
 
-    private func saveChampionResult() async {
-        guard let championDraft else { return }
-
-        do {
-            let warning = try await viewModel.saveChampionResult(series: selectedSeries, driverID: championDraft)
-            viewModel.showSaveOutcome(
-                warning: warning,
-                successMessage: "Season champion saved. Bonus points are now included in standings."
-            )
-            hydrateChampionDraft()
-        } catch {
-            viewModel.showError(error.localizedDescription)
-        }
-    }
 }
