@@ -13,7 +13,7 @@ struct PicksView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 18) {
                 EventPickerHeader(
                     title: "Podium Picks",
                     selectedSeries: $selectedSeries,
@@ -36,8 +36,8 @@ struct PicksView: View {
                     .groupedCard()
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 18)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
             .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Picks")
@@ -110,7 +110,7 @@ struct PicksView: View {
     }
 
     private var playerCards: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
             ForEach(viewModel.players) { player in
                 playerCard(for: player)
             }
@@ -118,73 +118,53 @@ struct PicksView: View {
     }
 
     private func playerCard(for player: Player) -> some View {
-        VStack(alignment: .leading, spacing: isPhoneLayout ? 14 : 16) {
+        VStack(alignment: .leading, spacing: isPhoneLayout ? 10 : 14) {
             playerHeader(for: player)
-
-            if horizontalSizeClass == .regular {
-                HStack(alignment: .top, spacing: 18) {
-                    championPane(for: player, grouped: true)
-                        .frame(maxWidth: 290, alignment: .leading)
-                    podiumPane(for: player, grouped: true)
-                }
-            } else {
-                championPane(for: player, grouped: false)
-                Divider().opacity(0.22)
-                podiumPane(for: player, grouped: false)
-            }
+            podiumPane(for: player, grouped: horizontalSizeClass == .regular)
         }
         .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private func playerHeader(for player: Player) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 10) {
             Text(initials(from: player.name))
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
+                .frame(width: isPhoneLayout ? 36 : 40, height: isPhoneLayout ? 36 : 40)
                 .background(
                     Circle()
                         .fill(ChicaneTheme.seriesColor(selectedSeries))
                 )
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(player.name)
                     .font(.title3.weight(.bold))
-                Text(selectedEvent?.title ?? "Champion and podium picks")
-                    .font(.subheadline)
+                Text("Race podium picks")
+                    .font(isPhoneLayout ? .footnote : .subheadline)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             if isPhoneLayout {
-                statusBadge(
-                    title: playerSummaryStatus(for: player),
-                    tint: playerStatusTint(for: player)
-                )
-            } else {
-                VStack(alignment: .trailing, spacing: 8) {
+                if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
                     statusBadge(
-                        title: championPicksAreLocked
-                            ? "Champion Locked"
-                            : (viewModel.championPick(for: selectedSeries, playerID: player.id) != nil ? "Champion Saved" : "Champion Open"),
-                        tint: championPicksAreLocked
-                            ? .green
-                            : (viewModel.championPick(for: selectedSeries, playerID: player.id) != nil ? ChicaneTheme.seriesColor(selectedSeries) : .secondary)
-                    )
-
-                    statusBadge(
-                        title: viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil ? "Podium Saved" : "Podium Open",
-                        tint: viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil ? ChicaneTheme.seriesColor(selectedSeries) : .secondary
+                        title: "Saved",
+                        tint: ChicaneTheme.seriesColor(selectedSeries)
                     )
                 }
+            } else {
+                statusBadge(
+                    title: viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil ? "Podium Saved" : "Podium Open",
+                    tint: viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil ? ChicaneTheme.seriesColor(selectedSeries) : .secondary
+                )
             }
         }
     }
 
     @ViewBuilder
     private func championPane(for player: Player, grouped: Bool) -> some View {
-        let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 10 : 12) {
+        let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 8 : 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text("World Champion")
                     .font(.headline.weight(.semibold))
@@ -205,11 +185,12 @@ struct PicksView: View {
 
             championStatusText(for: player)
 
-            Button("Save \(player.name)'s Champion Pick") {
+            Button(isPhoneLayout ? "Save Champion Pick" : "Save \(player.name)'s Champion Pick") {
                 Task {
                     await saveChampionPick(for: player)
                 }
             }
+            .font(.callout.weight(.semibold))
             .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
             .disabled(championDraftsByPlayer[player.id] == nil || championPicksAreLocked)
             .accessibilityLabel("Save world champion pick for \(player.name)")
@@ -224,18 +205,12 @@ struct PicksView: View {
 
     @ViewBuilder
     private func podiumPane(for player: Player, grouped: Bool) -> some View {
-        let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 10 : 12) {
-            HStack {
-                Text("Race Podium")
-                    .font(.headline.weight(.semibold))
-                Spacer()
-                Text("Pick P1, P2, P3")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
+        let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 8 : 12) {
+            Text("Race Podium")
+                .font(.headline.weight(.semibold))
 
             PodiumPickerSection(
-                title: "Podium picks",
+                title: "",
                 drivers: drivers,
                 participantSingular: participantSingular,
                 participantPlural: participantPlural,
@@ -244,11 +219,12 @@ struct PicksView: View {
 
             podiumStatusText(for: player)
 
-            Button("Save \(player.name)'s Picks") {
+            Button(isPhoneLayout ? "Save Picks" : "Save \(player.name)'s Picks") {
                 Task {
                     await savePick(for: player)
                 }
             }
+            .font(.callout.weight(.semibold))
             .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
             .disabled(!(draftsByPlayer[player.id] ?? .empty).isComplete)
             .accessibilityLabel("Save picks for \(player.name)")
@@ -277,31 +253,20 @@ struct PicksView: View {
         return "Open"
     }
 
-    private func playerStatusTint(for player: Player) -> Color {
-        let summary = playerSummaryStatus(for: player)
-        switch summary {
-        case "Ready":
-            return ChicaneTheme.seriesColor(selectedSeries)
-        case "In Progress":
-            return .secondary
-        default:
-            return .secondary
-        }
-    }
 
     private func championStatusText(for player: Player) -> some View {
         Group {
             if championPicksAreLocked {
                 Label("Locked once the official season champion is entered.", systemImage: "lock.fill")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             } else if viewModel.championPick(for: selectedSeries, playerID: player.id) != nil {
                 Label("Saved and still editable until the season champion is entered.", systemImage: "flag.checkered.circle.fill")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
                 Label("Choose one \(participantSingular) for the season title.", systemImage: "person.crop.square")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
@@ -311,11 +276,11 @@ struct PicksView: View {
         Group {
             if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
                 Label("Saved. Edit and save again anytime before results are locked.", systemImage: "checkmark.circle.fill")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Label("Choose three unique \(participantPlural) in finishing order.", systemImage: "list.number")
-                    .font(.footnote)
+                Label("Choose three unique \(participantPlural).", systemImage: "list.number")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
@@ -325,8 +290,8 @@ struct PicksView: View {
         Text(title)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(tint)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
             .background(
                 Capsule(style: .continuous)
                     .fill(tint.opacity(0.12))

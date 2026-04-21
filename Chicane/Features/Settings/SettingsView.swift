@@ -41,6 +41,8 @@ struct SettingsView: View {
         .background(NeutralAppBackground())
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .environment(\.defaultMinListRowHeight, CGFloat(28))
+        .environment(\.defaultMinListHeaderHeight, CGFloat(20))
         .task {
             hydrateLocalState()
         }
@@ -85,12 +87,15 @@ struct SettingsView: View {
     private var playerSection: some View {
         Section {
             ForEach(viewModel.players) { player in
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     TextField("Player name", text: binding(for: player.id))
+                        .font(.body)
                         .textInputAutocapitalization(.words)
                         .disableAutocorrection(true)
                         .focused($focusedField, equals: .player(player.id))
                         .accessibilityLabel("Name for \(player.name)")
+                        .submitLabel(.done)
+                        .textFieldStyle(.plain)
 
                     if viewModel.players.count > 1 {
                         Button(role: .destructive) {
@@ -98,28 +103,32 @@ struct SettingsView: View {
                                 await removePlayer(playerID: player.id)
                             }
                         } label: {
-                            Image(systemName: "minus.circle.fill")
+                            Image(systemName: "minus.circle")
                                 .font(.title3)
+                                .foregroundStyle(.red)
                         }
                         .buttonStyle(.plain)
-                        .frame(minWidth: 44, minHeight: 44)
+                        .frame(width: 30, height: 30)
                         .accessibilityLabel("Remove \(player.name)")
                     }
                 }
-                .frame(minHeight: 44)
+                .frame(minHeight: 28)
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 6) {
                 Image(systemName: "person.badge.plus")
                     .foregroundStyle(.secondary)
 
                 TextField("Add Player", text: $newPlayerName)
+                    .font(.body)
                     .textInputAutocapitalization(.words)
                     .disableAutocorrection(true)
                     .focused($focusedField, equals: .newPlayer)
                     .onSubmit {
                         Task { await addPlayer() }
                     }
+                    .submitLabel(.done)
+                    .textFieldStyle(.plain)
 
                 Button("Add") {
                     Task {
@@ -127,21 +136,20 @@ struct SettingsView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.regular)
-                .frame(minHeight: 44)
+                .controlSize(.small)
+                .labelStyle(.titleOnly)
                 .disabled(newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            .frame(minHeight: 44)
+            .frame(minHeight: 28)
 
-            actionRow(
-                title: "Save Player Names",
-                systemImage: "checkmark.circle"
-            ) {
+            Button("Save Player Names") {
                 Task {
                     await savePlayerNames()
                 }
             }
+            .font(.callout.weight(.semibold))
             .disabled(hasBlankPlayerNames)
+            .padding(.top, -2)
         } header: {
             Text("Players")
         } footer: {
@@ -155,31 +163,33 @@ struct SettingsView: View {
                 Text("Add players first, then set what each person is betting.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .padding(.vertical, 2)
             } else {
                 ForEach(viewModel.players) { player in
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 1) {
                         Text(player.name)
-                            .font(.footnote.weight(.semibold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         TextField(
                             "What \(player.name) is betting",
                             text: betBinding(for: player.id),
                             axis: .vertical
                         )
+                        .font(.body)
                         .focused($focusedField, equals: .playerBet(player.id))
                         .lineLimit(1...2)
+                        .textFieldStyle(.plain)
+                        .submitLabel(.done)
                     }
-                    .frame(minHeight: 44, alignment: .leading)
+                    .frame(minHeight: 30, alignment: .leading)
                 }
 
-                actionRow(
-                    title: "Save Player Bets",
-                    systemImage: "checkmark.circle"
-                ) {
+                Button("Save Player Bets") {
                     Task {
                         await savePlayerBets()
                     }
                 }
+                .font(.callout.weight(.semibold))
             }
         } header: {
             Text("Player Bets")
@@ -197,42 +207,38 @@ struct SettingsView: View {
 
                 LabeledContent("League Code") {
                     Text(code)
-                        .font(.headline.monospaced())
+                        .font(.body.monospaced())
                         .textSelection(.enabled)
                 }
 
                 Text("Use this same code on every phone so picks and results sync through iCloud.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .padding(.top, 1)
 
-                actionRow(
-                    title: "Copy League Code",
-                    systemImage: "doc.on.doc"
-                ) {
+                Button("Copy League Code") {
                     if let code = activeLeagueCode {
                         UIPasteboard.general.string = code
                         viewModel.showInfo("League Code Copied")
                     }
                 }
+                .font(.callout.weight(.semibold))
+                .padding(.vertical, -1)
 
-                actionRow(
-                    title: "Sync Now",
-                    systemImage: "arrow.triangle.2.circlepath"
-                ) {
+                Button("Sync Now") {
                     Task {
                         sharedLeagueStatusMessage = nil
                         await viewModel.syncLeagueIfNeeded(showBannerOnSuccess: true)
                     }
                 }
+                .font(.callout.weight(.semibold))
+                .padding(.vertical, -1)
 
-                Divider().opacity(0.25)
-
-                destructiveRow(
-                    title: "Leave Shared League",
-                    systemImage: "rectangle.portrait.and.arrow.right"
-                ) {
+                Button("Leave Shared League", role: .destructive) {
                     showLeaveLeagueConfirmation = true
                 }
+                .font(.callout.weight(.semibold))
+                .padding(.vertical, -1)
             } else {
                 if viewModel.isSyncing {
                     ProgressView("Connecting to league…")
@@ -243,31 +249,34 @@ struct SettingsView: View {
                         sharedLeagueStatusMessage = await viewModel.createLeague()
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .frame(minHeight: 44)
+                .font(.callout.weight(.semibold))
+                .padding(.vertical, -1)
 
                 Text("Create a shared league on one phone, then enter that code on the other phones.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .padding(.top, 1)
 
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     TextField("Enter League Code", text: $joinLeagueCode)
+                        .font(.body)
                         .textInputAutocapitalization(.characters)
                         .disableAutocorrection(true)
                         .onSubmit {
                             Task { await joinLeague() }
                         }
+                        .textFieldStyle(.plain)
+                        .submitLabel(.done)
 
                     Button("Join") {
                         Task {
                             await joinLeague()
                         }
                     }
-                    .buttonStyle(.bordered)
-                    .frame(minHeight: 44)
+                    .font(.callout.weight(.semibold))
                     .disabled(joinLeagueCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .frame(minHeight: 44)
+                .frame(minHeight: 28)
             }
 
             if let sharedLeagueStatusMessage, !sharedLeagueStatusMessage.isEmpty {
@@ -284,12 +293,10 @@ struct SettingsView: View {
 
     private var resetSection: some View {
         Section {
-            destructiveRow(
-                title: "Reset Season",
-                systemImage: "arrow.counterclockwise"
-            ) {
+            Button("Reset Season", role: .destructive) {
                 showResetConfirmation = true
             }
+            .font(.callout.weight(.semibold))
         } header: {
             Text("Season")
         } footer: {
@@ -297,36 +304,7 @@ struct SettingsView: View {
         }
     }
 
-    private func actionRow(
-        title: String,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: systemImage)
-                    .foregroundStyle(.secondary)
-                Text(title)
-                Spacer()
-            }
-            .frame(minHeight: 44)
-        }
-    }
 
-    private func destructiveRow(
-        title: String,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(role: .destructive, action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: systemImage)
-                Text(title)
-                Spacer()
-            }
-            .frame(minHeight: 44)
-        }
-    }
 
     private func binding(for playerID: UUID) -> Binding<String> {
         Binding(

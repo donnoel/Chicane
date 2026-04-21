@@ -107,43 +107,39 @@ struct HomeView: View {
                     .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
             }
 
-            if let leader = standings.first {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Leader")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    HStack(alignment: .lastTextBaseline) {
-                        Text(leader.player.name)
-                            .font(.title3.weight(.bold))
-                        Spacer()
-                        AnimatedScoreText(value: leader.points)
-                            .font(.title2.weight(.bold))
-                    }
-                }
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(ChicaneTheme.fieldFill(for: colorScheme))
-                )
-            }
-
             if standings.isEmpty {
                 Text("No scores yet")
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(standings.dropFirst().enumerated()), id: \.element.id) { index, standing in
-                        HStack(spacing: 12) {
-                            Text(standing.player.name)
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            AnimatedScoreText(value: standing.points)
-                                .font(.subheadline.weight(.bold))
+                    ForEach(Array(standings.enumerated()), id: \.element.id) { index, standing in
+                        if index == 0 {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Leader")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                HStack(alignment: .lastTextBaseline, spacing: 12) {
+                                    Text(standing.player.name)
+                                        .font(.title3.weight(.bold))
+                                    Spacer()
+                                    AnimatedScoreText(value: standing.points)
+                                        .font(.title2.weight(.bold))
+                                }
+                            }
+                            .padding(.vertical, 8)
+                        } else {
+                            HStack(spacing: 12) {
+                                Text(standing.player.name)
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                AnimatedScoreText(value: standing.points)
+                                    .font(.subheadline.weight(.bold))
+                            }
+                            .padding(.vertical, 10)
                         }
-                        .padding(.vertical, 10)
 
-                        if index < standings.dropFirst().count - 1 {
+                        if index < standings.count - 1 {
                             Divider().opacity(0.3)
                         }
                     }
