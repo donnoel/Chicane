@@ -157,32 +157,7 @@ struct ResultsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Season Champion")
                 .font(.headline.weight(.semibold))
-            if let currentChampionResult {
-                Label(
-                    currentChampionResult.isLocked ? "Season champion is locked" : "Season champion saved",
-                    systemImage: currentChampionResult.isLocked ? "lock.fill" : "checkmark.seal.fill"
-                )
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(currentChampionResult.isLocked ? .green : .orange)
-            }
-
-            if let currentChampionResult,
-               let champion = participantsByID[currentChampionResult.driverID] {
-                Text("Official season champion")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Text("\(champion.name) (\(champion.team))")
-                    .font(.body.weight(.semibold))
-            } else {
-                Text("This will be filled in automatically at the end of the season.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Text("Matching picks receive a 5-point season bonus.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            championSummaryContent
         }
         .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
@@ -362,39 +337,10 @@ struct ResultsView: View {
     }
 
     private var pointsCard: some View {
-        let points = selectedEventID.map { viewModel.eventPoints(series: selectedSeries, eventID: $0) } ?? [:]
-        let hasAnySavedPickForEvent = selectedEventID.map { eventID in
-            viewModel.players.contains { player in
-                viewModel.pick(for: selectedSeries, eventID: eventID, playerID: player.id) != nil
-            }
-        } ?? false
-
-        return VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Event Points")
                 .font(.subheadline.weight(.semibold))
-
-            if points.isEmpty {
-                Text("Fetch official results to compute points.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-            } else if !hasAnySavedPickForEvent {
-                Text("No saved picks for this event.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(viewModel.players) { player in
-                    HStack {
-                        Text(player.name)
-                            .font(.body.weight(.medium))
-                        Spacer()
-                        AnimatedScoreText(value: points[player.id, default: 0])
-                            .font(.body.weight(.bold))
-                    }
-                    if player.id != viewModel.players.last?.id {
-                        Divider().opacity(0.4)
-                    }
-                }
-            }
+            pointsSummaryContent
         }
         .sectionCard()
     }
@@ -412,68 +358,81 @@ struct ResultsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Season Champion")
                 .font(.subheadline.weight(.semibold))
-
-            if let currentChampionResult {
-                Label(
-                    currentChampionResult.isLocked ? "Season champion is locked" : "Season champion saved",
-                    systemImage: currentChampionResult.isLocked ? "lock.fill" : "checkmark.seal.fill"
-                )
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(currentChampionResult.isLocked ? .green : .orange)
-            }
-
-            if let currentChampionResult,
-               let champion = participantsByID[currentChampionResult.driverID] {
-                Text("Official season champion")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Text("\(champion.name) (\(champion.team))")
-                    .font(.body.weight(.semibold))
-            } else {
-                Text("This will be filled in automatically at the end of the season.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Text("Matching picks receive a 5-point season bonus.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            championSummaryContent
         }
     }
 
     private var pointsSection: some View {
-        let points = selectedEventID.map { viewModel.eventPoints(series: selectedSeries, eventID: $0) } ?? [:]
-        let hasAnySavedPickForEvent = selectedEventID.map { eventID in
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Event Points")
+                .font(.subheadline.weight(.semibold))
+            pointsSummaryContent
+        }
+    }
+
+    @ViewBuilder
+    private var championSummaryContent: some View {
+        if let currentChampionResult {
+            Label(
+                currentChampionResult.isLocked ? "Season champion is locked" : "Season champion saved",
+                systemImage: currentChampionResult.isLocked ? "lock.fill" : "checkmark.seal.fill"
+            )
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(currentChampionResult.isLocked ? .green : .orange)
+        }
+
+        if let currentChampionResult,
+           let champion = participantsByID[currentChampionResult.driverID] {
+            Text("Official season champion")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text("\(champion.name) (\(champion.team))")
+                .font(.body.weight(.semibold))
+        } else {
+            Text("This will be filled in automatically at the end of the season.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+
+        Text("Matching picks receive a 5-point season bonus.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    private var selectedEventPoints: [UUID: Int] {
+        selectedEventID.map { viewModel.eventPoints(series: selectedSeries, eventID: $0) } ?? [:]
+    }
+
+    private var hasAnySavedPickForSelectedEvent: Bool {
+        selectedEventID.map { eventID in
             viewModel.players.contains { player in
                 viewModel.pick(for: selectedSeries, eventID: eventID, playerID: player.id) != nil
             }
         } ?? false
+    }
 
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("Event Points")
-                .font(.subheadline.weight(.semibold))
-
-            if points.isEmpty {
-                Text("Fetch official results to compute points.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-            } else if !hasAnySavedPickForEvent {
-                Text("No saved picks for this event.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(viewModel.players) { player in
-                    HStack {
-                        Text(player.name)
-                            .font(.body.weight(.medium))
-                        Spacer()
-                        AnimatedScoreText(value: points[player.id, default: 0])
-                            .font(.body.weight(.bold))
-                    }
-                    if player.id != viewModel.players.last?.id {
-                        Divider().opacity(0.4)
-                    }
+    @ViewBuilder
+    private var pointsSummaryContent: some View {
+        if selectedEventPoints.isEmpty {
+            Text("Fetch official results to compute points.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+        } else if !hasAnySavedPickForSelectedEvent {
+            Text("No saved picks for this event.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+        } else {
+            ForEach(viewModel.players) { player in
+                HStack {
+                    Text(player.name)
+                        .font(.body.weight(.medium))
+                    Spacer()
+                    AnimatedScoreText(value: selectedEventPoints[player.id, default: 0])
+                        .font(.body.weight(.bold))
+                }
+                if player.id != viewModel.players.last?.id {
+                    Divider().opacity(0.4)
                 }
             }
         }

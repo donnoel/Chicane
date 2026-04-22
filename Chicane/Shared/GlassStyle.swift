@@ -407,8 +407,12 @@ struct GroupedCardModifier: ViewModifier {
 struct SectionCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    var accentColor: Color? = nil
 
     func body(content: Content) -> some View {
+        let strokeColor = (accentColor ?? ChicaneTheme.sectionStroke(for: colorScheme))
+            .opacity(accentColor == nil ? 1.0 : 0.34)
+
         content
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -419,7 +423,7 @@ struct SectionCardModifier: ViewModifier {
             .overlay(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .strokeBorder(
-                        ChicaneTheme.sectionStroke(for: colorScheme),
+                        strokeColor,
                         lineWidth: reduceTransparency ? 1.1 : 0.8
                     )
             }
@@ -451,7 +455,7 @@ extension View {
     }
 
     func sectionCard(accent: Color) -> some View {
-        modifier(SectionCardModifier())
+        modifier(SectionCardModifier(accentColor: accent))
     }
 
     /// Applies the shared light-blue gradient behind any view, hiding the
