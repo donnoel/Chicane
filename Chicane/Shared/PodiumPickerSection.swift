@@ -33,9 +33,9 @@ struct PodiumPickerSection: View {
                 .foregroundStyle(.secondary)
                 .accessibilityAddTraits(.isHeader)
 
-            positionPicker(title: "P1", position: 1, selection: $draft.p1)
-            positionPicker(title: "P2", position: 2, selection: $draft.p2)
-            positionPicker(title: "P3", position: 3, selection: $draft.p3)
+            positionPicker(position: 1, selection: $draft.p1)
+            positionPicker(position: 2, selection: $draft.p2)
+            positionPicker(position: 3, selection: $draft.p3)
 
             if draft.hasDuplicates {
                 Text("Pick 3 unique \(participantPlural)")
@@ -48,19 +48,11 @@ struct PodiumPickerSection: View {
     }
 
     private func positionPicker(
-        title: String,
         position: Int,
         selection: Binding<String?>
     ) -> some View {
-        HStack(spacing: 14) {
-            // Medal — glows when a driver is assigned to this slot
-            PodiumMedalView(
-                position: position,
-                isSelected: selection.wrappedValue != nil
-            )
-
-            // Picker pill — fills remaining width
-            Picker(title, selection: selection) {
+        ZStack(alignment: .leading) {
+            Picker(selection: selection) {
                 Text("Choose \(participantSingular)")
                     .tag(Optional<String>.none)
                 ForEach(drivers) { driver in
@@ -68,10 +60,13 @@ struct PodiumPickerSection: View {
                         .tag(Optional(driver.id))
                         .disabled(draft.isSelectionDisabled(driverID: driver.id, for: position))
                 }
+            } label: {
+                EmptyView()
             }
             .pickerStyle(.navigationLink)
             .tint(.primary)
-            .padding(.horizontal, 12)
+            .padding(.leading, 58)
+            .padding(.trailing, 12)
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -82,8 +77,15 @@ struct PodiumPickerSection: View {
                     )
             )
             .shadow(color: ChicaneTheme.fieldShadow(for: colorScheme), radius: 4, x: 0, y: 2)
-            .accessibilityLabel("\(title) selection")
+            .accessibilityLabel("Position \(position) selection")
             .accessibilityHint("Select a \(participantSingular)")
+
+            PodiumMedalView(
+                position: position,
+                isSelected: selection.wrappedValue != nil
+            )
+            .padding(.leading, 12)
+            .allowsHitTesting(false)
         }
     }
 }

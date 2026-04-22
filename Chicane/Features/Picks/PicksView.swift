@@ -260,7 +260,6 @@ struct PicksView: View {
         return "Open"
     }
 
-
     private func championStatusText(for player: Player) -> some View {
         Group {
             if championPicksAreLocked {
@@ -356,8 +355,6 @@ struct PicksView: View {
 
     private func initializeSelectionForSeries() {
         let now = Date()
-        // Default to the next upcoming event (most likely needs picks entered).
-        // If the season is complete, fall back to the most recent event.
         if let next = events.filter({ $0.raceDate >= now }).min(by: { $0.raceDate < $1.raceDate }) {
             selectedEventID = next.id
         } else {
@@ -415,9 +412,6 @@ struct PicksView: View {
         championDraftsBySeries[selectedSeries] = updated
     }
 
-    /// Called when `viewModel.picks` changes (e.g. after initial async load or after a save).
-    /// Only updates a player's draft if they have no in-progress edits, so concurrent edits
-    /// for other players are never clobbered.
     private func hydrateAvailablePicks() {
         guard let selectedEventID else { return }
         for player in viewModel.players {
@@ -428,8 +422,6 @@ struct PicksView: View {
                 savedDraft = .empty
             }
             let currentDraft = draftsByPlayer[player.id] ?? .empty
-            // Only overwrite if the draft is blank or already reflects the saved pick.
-            // If it differs, the player has unsaved edits in progress — leave them alone.
             if currentDraft == .empty || currentDraft == savedDraft {
                 draftsByPlayer[player.id] = savedDraft
             }
@@ -495,7 +487,6 @@ struct PicksView: View {
                 warning: warning,
                 successMessage: "Saved \(player.name)'s picks for this event."
             )
-            // Only refresh this player's draft to avoid clobbering in-progress edits for others.
             if let savedPick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
                 draftsByPlayer[player.id] = PodiumDraft(podium: savedPick.podium)
             }

@@ -45,6 +45,12 @@ struct PodiumMedalView: View {
                 .frame(width: 26, height: 9)
                 .blur(radius: 2.5)
                 .offset(y: -11)
+
+            Text("\(position)")
+                .font(.system(size: 17, weight: .black, design: .rounded))
+                .foregroundStyle(numberColor)
+                .shadow(color: .white.opacity(position == 2 ? 0.35 : 0.18), radius: 0.5, x: 0, y: 0.5)
+                .offset(y: 0.5)
         }
         .frame(width: 38, height: 38)
         // Thin outer ring — white highlight fading to medal colour
@@ -106,6 +112,17 @@ struct PodiumMedalView: View {
         case 1: return Color(red: 1.00, green: 0.85, blue: 0.28)
         case 2: return Color(red: 0.80, green: 0.82, blue: 0.86)
         default: return Color(red: 0.78, green: 0.49, blue: 0.19)
+        }
+    }
+
+    private var numberColor: Color {
+        switch position {
+        case 1:
+            return Color.black.opacity(0.78)
+        case 2:
+            return Color.black.opacity(0.72)
+        default:
+            return Color.white.opacity(0.94)
         }
     }
 
