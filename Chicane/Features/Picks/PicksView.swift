@@ -432,7 +432,6 @@ struct PicksView: View {
 
     private func autosavePickIfNeeded(for player: Player, draft: PodiumDraft) {
         guard let selectedEventID else { return }
-        guard draft.isComplete else { return }
 
         let savedDraft: PodiumDraft
         if let savedPick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
@@ -441,7 +440,7 @@ struct PicksView: View {
             savedDraft = .empty
         }
 
-        guard savedDraft != draft else { return }
+        guard AutosaveDecision.shouldAutosavePodiumPick(draft: draft, savedDraft: savedDraft) else { return }
 
         Task {
             await savePick(for: player)

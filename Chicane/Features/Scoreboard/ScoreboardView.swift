@@ -419,11 +419,13 @@ struct ScoreboardView: View {
     }
 
     private func autosaveChampionPickIfNeeded(for player: Player, series: RaceSeries, driverID: String?) {
-        guard let driverID else { return }
-        guard viewModel.championResult(for: series)?.isLocked != true else { return }
-
+        let isLocked = viewModel.championResult(for: series)?.isLocked == true
         let savedDriverID = viewModel.championPick(for: series, playerID: player.id)?.driverID
-        guard savedDriverID != driverID else { return }
+        guard AutosaveDecision.shouldAutosaveChampionPick(
+            selectedDriverID: driverID,
+            savedDriverID: savedDriverID,
+            isLocked: isLocked
+        ) else { return }
 
         Task {
             await saveChampionPick(for: player, series: series)
