@@ -7,8 +7,13 @@ final class ChicaneUITests: XCTestCase {
         static let medium: TimeInterval = 10
     }
 
+    private enum UITestScenario: String {
+        case `default` = "default"
+        case lockedGates = "locked_gates"
+    }
+
     func testLaunchShowsCoreTabShell() throws {
-        let app = XCUIApplication()
+        let app = makeApp()
         app.launch()
 
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: Timeout.medium))
@@ -20,7 +25,7 @@ final class ChicaneUITests: XCTestCase {
     }
 
     func testAddPlayerInSettingsThenPicksIsPlayable() throws {
-        let app = XCUIApplication()
+        let app = makeApp()
         app.launch()
 
         XCTAssertTrue(app.tabBars.buttons["Settings"].waitForExistence(timeout: Timeout.medium))
@@ -45,7 +50,7 @@ final class ChicaneUITests: XCTestCase {
     }
 
     func testMainTabJourneyShowsCoreScreens() throws {
-        let app = XCUIApplication()
+        let app = makeApp()
         app.launch()
 
         XCTAssertTrue(app.tabBars.buttons["Picks"].waitForExistence(timeout: Timeout.medium))
@@ -58,6 +63,108 @@ final class ChicaneUITests: XCTestCase {
 
         app.tabBars.buttons["Scoreboard"].tap()
         XCTAssertTrue(app.staticTexts["Season Scoreboard"].waitForExistence(timeout: Timeout.medium))
+    }
+
+    func testResultsShowsLockedStateWhenResultIsAlreadyLocked() throws {
+        let app = makeApp(scenario: .lockedGates)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons["Results"].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons["Results"].tap()
+
+        XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertFalse(app.buttons["Fetch Official Results"].exists)
+    }
+
+    func testChampionPickShowsLockedMessageWhenSeasonChampionIsLocked() throws {
+        let app = makeApp(scenario: .lockedGates)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons["Results"].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons["Results"].tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Season champion is locked"]
+                .waitForExistence(timeout: Timeout.medium)
+        )
+    }
+
+    func testResultsStartsSpoilerSafeBeforeAnyOfficialResultIsFetched() throws {
+        let app = makeApp(scenario: .default)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons["Results"].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons["Results"].tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Fetch the official top three for this event."]
+                .waitForExistence(timeout: Timeout.medium)
+        )
+        XCTAssertFalse(app.staticTexts["Official result is locked"].exists)
+    }
+
+    func testAccessibilityCriticalControlsAcrossTabsRemainDiscoverable() throws {
+        let app = makeApp(scenario: .default)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.tabBars.buttons["Home"].isHittable)
+        XCTAssertTrue(app.tabBars.buttons["Picks"].isHittable)
+        XCTAssertTrue(app.tabBars.buttons["Results"].isHittable)
+        XCTAssertTrue(app.tabBars.buttons["Scoreboard"].isHittable)
+        XCTAssertTrue(app.tabBars.buttons["Settings"].isHittable)
+
+        app.tabBars.buttons["Home"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["Standings series"]
+                .waitForExistence(timeout: Timeout.medium)
+        )
+
+        app.tabBars.buttons["Results"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["Fetch official results"]
+                .waitForExistence(timeout: Timeout.medium)
+        )
+        XCTAssertTrue(
+            app.staticTexts["Fetch the official top three for this event."]
+                .waitForExistence(timeout: Timeout.medium)
+        )
+
+        app.tabBars.buttons["Scoreboard"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["Scoreboard scope"]
+                .waitForExistence(timeout: Timeout.medium)
+        )
+
+        app.tabBars.buttons["Settings"].tap()
+        let playerNameField = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Name for ")
+        ).firstMatch
+        XCTAssertTrue(
+            playerNameField.waitForExistence(timeout: Timeout.medium)
+        )
+        XCTAssertTrue(app.textFields["Add Player"].waitForExistence(timeout: Timeout.medium))
+    }
+
+    func testAccessibilityLockedStatusSurfacesRemainDiscoverable() throws {
+        let app = makeApp(scenario: .lockedGates)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons["Results"].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons["Results"].tap()
+
+        XCTAssertTrue(app.staticTexts["Race Results Podium"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["Season champion is locked"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertFalse(app.descendants(matching: .any)["Fetch official results"].exists)
+    }
+
+    private func makeApp(scenario: UITestScenario = .default) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchEnvironment["CHICANE_UI_TEST_MODE"] = "1"
+        app.launchEnvironment["CHICANE_UI_TEST_SCENARIO"] = scenario.rawValue
+        app.launchEnvironment["CHICANE_UI_TEST_RUN_ID"] = UUID().uuidString
+        return app
     }
 
     private func dismissKeyboardIfVisible(in app: XCUIApplication) {
