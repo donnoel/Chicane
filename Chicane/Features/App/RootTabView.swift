@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct RootTabView: View {
     private enum Constants {
@@ -71,6 +72,7 @@ struct RootTabView: View {
         }
         .onChange(of: viewModel.banner?.id) { _, _ in
             scheduleBannerAutoDismissIfNeeded()
+            announceBannerIfNeeded()
         }
     }
 
@@ -108,6 +110,18 @@ struct RootTabView: View {
         } else {
             viewModel.banner = nil
         }
+    }
+
+    private func announceBannerIfNeeded() {
+        guard let banner = viewModel.banner else { return }
+        postAccessibilityAnnouncement(banner.text)
+    }
+
+    private func postAccessibilityAnnouncement(_ message: String) {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard UIAccessibility.isVoiceOverRunning else { return }
+        UIAccessibility.post(notification: .announcement, argument: trimmed)
     }
 
     private var leagueAutoSyncTaskID: String {

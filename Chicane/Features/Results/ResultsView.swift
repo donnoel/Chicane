@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ResultsView: View {
     private enum InlineStatusStyle {
@@ -14,6 +15,8 @@ struct ResultsView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
 
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
@@ -66,6 +69,9 @@ struct ResultsView: View {
         }
         .onChange(of: selectedEventID) {
             clearInlineStatus()
+        }
+        .onChange(of: inlineResultStatus?.text) { _, _ in
+            announceInlineStatusIfNeeded()
         }
     }
 
@@ -198,9 +204,15 @@ struct ResultsView: View {
 
     private var resultStatusLabel: some View {
         HStack {
-            Label("Official result is locked", systemImage: "lock.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.green)
+            if differentiateWithoutColor {
+                Label("Locked result: Official result is locked", systemImage: "lock.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+            } else {
+                Label("Official result is locked", systemImage: "lock.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.green)
+            }
 
             Spacer()
         }
@@ -222,17 +234,34 @@ struct ResultsView: View {
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(.thinMaterial)
+                .fill(
+                    reduceTransparency
+                        ? AnyShapeStyle(Color(uiColor: colorScheme == .dark ? .secondarySystemBackground : .systemBackground))
+                        : AnyShapeStyle(.thinMaterial)
+                )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(
                     (status.style == .error ? Color.orange : Color.blue).opacity(0.28),
-                    lineWidth: 0.8
+                    lineWidth: reduceTransparency ? 1.1 : 0.8
                 )
         )
+        .overlay(alignment: .topLeading) {
+            if differentiateWithoutColor {
+                Text(status.style == .error ? "Error" : "Info")
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color(uiColor: .tertiarySystemFill))
+                    )
+                    .padding(8)
+            }
+        }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(status.text)
+        .accessibilityLabel(differentiateWithoutColor ? "\(status.style == .error ? "Error" : "Info"). \(status.text)" : status.text)
     }
 
     private func resultHeroHeader(for event: RaceEvent) -> some View {
@@ -511,5 +540,19 @@ struct ResultsView: View {
 
     private func clearInlineStatus() {
         inlineResultStatus = nil
+    }
+
+    private func announceInlineStatusIfNeeded() {
+        guard let inlineResultStatus else { return }
+        // Avoid duplicate speech when the same moment already surfaced a banner.
+        guard viewModel.banner == nil else { return }
+        postAccessibilityAnnouncement(inlineResultStatus.text)
+    }
+
+    private func postAccessibilityAnnouncement(_ message: String) {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard UIAccessibility.isVoiceOverRunning else { return }
+        UIAccessibility.post(notification: .announcement, argument: trimmed)
     }
 }

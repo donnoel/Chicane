@@ -104,7 +104,10 @@ enum ChicaneTheme {
         }
     }
 
-    static func groupedFill(for colorScheme: ColorScheme) -> Color {
+    static func groupedFill(for colorScheme: ColorScheme, reduceTransparency: Bool = false) -> Color {
+        if reduceTransparency {
+            return Color(uiColor: colorScheme == .dark ? .secondarySystemBackground : .systemBackground)
+        }
         switch colorScheme {
         case .dark:
             return Color.white.opacity(0.10)
@@ -122,7 +125,10 @@ enum ChicaneTheme {
         }
     }
 
-    static func sectionFill(for colorScheme: ColorScheme) -> AnyShapeStyle {
+    static func sectionFill(for colorScheme: ColorScheme, reduceTransparency: Bool = false) -> AnyShapeStyle {
+        if reduceTransparency {
+            return AnyShapeStyle(Color(uiColor: colorScheme == .dark ? .secondarySystemBackground : .systemBackground))
+        }
         switch colorScheme {
         case .dark:
             return AnyShapeStyle(.regularMaterial)
@@ -293,6 +299,7 @@ struct NeutralAppBackground: View {
 
 struct GlassCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     /// When non-nil the border stroke animates to reflect this colour —
     /// e.g. the active series (F1 red / MotoGP blue) or scope (amber).
@@ -318,23 +325,32 @@ struct GlassCardModifier: ViewModifier {
         }
     }
 
+    private var cardFill: AnyShapeStyle {
+        if reduceTransparency {
+            return AnyShapeStyle(Color(uiColor: colorScheme == .dark ? .secondarySystemBackground : .systemBackground))
+        }
+        return AnyShapeStyle(.thinMaterial)
+    }
+
     func body(content: Content) -> some View {
         content
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(.thinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: ChicaneTheme.cardSheen(for: colorScheme),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+                    .fill(cardFill)
+                    .overlay {
+                        if !reduceTransparency {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: ChicaneTheme.cardSheen(for: colorScheme),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
                                 )
-                            )
-                    )
+                        }
+                    }
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -344,7 +360,7 @@ struct GlassCardModifier: ViewModifier {
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: 0.8
+                        lineWidth: reduceTransparency ? 1.1 : 0.8
                     )
                     // Smooth spring transition whenever accentColor changes
                     .animation(.spring(response: 0.45, dampingFraction: 0.85), value: accentColor)
@@ -355,21 +371,34 @@ struct GlassCardModifier: ViewModifier {
 
 struct GroupedCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     var accentColor: Color? = nil
 
     func body(content: Content) -> some View {
+        let strokeColor: Color = if differentiateWithoutColor {
+            Color.primary.opacity(0.42)
+        } else {
+            (accentColor ?? ChicaneTheme.groupedStroke(for: colorScheme)).opacity(0.32)
+        }
+
+        let dashPattern: [CGFloat] = (differentiateWithoutColor && accentColor != nil) ? [6, 3] : []
+
         content
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(ChicaneTheme.groupedFill(for: colorScheme))
+                    .fill(ChicaneTheme.groupedFill(for: colorScheme, reduceTransparency: reduceTransparency))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .strokeBorder(
-                        (accentColor ?? ChicaneTheme.groupedStroke(for: colorScheme)).opacity(0.32),
-                        lineWidth: 0.8
+                        strokeColor,
+                        style: StrokeStyle(
+                            lineWidth: reduceTransparency ? 1.1 : 0.8,
+                            dash: dashPattern
+                        )
                     )
             )
     }
@@ -377,6 +406,7 @@ struct GroupedCardModifier: ViewModifier {
 
 struct SectionCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func body(content: Content) -> some View {
         content
@@ -384,11 +414,14 @@ struct SectionCardModifier: ViewModifier {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(ChicaneTheme.sectionFill(for: colorScheme))
+                    .fill(ChicaneTheme.sectionFill(for: colorScheme, reduceTransparency: reduceTransparency))
             )
             .overlay(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(ChicaneTheme.sectionStroke(for: colorScheme), lineWidth: 0.8)
+                    .strokeBorder(
+                        ChicaneTheme.sectionStroke(for: colorScheme),
+                        lineWidth: reduceTransparency ? 1.1 : 0.8
+                    )
             }
             .shadow(color: ChicaneTheme.cardShadow(for: colorScheme), radius: 10, x: 0, y: 6)
     }
