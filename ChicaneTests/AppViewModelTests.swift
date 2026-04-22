@@ -367,10 +367,178 @@ final class AppViewModelTests: XCTestCase {
             oldDrivers.map(\.id)
         )
         XCTAssertEqual(viewModel.events(for: .formula1).first?.id, oldEvent.id)
-        XCTAssertEqual(viewModel.events(for: .formula1).first?.title, oldEvent.title)
+        XCTAssertEqual(viewModel.events(for: .formula1).first?.title, refreshedEvent.title)
         XCTAssertEqual(viewModel.events(for: .formula1).first?.raceDate, refreshedEvent.raceDate)
         XCTAssertNotNil(viewModel.pick(for: .formula1, eventID: oldEvent.id, playerID: player.id))
         XCTAssertNotNil(viewModel.pick(for: .formula1, eventID: refreshedEvent.id, playerID: player.id))
+    }
+
+    func testReloadPreservesStableEventIDWhenRefreshedEventHasDifferentSourceID() async {
+        let oldEvent = RaceEvent(
+            id: "f1-2026-japan-stable",
+            series: .formula1,
+            season: 2026,
+            round: 3,
+            title: "Japanese Grand Prix",
+            circuit: "Suzuka International Racing Course",
+            raceDate: Date(timeIntervalSince1970: 20_000)
+        )
+        let refreshedEvent = RaceEvent(
+            id: "f1-2026-japanese-grand-prix-official",
+            series: .formula1,
+            season: 2026,
+            round: 3,
+            title: "Formula 1 Japanese Grand Prix 2026",
+            circuit: "Suzuka Circuit",
+            raceDate: Date(timeIntervalSince1970: 20_400)
+        )
+
+        let viewModel = AppViewModel(
+            driverRepository: SequencedDriverRepository(
+                queuedDrivers: [
+                    .formula1: [[], []],
+                    .motoGP: [[], []]
+                ]
+            ),
+            calendarRepository: SequencedCalendarRepository(
+                queuedEvents: [
+                    .formula1: [[oldEvent], [refreshedEvent]],
+                    .motoGP: [[], []]
+                ]
+            ),
+            resultRepository: MockResultRepository(),
+            seasonRepository: LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        )
+
+        await viewModel.reload()
+        await viewModel.reload()
+
+        let mergedEvent = viewModel.events(for: .formula1).first
+        XCTAssertEqual(mergedEvent?.id, oldEvent.id)
+        XCTAssertEqual(mergedEvent?.raceDate, refreshedEvent.raceDate)
+    }
+
+    func testReloadPrefersRicherExistingDisplayTextWhenRefreshIsShorter() async {
+        struct Case {
+            let existingTitle: String
+            let existingCircuit: String
+            let refreshedTitle: String
+            let refreshedCircuit: String
+        }
+
+        let cases: [Case] = [
+            Case(
+                existingTitle: "Estrella Galicia 0,0 Grand Prix Of Spain",
+                existingCircuit: "Circuito de Jerez - Angel Nieto",
+                refreshedTitle: "Spanish GP",
+                refreshedCircuit: "Jerez"
+            ),
+            Case(
+                existingTitle: "Qatar Airways British Grand Prix",
+                existingCircuit: "Silverstone Circuit",
+                refreshedTitle: "British GP",
+                refreshedCircuit: "Silverstone"
+            )
+        ]
+
+        for testCase in cases {
+            let oldEvent = RaceEvent(
+                id: UUID().uuidString,
+                series: .formula1,
+                season: 2026,
+                round: 7,
+                title: testCase.existingTitle,
+                circuit: testCase.existingCircuit,
+                raceDate: Date(timeIntervalSince1970: 40_000)
+            )
+            let refreshedEvent = RaceEvent(
+                id: UUID().uuidString,
+                series: .formula1,
+                season: 2026,
+                round: 7,
+                title: testCase.refreshedTitle,
+                circuit: testCase.refreshedCircuit,
+                raceDate: Date(timeIntervalSince1970: 40_600)
+            )
+
+            let viewModel = AppViewModel(
+                driverRepository: SequencedDriverRepository(
+                    queuedDrivers: [
+                        .formula1: [[], []],
+                        .motoGP: [[], []]
+                    ]
+                ),
+                calendarRepository: SequencedCalendarRepository(
+                    queuedEvents: [
+                        .formula1: [[oldEvent], [refreshedEvent]],
+                        .motoGP: [[], []]
+                    ]
+                ),
+                resultRepository: MockResultRepository(),
+                seasonRepository: LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+            )
+
+            await viewModel.reload()
+            await viewModel.reload()
+
+            let mergedEvent = viewModel.events(for: .formula1).first
+            XCTAssertEqual(mergedEvent?.title, testCase.existingTitle)
+            XCTAssertEqual(mergedEvent?.circuit, testCase.existingCircuit)
+            XCTAssertEqual(mergedEvent?.raceDate, refreshedEvent.raceDate)
+        }
+    }
+
+    func testReloadUsesDeterministicTieBreakForAmbiguousCandidatesByIdentityScore() async {
+        let candidateA = RaceEvent(
+            id: "f1-2026-americas-stable",
+            series: .formula1,
+            season: 2026,
+            round: 9,
+            title: "Grand Prix of the Americas",
+            circuit: "Circuit of the Americas",
+            raceDate: Date(timeIntervalSince1970: 80_000)
+        )
+        let candidateB = RaceEvent(
+            id: "f1-2026-qatar-stable",
+            series: .formula1,
+            season: 2026,
+            round: 10,
+            title: "Qatar Grand Prix",
+            circuit: "Lusail International Circuit",
+            raceDate: Date(timeIntervalSince1970: 80_400)
+        )
+        let refreshedEvent = RaceEvent(
+            id: "f1-2026-americas-official",
+            series: .formula1,
+            season: 2026,
+            round: 9,
+            title: "Americas GP",
+            circuit: "COTA",
+            raceDate: Date(timeIntervalSince1970: 80_200)
+        )
+
+        let viewModel = AppViewModel(
+            driverRepository: SequencedDriverRepository(
+                queuedDrivers: [
+                    .formula1: [[], []],
+                    .motoGP: [[], []]
+                ]
+            ),
+            calendarRepository: SequencedCalendarRepository(
+                queuedEvents: [
+                    .formula1: [[candidateA, candidateB], [refreshedEvent]],
+                    .motoGP: [[], []]
+                ]
+            ),
+            resultRepository: MockResultRepository(),
+            seasonRepository: LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        )
+
+        await viewModel.reload()
+        await viewModel.reload()
+
+        let mergedEvent = viewModel.events(for: .formula1).first
+        XCTAssertEqual(mergedEvent?.id, candidateA.id)
     }
 
     private func makeViewModel(
