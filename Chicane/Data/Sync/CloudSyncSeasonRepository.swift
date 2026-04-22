@@ -55,6 +55,10 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         return try await synchronize(localState: state, surfaceCloudErrors: true, preference: .none)
     }
 
+    func consumeLoadRecoveryMessage() async -> String? {
+        await localRepository.consumeLoadRecoveryMessage()
+    }
+
     func savePlayers(_ players: [Player]) async throws -> PersistedState {
         let state = try await localRepository.savePlayers(players)
         return try await pushIfNeeded(state, preference: MergePreference(preferLocalPlayers: true))

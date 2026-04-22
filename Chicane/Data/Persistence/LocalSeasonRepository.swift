@@ -5,6 +5,7 @@ actor FileStateStore {
     private let fileManager: FileManager
     private let fileURL: URL
     private let logger = Logger(subsystem: "dn.chicane", category: "FileStateStore")
+    private var pendingLoadRecoveryMessage: String?
 
     init(
         fileManager: FileManager = .default,
@@ -24,11 +25,23 @@ actor FileStateStore {
             return PersistedState.default
         }
 
-        let data = try Data(contentsOf: fileURL)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let state = try decoder.decode(PersistedState.self, from: data)
-        return state.normalized()
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let state = try decoder.decode(PersistedState.self, from: data)
+            return state.normalized()
+        } catch {
+            let quarantinedURL = try? quarantineCorruptStateFile()
+            let message = "Recovered local data after a storage issue. A backup of the previous local state was saved and default settings were restored."
+            pendingLoadRecoveryMessage = message
+            if let quarantinedURL {
+                logger.error("Recovered from unreadable persisted state. Quarantined file at \(quarantinedURL.path, privacy: .private(mask: .hash)). Error: \(error.localizedDescription, privacy: .public)")
+            } else {
+                logger.error("Recovered from unreadable persisted state, but quarantine rename failed. Error: \(error.localizedDescription, privacy: .public)")
+            }
+            return PersistedState.default
+        }
     }
 
     func save(_ state: PersistedState) throws {
@@ -46,6 +59,40 @@ actor FileStateStore {
         if !fileManager.fileExists(atPath: directoryURL.path) {
             try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
         }
+    }
+
+    func consumeLoadRecoveryMessage() -> String? {
+        defer { pendingLoadRecoveryMessage = nil }
+        return pendingLoadRecoveryMessage
+    }
+
+    private func quarantineCorruptStateFile() throws -> URL {
+        let directoryURL = fileURL.deletingLastPathComponent()
+        let stem = fileURL.deletingPathExtension().lastPathComponent
+        let fileExtension = fileURL.pathExtension
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let timestamp = formatter.string(from: Date())
+
+        var quarantinedName = "\(stem).corrupt-\(timestamp)"
+        if !fileExtension.isEmpty {
+            quarantinedName += ".\(fileExtension)"
+        }
+        var quarantinedURL = directoryURL.appendingPathComponent(quarantinedName, isDirectory: false)
+        if fileManager.fileExists(atPath: quarantinedURL.path) {
+            let suffix = UUID().uuidString.prefix(8)
+            var fallbackName = "\(stem).corrupt-\(timestamp)-\(suffix)"
+            if !fileExtension.isEmpty {
+                fallbackName += ".\(fileExtension)"
+            }
+            quarantinedURL = directoryURL.appendingPathComponent(fallbackName, isDirectory: false)
+        }
+
+        try fileManager.moveItem(at: fileURL, to: quarantinedURL)
+        return quarantinedURL
     }
 }
 
@@ -68,6 +115,7 @@ actor LocalSeasonRepository: SeasonRepository {
     /// `refreshState()` bypasses that cache and re-reads disk so explicit refreshes
     /// can see external file changes or restored backups.
     private var cachedState: PersistedState?
+    private var pendingLoadRecoveryMessage: String?
 
     init(store: FileStateStore = FileStateStore()) {
         self.store = store
@@ -82,6 +130,11 @@ actor LocalSeasonRepository: SeasonRepository {
 
     func refreshState() async throws -> PersistedState {
         try await reloadStateFromDisk()
+    }
+
+    func consumeLoadRecoveryMessage() async -> String? {
+        defer { pendingLoadRecoveryMessage = nil }
+        return pendingLoadRecoveryMessage
     }
 
     func savePlayers(_ players: [Player]) async throws -> PersistedState {
@@ -206,6 +259,7 @@ actor LocalSeasonRepository: SeasonRepository {
 
     private func reloadStateFromDisk() async throws -> PersistedState {
         let loaded = try await store.load()
+        pendingLoadRecoveryMessage = await store.consumeLoadRecoveryMessage()
         let normalized = loaded.normalized()
         cachedState = normalized
         return normalized

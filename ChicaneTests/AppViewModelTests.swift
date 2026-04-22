@@ -520,6 +520,10 @@ private actor ManualSyncPermissionFailureSeasonRepository: SeasonRepository {
         throw partial
     }
 
+    func consumeLoadRecoveryMessage() async -> String? {
+        nil
+    }
+
     func savePlayers(_ players: [Player]) async throws -> PersistedState {
         state.players = players
         return state

@@ -43,6 +43,31 @@ final class FileStateStoreTests: XCTestCase {
         XCTAssertEqual(loaded.results.count, 0)
     }
 
+    func testLoadQuarantinesCorruptFileAndRecoversWithDefaultState() async throws {
+        let store = FileStateStore(baseDirectoryURL: tempDir)
+        let persistedDirectory = tempDir
+            .appendingPathComponent("Chicane", isDirectory: true)
+        try FileManager.default.createDirectory(at: persistedDirectory, withIntermediateDirectories: true)
+
+        let corruptedFileURL = persistedDirectory
+            .appendingPathComponent("season_state_v1.json", isDirectory: false)
+        let invalidJSON = Data("not-valid-json".utf8)
+        try invalidJSON.write(to: corruptedFileURL, options: .atomic)
+
+        let loaded = try await store.load()
+
+        XCTAssertEqual(loaded, .default)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: corruptedFileURL.path))
+
+        let files = try FileManager.default.contentsOfDirectory(atPath: persistedDirectory.path)
+        XCTAssertTrue(files.contains(where: { $0.hasPrefix("season_state_v1.corrupt-") }))
+        XCTAssertEqual(files.filter { $0.hasPrefix("season_state_v1.corrupt-") }.count, 1)
+
+        let recoveryMessage = await store.consumeLoadRecoveryMessage()
+        XCTAssertNotNil(recoveryMessage)
+        XCTAssertTrue(recoveryMessage?.contains("Recovered local data") ?? false)
+    }
+
     func testSaveCreatesDirectoryIfNeeded() async throws {
         // tempDir doesn't exist yet — save should create it
         let store = FileStateStore(baseDirectoryURL: tempDir)

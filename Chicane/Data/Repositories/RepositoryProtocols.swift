@@ -26,6 +26,7 @@ struct EmptyChampionshipRepository: ChampionshipRepository {
 protocol SeasonRepository: Sendable {
     func loadState() async throws -> PersistedState
     func refreshState() async throws -> PersistedState
+    func consumeLoadRecoveryMessage() async -> String?
     func savePlayers(_ players: [Player]) async throws -> PersistedState
     func saveSettings(_ settings: AppSettings) async throws -> PersistedState
     func upsertPick(_ pick: RacePick) async throws -> PersistedState

@@ -70,6 +70,9 @@ final class AppViewModel: ObservableObject {
         do {
             let state = try await seasonRepository.loadState()
             apply(state: state)
+            if let recoveryMessage = await seasonRepository.consumeLoadRecoveryMessage() {
+                showInfo(recoveryMessage)
+            }
 
             // Fan out all four network fetches concurrently, then assign atomically.
             // If any single fetch throws, none of the four assignments are committed,
