@@ -42,7 +42,7 @@ Chicane tracks standings across:
 |--------|-------------|
 | Podium Picks | Create/edit picks per series, round, and player. Supports multiple concurrent players with independent drafts. |
 | Season Champion Picks | Each player can pick the F1 and MotoGP world champion for an end-of-season 5-point bonus, and those picks lock once the official season champion is entered. |
-| Results Update + Locking | Tap `Update Results` to fetch official top-3 podium, then lock to prevent accidental edits. |
+| Results Update + Locking | Tap `Fetch Official Results` to fetch official top-3 podium, then lock to prevent accidental edits. |
 | Season Champion Locking | Once the season champion is entered for a series, it locks and immediately applies the bonus to standings. |
 | Exact Scoring | Position-only scoring (no points for correct driver/rider in wrong position). |
 | Scoreboard | Series and combined standings, plus per-event score history. |
@@ -80,7 +80,7 @@ Chicane tracks standings across:
 6. Local changes save immediately, then sync back to the shared iCloud league in the background.
 7. While the app is active in a shared league, it automatically re-syncs periodically so updates from other phones appear without opening Settings.
 8. If shared sync fails, the app keeps the local save and shows a visible warning.
-9. Users tap `Update Results` to pull official podium results and lock the event.
+9. Users tap `Fetch Official Results` to pull official podium results and lock the event.
 10. When the season champion is entered for a series, it locks, freezes all player champion picks for that series, and awards the 5-point bonus to matching players.
 11. Standings are computed deterministically from stored picks and results.
 
@@ -133,7 +133,7 @@ Online-first with offline fallback:
 ```text
 Chicane/
 ├── Chicane/
-│   ├── App/                     # Entry point, AppViewModel, RootTabView
+│   ├── Features/App/            # App shell: RootTabView, AppViewModel
 │   ├── Domain/                  # Core models (Driver, RaceEvent, RacePick, RaceResult, etc.)
 │   ├── Data/
 │   │   ├── Persistence/         # LocalSeasonRepository, FileStateStore
@@ -158,7 +158,7 @@ Chicane/
 
 ### Requirements
 - macOS with Xcode 16+
-- iOS Simulator runtime (26.2 used in CI/local commands below)
+- Any available iOS Simulator runtime
 
 ### Xcode
 1. Open `Chicane.xcodeproj`
@@ -168,7 +168,7 @@ Chicane/
 ### CLI
 ```bash
 xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'generic/platform=iOS Simulator' build
-xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:ChicaneTests test
+xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS Simulator' -only-testing:ChicaneTests test
 ```
 
 ---

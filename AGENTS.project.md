@@ -70,7 +70,7 @@
 - Build command:
   - `xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'generic/platform=iOS Simulator' build`
 - Unit tests:
-  - `xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:ChicaneTests test`
+  - `xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS Simulator' -only-testing:ChicaneTests test`
 
 ## Near-term priorities
 - Add focused UI tests for picks/results lock flow.
