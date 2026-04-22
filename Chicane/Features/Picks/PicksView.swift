@@ -24,7 +24,12 @@ struct PicksView: View {
 
                 if let selectedEvent {
                     EventSummaryCard(event: selectedEvent, subtitleOpacity: 0.88)
-                    playerCards
+
+                    if viewModel.players.isEmpty {
+                        noPlayersCard
+                    } else {
+                        playerCards
+                    }
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("No event selected", systemImage: "calendar")
@@ -115,6 +120,18 @@ struct PicksView: View {
                 playerCard(for: player)
             }
         }
+    }
+
+    private var noPlayersCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("No players yet", systemImage: "person.2")
+                .font(.headline)
+
+            Text("Add at least one player in Settings to enter podium picks on this iPad.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+        }
+        .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private func playerCard(for player: Player) -> some View {
