@@ -29,12 +29,6 @@ final class AppViewModel: ObservableObject {
 
     private var hasLoaded = false
 
-    private struct EventRoundKey: Hashable {
-        let series: RaceSeries
-        let season: Int
-        let round: Int
-    }
-
     init(
         driverRepository: DriverRepository,
         calendarRepository: CalendarRepository,
@@ -551,14 +545,10 @@ final class AppViewModel: ObservableObject {
         refreshed: [RaceEvent]
     ) -> [RaceEvent] {
         guard !existing.isEmpty else { return refreshed }
-
-        let existingByRound = existing.reduce(into: [EventRoundKey: RaceEvent]()) { output, event in
-            output[EventRoundKey(series: event.series, season: event.season, round: event.round)] = event
-        }
+        let existingPool = existing
 
         return refreshed.map { event in
-            let key = EventRoundKey(series: event.series, season: event.season, round: event.round)
-            guard let stableEvent = existingByRound[key] else {
+            guard let stableEvent = matchedExistingEvent(for: event, in: existingPool) else {
                 return event
             }
 
@@ -567,8 +557,8 @@ final class AppViewModel: ObservableObject {
                 series: event.series,
                 season: event.season,
                 round: event.round,
-                title: stableEvent.title,
-                circuit: stableEvent.circuit,
+                title: preferredDisplayText(existing: stableEvent.title, refreshed: event.title),
+                circuit: preferredDisplayText(existing: stableEvent.circuit, refreshed: event.circuit),
                 raceDate: event.raceDate,
                 trackTimeZoneID: event.trackTimeZoneID ?? stableEvent.trackTimeZoneID
             )
@@ -579,6 +569,88 @@ final class AppViewModel: ObservableObject {
             }
             return $0.round < $1.round
         }
+    }
+
+    private func matchedExistingEvent(for refreshed: RaceEvent, in existing: [RaceEvent]) -> RaceEvent? {
+        let sameSeriesSeason = existing.filter {
+            $0.series == refreshed.series && $0.season == refreshed.season
+        }
+
+        if let exactIDMatch = sameSeriesSeason.first(where: { $0.id == refreshed.id }) {
+            return exactIDMatch
+        }
+
+        let maxAllowedDateDelta: TimeInterval = 72 * 60 * 60
+        let candidates = sameSeriesSeason.filter {
+            abs($0.raceDate.timeIntervalSince(refreshed.raceDate)) <= maxAllowedDateDelta
+        }
+
+        guard !candidates.isEmpty else {
+            return nil
+        }
+
+        return candidates.min {
+            let lhsDelta = abs($0.raceDate.timeIntervalSince(refreshed.raceDate))
+            let rhsDelta = abs($1.raceDate.timeIntervalSince(refreshed.raceDate))
+
+            if lhsDelta == rhsDelta {
+                return identityScore(existing: $0, refreshed: refreshed) >
+                    identityScore(existing: $1, refreshed: refreshed)
+            }
+
+            return lhsDelta < rhsDelta
+        }
+    }
+
+    private func preferredDisplayText(existing: String, refreshed: String) -> String {
+        let existingTrimmed = existing.trimmingCharacters(in: .whitespacesAndNewlines)
+        let refreshedTrimmed = refreshed.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !refreshedTrimmed.isEmpty else { return existingTrimmed }
+        guard !existingTrimmed.isEmpty else { return refreshedTrimmed }
+
+        // If refreshed looks less descriptive (e.g. "Spanish GP" vs
+        // "Estrella Galicia 0,0 Grand Prix Of Spain"), preserve the richer local text.
+        if refreshedTrimmed.count < existingTrimmed.count {
+            return existingTrimmed
+        }
+        return refreshedTrimmed
+    }
+
+    private func identityScore(existing: RaceEvent, refreshed: RaceEvent) -> Int {
+        let existingTokens = eventIdentityTokens(for: existing)
+        let refreshedTokens = eventIdentityTokens(for: refreshed)
+        return existingTokens.intersection(refreshedTokens).count
+    }
+
+    private func eventIdentityTokens(for event: RaceEvent) -> Set<String> {
+        Set(
+            normalizedEventIdentityText("\(event.title) \(event.circuit)")
+                .split(separator: " ")
+                .map(String.init)
+        )
+    }
+
+    private func normalizedEventIdentityText(_ value: String) -> String {
+        value
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .replacingOccurrences(
+                of: #"\b(grand|prix|gp|circuit|autodromo|international|motorcycle|motogp|formula|one|de|del|of|the|and)\b"#,
+                with: " ",
+                options: .regularExpression
+            )
+            .replacingOccurrences(
+                of: #"[^a-z0-9 ]"#,
+                with: " ",
+                options: .regularExpression
+            )
+            .replacingOccurrences(
+                of: #"\s+"#,
+                with: " ",
+                options: .regularExpression
+            )
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
     }
 
     // MARK: - Participant Name Matching
