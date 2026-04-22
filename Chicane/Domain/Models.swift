@@ -427,22 +427,6 @@ struct ChampionshipLeader: Identifiable, Hashable, Sendable {
     }
 }
 
-// MARK: - News
-
-struct NewsArticle: Identifiable, Sendable, Hashable {
-    let id: String          // article URL used as stable identity
-    let series: RaceSeries
-    let title: String
-    let description: String
-    let url: URL
-    let publishedAt: Date
-    let imageURL: URL?
-
-    var formattedDate: String {
-        DateFormatter.dayMonthYear.string(from: publishedAt)
-    }
-}
-
 extension DateFormatter {
     static let dayMonthYear: DateFormatter = {
         let formatter = DateFormatter()

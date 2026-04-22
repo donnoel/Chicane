@@ -41,12 +41,6 @@ struct RootTabView: View {
                     Label("Scoreboard", systemImage: "chart.bar.fill")
                 }
 
-                NavigationStack {
-                    NewsView()
-                }
-                .tabItem {
-                    Label("News", systemImage: "newspaper.fill")
-                }
 
                 NavigationStack {
                     SettingsView()

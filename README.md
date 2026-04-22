@@ -5,7 +5,6 @@
   <img src="https://img.shields.io/badge/SwiftUI-MVVM-orange?logo=swift" alt="SwiftUI MVVM">
   <img src="https://img.shields.io/badge/Platform-iOS%20%2B%20iPadOS-blue" alt="iOS and iPadOS">
   <img src="https://img.shields.io/badge/Persistence-Local%20JSON%20%2B%20iCloud-lightgrey" alt="Local JSON and iCloud">
-  <img src="https://img.shields.io/badge/News-Gated%20on%20entry-critical" alt="News gated on entry">
 </p>
 
 ---
@@ -49,8 +48,6 @@ Chicane tracks standings across:
 | Scoreboard | Series and combined standings, plus per-event score history. |
 | Track-Local Time | Hero cards show each circuit's current local clock time with a day cue (`Yesterday`, `Today`, `Tomorrow`). |
 | Bet Ledger | Home shows each player's current bet in a premium card. |
-| In-App News Reader | Motorsport.com RSS news feed with Safari Reader mode — loads clean, ad-free articles in-app. |
-| Spoiler Safety | No race spoilers by default; the News tab is blurred on entry until the user explicitly continues. |
 | Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. Joining prompts before replacing existing local season data. |
 | Offline Fallback | Works with bundled seed data if network sources are unavailable. |
 | Accessibility | Large tap targets, Dynamic Type, VoiceOver labels, and contrast-safe light/dark mode surfaces. |
@@ -66,7 +63,6 @@ Chicane tracks standings across:
 - **Picks** — Enter each player's season champion and P1/P2/P3 predictions
 - **Results** — Enter official results and lock events, plus lock the season champion
 - **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)
-- **News** — Latest F1 and MotoGP news via RSS, read in-app with Reader mode after an entry confirmation
 - **Settings** — Manage players, shared league sync, per-player bets, and season reset
   - Player names cannot be blank when saving; use `Remove` to delete a player.
   - Shows the installed app version/build in an `About` section.
@@ -105,7 +101,6 @@ Chicane follows SwiftUI + MVVM with focused repositories and services.
 - `OnlineDriverRepository` — fetches current F1 drivers and MotoGP riders from official sources
 - `OnlineCalendarRepository` — fetches F1 and MotoGP event calendars
 - `OnlineResultRepository` — fetches official top-3 podium results
-- `RSSNewsRepository` — fetches and parses Motorsport.com RSS news feeds
 - `FallbackDriverRepository` / `FallbackCalendarRepository` — online-first with bundled seed fallback
 - `LocalSeasonRepository` — actor-isolated persistence for picks, results, players, and settings
 - `CloudSyncSeasonRepository` — local-first repository wrapper that syncs shared league state through CloudKit
@@ -116,7 +111,6 @@ Chicane follows SwiftUI + MVVM with focused repositories and services.
 - `FileStateStore` — actor-based atomic JSON file I/O
 - `PublicCloudLeagueStore` — CloudKit public-database store for shared league state
 - `F1OfficialHTMLParser` — parses formula1.com for drivers, calendar, and results
-- `RSSParser` — parses Motorsport.com RSS feeds into `NewsArticle` models
 - `RemoteDataClient` — shared URLSession HTTP client with encoding fallback
 - `BundleJSONLoader` — loads bundled seed JSON resources
 
@@ -128,7 +122,6 @@ Online-first with offline fallback:
 
 - **Formula 1** — `formula1.com` for drivers, calendar, and official podium results
 - **MotoGP** — `motogp.com` / Pulse Live API for riders and calendar events
-- **News** — Motorsport.com public RSS feeds (`motorsport.com/rss/f1/news/` and `/rss/motogp/news/`)
 - **Bundled seed data** (fallback):
   - `Chicane/Resources/Seed/drivers.json`
   - `Chicane/Resources/Seed/calendar.json`
@@ -144,14 +137,13 @@ Chicane/
 │   ├── Domain/                  # Core models (Driver, RaceEvent, RacePick, RaceResult, etc.)
 │   ├── Data/
 │   │   ├── Persistence/         # LocalSeasonRepository, FileStateStore
-│   │   ├── Repositories/        # Driver, Calendar, Result, News repositories + protocols
+│   │   ├── Repositories/        # Driver, Calendar, Result repositories + protocols
 │   │   └── Services/            # Scoring, parsing, HTTP client
 │   ├── Features/
 │   │   ├── Home/
 │   │   ├── Picks/
 │   │   ├── Results/
 │   │   ├── Scoreboard/
-│   │   ├── News/                # News tab — RSS feed + in-app Safari reader
 │   │   └── Settings/
 │   ├── Shared/                  # Reusable views and components
 │   └── Resources/
@@ -196,7 +188,6 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 - State is written atomically for crash-safety.
 - Schema versioning is in place for future migrations.
 - Legacy stored driver/rider IDs are normalized against current rosters so older saved picks continue to score after feed ID changes.
-- News is blurred on entry and only shown after explicit confirmation.
 
 ---
 
@@ -204,7 +195,6 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 
 - MotoGP participants are labeled as Riders throughout the app.
 - Season reset clears picks, results, and season champion choices while preserving players and settings.
-- The News tab is always visible and opens behind a spoiler-confirmation gate.
 
 ---
 
