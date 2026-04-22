@@ -69,11 +69,6 @@ struct RootTabView: View {
         .task(id: leagueAutoSyncTaskID) {
             await runLeagueAutoSyncLoop()
         }
-        .onChange(of: viewModel.errorMessage) { _, newValue in
-            guard let message = newValue, !message.isEmpty else { return }
-            viewModel.banner = BannerMessage(style: .error, text: message)
-            viewModel.errorMessage = nil
-        }
         .onChange(of: viewModel.banner?.id) { _, _ in
             scheduleBannerAutoDismissIfNeeded()
         }

@@ -15,7 +15,6 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var championshipLeadersBySeries: [RaceSeries: [ChampionshipLeader]] = [:]
     @Published private(set) var isLoading = false
     @Published private(set) var isSyncing = false
-    @Published var errorMessage: String?
     @Published var banner: BannerMessage?
 
     private let driverRepository: DriverRepository
@@ -49,7 +48,6 @@ final class AppViewModel: ObservableObject {
 
     func showError(_ message: String) {
         banner = BannerMessage(style: .error, text: message)
-        errorMessage = message
     }
 
     func showSaveOutcome(warning: String?, successMessage: String) {
