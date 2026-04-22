@@ -4,29 +4,47 @@ import SwiftUI
 
 /// Live countdown card for the next upcoming race.
 ///
-/// Uses `TimelineView` to tick every second. Within 72 hours of race start the
-/// pills turn the series colour and the card gains a coloured glow. Inside 24
-/// hours the display switches from DAYS/HRS/MIN to HRS/MIN/SEC for urgency.
+/// Uses an adaptive `TimelineView` cadence:
+/// - per-minute while the race is 24+ hours away
+/// - per-second inside the final 24 hours (when seconds are shown)
+/// Within 72 hours of race start the pills turn the series colour and the card
+/// gains a coloured glow.
 struct RaceCountdownCard: View {
+    private enum Constants {
+        static let countdownSecondsWindow: TimeInterval = 24 * 3600
+    }
+
     let event: RaceEvent
 
     private var seriesColor: Color { ChicaneTheme.seriesColor(event.series) }
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            let remaining     = event.raceDate.timeIntervalSince(context.date)
-            let isRaceWeekend = remaining > 0 && remaining < 3 * 24 * 3600
-
-            cardContent(remaining: remaining, isRaceWeekend: isRaceWeekend, now: context.date)
-                .glassCard(accent: seriesColor)
-                // Coloured glow that fades in as race weekend approaches
-                .shadow(
-                    color: isRaceWeekend ? seriesColor.opacity(0.16) : .clear,
-                    radius: isRaceWeekend ? 12 : 0,
-                    x: 0, y: 4
-                )
-                .animation(.easeInOut(duration: 0.8), value: isRaceWeekend)
+        TimelineView(.periodic(from: .now, by: 60)) { minuteContext in
+            let minuteRemaining = event.raceDate.timeIntervalSince(minuteContext.date)
+            if minuteRemaining > 0 && minuteRemaining < Constants.countdownSecondsWindow {
+                TimelineView(.periodic(from: minuteContext.date, by: 1)) { secondContext in
+                    countdownContent(now: secondContext.date)
+                }
+            } else {
+                countdownContent(now: minuteContext.date)
+            }
         }
+    }
+
+    @ViewBuilder
+    private func countdownContent(now: Date) -> some View {
+        let remaining = event.raceDate.timeIntervalSince(now)
+        let isRaceWeekend = remaining > 0 && remaining < 3 * 24 * 3600
+
+        cardContent(remaining: remaining, isRaceWeekend: isRaceWeekend, now: now)
+            .glassCard(accent: seriesColor)
+            // Coloured glow that fades in as race weekend approaches
+            .shadow(
+                color: isRaceWeekend ? seriesColor.opacity(0.16) : .clear,
+                radius: isRaceWeekend ? 12 : 0,
+                x: 0, y: 4
+            )
+            .animation(.easeInOut(duration: 0.8), value: isRaceWeekend)
     }
 
     // MARK: Card body
