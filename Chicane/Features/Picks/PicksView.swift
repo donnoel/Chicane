@@ -8,7 +8,6 @@ struct PicksView: View {
     @State private var selectedEventID: String?
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
     @State private var championDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
-    @State private var scrollOffset: CGFloat = 0
     @State private var hasInitialized = false
 
     var body: some View {
@@ -43,11 +42,10 @@ struct PicksView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
-            .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Picks")
         .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground(scrollOffset: scrollOffset)
+        .chicaneBackground()
         .task {
             guard !hasInitialized else { return }
             hasInitialized = true

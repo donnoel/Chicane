@@ -1,14 +1,22 @@
 import SwiftUI
 
 struct ScoreboardView: View {
+    private struct ScoreboardDerivedData {
+        let standings: [PlayerStanding]
+        let history: [EventScoreRow]
+        let leaderText: String
+    }
+
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
     @State private var selectedScope: ScoreboardScope = .combined
-    @State private var scrollOffset: CGFloat = 0
     @State private var championDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
+    @State private var derivedData: ScoreboardDerivedData?
 
     var body: some View {
+        let derived = derivedData ?? makeDerivedData()
+
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -28,16 +36,18 @@ struct ScoreboardView: View {
                 .tint(ChicaneTheme.motoBlue)
                 .accessibilityLabel("Scoreboard scope")
 
-                standingsCard
-                scoreboardDetailLayout
+                standingsCard(
+                    standings: derived.standings,
+                    leaderText: derived.leaderText
+                )
+                scoreboardDetailLayout(history: derived.history)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 18)
-            .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Scoreboard")
         .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground(scrollOffset: scrollOffset)
+        .chicaneBackground()
         .refreshable {
             await viewModel.reload()
             // If reload failed it will have shown an error banner already.
@@ -47,20 +57,39 @@ struct ScoreboardView: View {
         }
         .task {
             hydrateChampionDrafts()
+            refreshDerivedData()
         }
         .onChange(of: selectedScope) {
             hydrateChampionDrafts()
+            refreshDerivedData()
         }
         .onChange(of: viewModel.players) {
             hydrateChampionDrafts()
+            refreshDerivedData()
         }
         .onChange(of: viewModel.championPicks) {
             hydrateChampionDrafts()
+            refreshDerivedData()
+        }
+        .onChange(of: viewModel.picks) {
+            refreshDerivedData()
+        }
+        .onChange(of: viewModel.results) {
+            refreshDerivedData()
+        }
+        .onChange(of: viewModel.championResults) {
+            refreshDerivedData()
+        }
+        .onChange(of: viewModel.eventsBySeries) {
+            refreshDerivedData()
+        }
+        .onChange(of: viewModel.driversBySeries) {
+            refreshDerivedData()
         }
     }
 
     @ViewBuilder
-    private var scoreboardDetailLayout: some View {
+    private func scoreboardDetailLayout(history: [EventScoreRow]) -> some View {
         if horizontalSizeClass == .regular {
             HStack(alignment: .top, spacing: 20) {
                 VStack(alignment: .leading, spacing: 18) {
@@ -69,20 +98,21 @@ struct ScoreboardView: View {
                 }
                 .frame(maxWidth: 320, alignment: .leading)
 
-                historyCard
+                historyCard(history: history)
             }
         } else {
             VStack(alignment: .leading, spacing: 18) {
                 seasonChampionPicksCard
                 officialChampionshipCard
-                historyCard
+                historyCard(history: history)
             }
         }
     }
 
-    private var standingsCard: some View {
-        let standings = viewModel.standings(for: selectedScope)
-
+    private func standingsCard(
+        standings: [PlayerStanding],
+        leaderText: String
+    ) -> some View {
         return VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -140,7 +170,7 @@ struct ScoreboardView: View {
                     }
                 }
 
-                Text(viewModel.leaderText(for: selectedScope))
+                Text(leaderText)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
             }
@@ -202,9 +232,7 @@ struct ScoreboardView: View {
         .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
-    private var historyCard: some View {
-        let history = viewModel.history(for: selectedScope)
-
+    private func historyCard(history: [EventScoreRow]) -> some View {
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -224,7 +252,7 @@ struct ScoreboardView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: 12) {
+                LazyVStack(spacing: 12) {
                     ForEach(history) { row in
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(alignment: .firstTextBaseline) {
@@ -323,6 +351,19 @@ struct ScoreboardView: View {
         } else {
             return [.formula1, .motoGP]
         }
+    }
+
+    private func makeDerivedData() -> ScoreboardDerivedData {
+        let standings = viewModel.standings(for: selectedScope)
+        return ScoreboardDerivedData(
+            standings: standings,
+            history: viewModel.history(for: selectedScope),
+            leaderText: viewModel.leaderText(for: standings)
+        )
+    }
+
+    private func refreshDerivedData() {
+        derivedData = makeDerivedData()
     }
 
     private func championBinding(for series: RaceSeries, playerID: UUID) -> Binding<String?> {

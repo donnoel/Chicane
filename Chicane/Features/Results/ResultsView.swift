@@ -18,7 +18,6 @@ struct ResultsView: View {
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
     @State private var isUpdatingResults = false
-    @State private var scrollOffset: CGFloat = 0
     @State private var hasInitialized = false
     @State private var inlineResultStatus: InlineStatus?
 
@@ -48,11 +47,10 @@ struct ResultsView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
-            .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("Results")
         .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground(scrollOffset: scrollOffset)
+        .chicaneBackground()
         .task {
             guard !hasInitialized else { return }
             hasInitialized = true

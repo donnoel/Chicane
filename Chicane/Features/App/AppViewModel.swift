@@ -368,6 +368,10 @@ final class AppViewModel: ObservableObject {
         scoreboardCalculator.leaderText(for: standings(for: scope))
     }
 
+    func leaderText(for standings: [PlayerStanding]) -> String {
+        scoreboardCalculator.leaderText(for: standings)
+    }
+
     @discardableResult
     func savePlayers(_ players: [Player]) async throws -> String? {
         let sanitizedPlayers = players.map { player in
