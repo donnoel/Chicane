@@ -1,6 +1,16 @@
 import SwiftUI
 
 struct ResultsView: View {
+    private enum InlineStatusStyle {
+        case info
+        case error
+    }
+
+    private struct InlineStatus {
+        let text: String
+        let style: InlineStatusStyle
+    }
+
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
     @Environment(\.colorScheme) private var colorScheme
@@ -10,6 +20,7 @@ struct ResultsView: View {
     @State private var isUpdatingResults = false
     @State private var scrollOffset: CGFloat = 0
     @State private var hasInitialized = false
+    @State private var inlineResultStatus: InlineStatus?
 
     var body: some View {
         ScrollView {
@@ -49,9 +60,14 @@ struct ResultsView: View {
         }
         .onChange(of: eventIDs) {
             ensureValidSelection()
+            clearInlineStatus()
         }
         .onChange(of: selectedSeries) {
             initializeSelectionForSeries()
+            clearInlineStatus()
+        }
+        .onChange(of: selectedEventID) {
+            clearInlineStatus()
         }
     }
 
@@ -103,6 +119,10 @@ struct ResultsView: View {
                     Text("Fetch the official top three for this event.")
                         .font(.body)
                         .foregroundStyle(.secondary)
+                }
+
+                if let inlineResultStatus {
+                    inlineStatusCard(inlineResultStatus)
                 }
 
                 Button {
@@ -187,6 +207,34 @@ struct ResultsView: View {
             Spacer()
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func inlineStatusCard(_ status: InlineStatus) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: status.style == .error ? "exclamationmark.triangle.fill" : "info.circle.fill")
+                .foregroundStyle(status.style == .error ? .orange : .blue)
+                .accessibilityHidden(true)
+
+            Text(status.text)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.thinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(
+                    (status.style == .error ? Color.orange : Color.blue).opacity(0.28),
+                    lineWidth: 0.8
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(status.text)
     }
 
     private func resultHeroHeader(for event: RaceEvent) -> some View {
@@ -445,13 +493,25 @@ struct ResultsView: View {
                 warning: warning,
                 successMessage: "Results updated and locked."
             )
+            inlineResultStatus = nil
         } catch {
             if error is OfficialResultRepositoryError {
                 viewModel.showInfo("Official results aren't available yet. Try again later.")
+                inlineResultStatus = InlineStatus(
+                    text: "Official top-3 results are not available yet for this event. Try again later.",
+                    style: .info
+                )
             } else {
                 viewModel.showError(error.localizedDescription)
+                inlineResultStatus = InlineStatus(
+                    text: "Could not fetch official results right now. Check your connection and try again.",
+                    style: .error
+                )
             }
         }
     }
 
+    private func clearInlineStatus() {
+        inlineResultStatus = nil
+    }
 }
