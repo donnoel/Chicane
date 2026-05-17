@@ -19,7 +19,7 @@ final class AppViewModelTests: XCTestCase {
         super.tearDown()
     }
 
-    func testUpdateResultFromOfficialSourceLocksOfficialResultAndRejectsFurtherChanges() async throws {
+    func testUpdateResultFromOfficialSourceLocksOfficialResultAndRejectsManualChanges() async throws {
         let event = TestFixtures.event(id: "f1-2026-test", series: .formula1)
         let drivers = [
             TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
@@ -39,7 +39,11 @@ final class AppViewModelTests: XCTestCase {
         XCTAssertEqual(storedResult?.isLocked, true)
 
         do {
-            try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+            try await viewModel.saveResult(
+                series: .formula1,
+                eventID: event.id,
+                draft: PodiumDraft(p1: drivers[2].id, p2: drivers[1].id, p3: drivers[0].id)
+            )
             XCTFail("Expected a locked-result error")
         } catch let error as AppViewModelError {
             if case .resultLocked = error {
@@ -50,6 +54,47 @@ final class AppViewModelTests: XCTestCase {
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+    }
+
+    func testUpdateResultFromOfficialSourceCanCorrectLockedOfficialResult() async throws {
+        let event = TestFixtures.event(id: "f1-2026-correction", series: .formula1)
+        let drivers = [
+            TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
+            TestFixtures.driver(id: "f1-lando", series: .formula1, name: "Lando Norris", team: "McLaren"),
+            TestFixtures.driver(id: "f1-charles", series: .formula1, name: "Charles Leclerc", team: "Ferrari")
+        ]
+        let driverRepository = MockDriverRepository()
+        driverRepository.stubbedDrivers[.formula1] = drivers
+
+        let calendarRepository = MockCalendarRepository()
+        calendarRepository.stubbedEvents[.formula1] = [event]
+
+        let resultRepository = MockResultRepository()
+        resultRepository.stubbedPodiums[event.id] = drivers.map(\.name)
+
+        let viewModel = AppViewModel(
+            driverRepository: driverRepository,
+            calendarRepository: calendarRepository,
+            resultRepository: resultRepository,
+            championshipRepository: EmptyChampionshipRepository(),
+            seasonRepository: LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        )
+
+        await viewModel.reload()
+        try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+
+        resultRepository.stubbedPodiums[event.id] = [
+            drivers[2].name,
+            drivers[1].name,
+            drivers[0].name
+        ]
+        try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+
+        let correctedResult = viewModel.result(for: .formula1, eventID: event.id)
+        XCTAssertEqual(correctedResult?.isLocked, true)
+        XCTAssertEqual(correctedResult?.podium.p1, drivers[2].id)
+        XCTAssertEqual(correctedResult?.podium.p2, drivers[1].id)
+        XCTAssertEqual(correctedResult?.podium.p3, drivers[0].id)
     }
 
     func testUpdateResultFromOfficialSourceFailsClosedOnAmbiguousParticipantMatch() async throws {
@@ -709,7 +754,9 @@ private actor ManualSyncPermissionFailureSeasonRepository: SeasonRepository {
     }
 
     func upsertResult(_ result: RaceResult) async throws -> PersistedState {
-        state.results.removeAll { $0.id == result.id }
+        state.results.removeAll {
+            $0.series == result.series && $0.eventID == result.eventID
+        }
         state.results.append(result)
         return state
     }

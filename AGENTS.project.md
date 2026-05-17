@@ -51,7 +51,7 @@
 - No spoilers shown unless user explicitly enters or fetches results.
 - Podium picks/results must contain 3 unique participants (drivers for F1, riders for MotoGP).
 - Scoring is position-exact only (P1/P2/P3 exact matches only, 0-3 points per event).
-- Locked official results must not be editable once retrieved.
+- Locked official results must not be manually editable once retrieved; an official-source refresh may correct the same event and keep it locked.
 - Locked season champions must not be editable once entered, and player champion picks must freeze for that series at the same moment.
 - Season reset clears picks/results but preserves players/settings.
 

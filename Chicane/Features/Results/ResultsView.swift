@@ -113,6 +113,9 @@ struct ResultsView: View {
 
             if let currentResult {
                 resultStatusLabel
+                if let inlineResultStatus {
+                    inlineStatusCard(inlineResultStatus)
+                }
                 officialPodiumSection(for: currentResult.podium)
 
                 Text("Official results stay locked once retrieved.")
@@ -190,8 +193,28 @@ struct ResultsView: View {
             }
 
             Spacer()
+
+            Button {
+                Task {
+                    await updateResults()
+                }
+            } label: {
+                if isUpdatingResults {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.body.weight(.semibold))
+                }
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(ChicaneTheme.seriesColor(selectedSeries))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+            .disabled(isUpdatingResults)
+            .accessibilityLabel("Refresh official results")
+            .accessibilityHint("Checks the official source again and keeps the result locked")
         }
-        .accessibilityElement(children: .combine)
     }
 
     private func inlineStatusCard(_ status: InlineStatus) -> some View {
@@ -470,6 +493,7 @@ struct ResultsView: View {
         defer { isUpdatingResults = false }
 
         do {
+            let hadLockedResult = currentResult?.isLocked == true
             let warning = try await viewModel.updateResultFromOfficialSource(
                 series: selectedSeries,
                 eventID: selectedEventID,
@@ -477,7 +501,7 @@ struct ResultsView: View {
             )
             viewModel.showSaveOutcome(
                 warning: warning,
-                successMessage: "Results updated and locked."
+                successMessage: hadLockedResult ? "Official results refreshed." : "Results updated and locked."
             )
             inlineResultStatus = nil
         } catch {

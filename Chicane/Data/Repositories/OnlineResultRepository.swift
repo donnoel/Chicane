@@ -124,14 +124,17 @@ struct OnlineResultRepository: ResultRepository {
             throw OfficialResultRepositoryError.resultsUnavailable
         }
 
+        let sessionDecoder = JSONDecoder()
+        sessionDecoder.dateDecodingStrategy = .iso8601
         let sessions: [MotoGPResultSessionPayload] = try await fetchMotoGPJSON(
             from: sessionsURL,
             queryItems: [
                 URLQueryItem(name: "eventUuid", value: resultsEvent.id),
                 URLQueryItem(name: "categoryUuid", value: motoGPCategory.id)
-            ]
+            ],
+            decoder: sessionDecoder
         )
-        guard let raceSession = sessions.first(where: { $0.type == "RAC" }) else {
+        guard let raceSession = selectedMotoGPRaceSession(from: sessions) else {
             throw OfficialResultRepositoryError.resultsUnavailable
         }
 
@@ -178,7 +181,8 @@ struct OnlineResultRepository: ResultRepository {
 
     private func fetchMotoGPJSON<T: Decodable>(
         from baseURL: URL,
-        queryItems: [URLQueryItem]
+        queryItems: [URLQueryItem],
+        decoder: JSONDecoder = JSONDecoder()
     ) async throws -> T {
         guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
             throw OfficialResultRepositoryError.resultsUnavailable
@@ -187,7 +191,30 @@ struct OnlineResultRepository: ResultRepository {
         guard let url = components.url else {
             throw OfficialResultRepositoryError.resultsUnavailable
         }
-        return try await client.fetchJSON(T.self, from: url)
+        return try await client.fetchJSON(T.self, from: url, decoder: decoder)
+    }
+
+    func selectedMotoGPRaceSession(from sessions: [MotoGPResultSessionPayload]) -> MotoGPResultSessionPayload? {
+        let raceSessions = sessions.filter { session in
+            guard session.type.uppercased() == "RAC" else {
+                return false
+            }
+            let status = session.status?.uppercased() ?? ""
+            return status != "CANCELLED"
+        }
+
+        return raceSessions.max { lhs, rhs in
+            switch (lhs.date, rhs.date) {
+            case let (lhsDate?, rhsDate?):
+                return lhsDate < rhsDate
+            case (nil, _?):
+                return true
+            case (_?, nil):
+                return false
+            case (nil, nil):
+                return lhs.id < rhs.id
+            }
+        }
     }
 
     func selectMotoGPResultsEvent(
@@ -372,9 +399,11 @@ private struct MotoGPResultCategoryPayload: Decodable {
     }
 }
 
-private struct MotoGPResultSessionPayload: Decodable {
+struct MotoGPResultSessionPayload: Decodable {
     let id: String
     let type: String
+    let date: Date?
+    let status: String?
 }
 
 private struct MotoGPResultClassificationPayload: Decodable {

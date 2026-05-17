@@ -262,7 +262,7 @@ final class AppViewModel: ObservableObject {
         }
 
         let draft = PodiumDraft(p1: ids[0], p2: ids[1], p3: ids[2])
-        let warning = try await saveResult(
+        let warning = try await saveOfficialResult(
             series: series,
             eventID: eventID,
             draft: draft,
@@ -270,6 +270,28 @@ final class AppViewModel: ObservableObject {
         )
         await refreshChampionshipLeaders()
         return warning
+    }
+
+    private func saveOfficialResult(
+        series: RaceSeries,
+        eventID: String,
+        draft: PodiumDraft,
+        lockResult: Bool
+    ) async throws -> String? {
+        guard let podium = draft.toPodium() else {
+            throw RepositoryError.invalidPodium
+        }
+
+        let result = RaceResult(
+            series: series,
+            eventID: eventID,
+            podium: podium,
+            isLocked: lockResult,
+            updatedAt: Date()
+        )
+        return try await persistState {
+            try await seasonRepository.upsertResult(result)
+        }
     }
 
     func standings(for scope: ScoreboardScope) -> [PlayerStanding] {

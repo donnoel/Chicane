@@ -364,6 +364,23 @@ final class ChicaneTests: XCTestCase {
         XCTAssertEqual(selected?.id, "race-event")
     }
 
+    func testMotoGPResultSessionSelectionPrefersLatestNonCancelledRace() {
+        let repository = OnlineResultRepository()
+        let firstRaceDate = Date(timeIntervalSince1970: 1_779_040_800)
+        let finalRaceDate = Date(timeIntervalSince1970: 1_779_045_420)
+        let cancelledRaceDate = Date(timeIntervalSince1970: 1_779_049_000)
+        let sessions = [
+            MotoGPResultSessionPayload(id: "practice", type: "FP", date: finalRaceDate, status: "FINISHED"),
+            MotoGPResultSessionPayload(id: "rac1", type: "RAC", date: firstRaceDate, status: "FINISHED"),
+            MotoGPResultSessionPayload(id: "rac2", type: "RAC", date: finalRaceDate, status: "FINISHED"),
+            MotoGPResultSessionPayload(id: "cancelled", type: "RAC", date: cancelledRaceDate, status: "CANCELLED")
+        ]
+
+        let selected = repository.selectedMotoGPRaceSession(from: sessions)
+
+        XCTAssertEqual(selected?.id, "rac2")
+    }
+
     func testMotoGPRaceSessionDatePrefersRACSessionDate() {
         let repository = OnlineCalendarRepository()
         let expectedRaceDate = Date(timeIntervalSince1970: 1_774_800_000)
