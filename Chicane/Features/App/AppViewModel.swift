@@ -121,8 +121,14 @@ final class AppViewModel: ObservableObject {
     func syncLeagueIfNeeded(showBannerOnSuccess: Bool = false) async {
         guard activeLeagueCode != nil else { return }
 
-        isSyncing = true
-        defer { isSyncing = false }
+        if showBannerOnSuccess {
+            isSyncing = true
+        }
+        defer {
+            if showBannerOnSuccess {
+                isSyncing = false
+            }
+        }
 
         do {
             let state = try await (showBannerOnSuccess
@@ -484,12 +490,24 @@ final class AppViewModel: ObservableObject {
     }
 
     private func apply(state: PersistedState) {
-        players = state.players
-        picks = state.picks
-        results = state.results
-        championPicks = state.championPicks
-        championResults = state.championResults
-        settings = state.settings
+        if players != state.players {
+            players = state.players
+        }
+        if picks != state.picks {
+            picks = state.picks
+        }
+        if results != state.results {
+            results = state.results
+        }
+        if championPicks != state.championPicks {
+            championPicks = state.championPicks
+        }
+        if championResults != state.championResults {
+            championResults = state.championResults
+        }
+        if settings != state.settings {
+            settings = state.settings
+        }
     }
 
     private func identityResolver(for series: RaceSeries) -> StoredIdentityResolver {

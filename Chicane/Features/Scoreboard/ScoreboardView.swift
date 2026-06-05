@@ -20,9 +20,9 @@ struct ScoreboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Season Scoreboard")
+                    Text("Standings")
                         .font(.title2.weight(.bold))
-                    Text("Standings first, then official leaders and race-by-race scoring.")
+                    Text("Who's winning now, with details below when you want them.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -45,7 +45,7 @@ struct ScoreboardView: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 18)
         }
-        .navigationTitle("Scoreboard")
+        .navigationTitle("Standings")
         .navigationBarTitleDisplayMode(.inline)
         .chicaneBackground()
         .refreshable {
@@ -133,6 +133,8 @@ struct ScoreboardView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
             } else {
+                let leaderPoints = standings.first?.points ?? 0
+
                 if let leader = standings.first {
                     HStack(alignment: .lastTextBaseline) {
                         VStack(alignment: .leading, spacing: 6) {
@@ -156,8 +158,15 @@ struct ScoreboardView: View {
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(index == 0 ? ChicaneTheme.scopeColor(selectedScope) : .secondary)
                                 .frame(width: 18, alignment: .leading)
-                            Text(standing.player.name)
-                                .font(.body.weight(index == 0 ? .bold : .semibold))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(standing.player.name)
+                                    .font(.body.weight(index == 0 ? .bold : .semibold))
+                                if index > 0 {
+                                    Text("\(leaderPoints - standing.points) back")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                             Spacer()
                             AnimatedScoreText(value: standing.points)
                                 .font(.body.weight(.bold))

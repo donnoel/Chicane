@@ -18,14 +18,14 @@ struct RootTabView: View {
                     HomeView()
                 }
                 .tabItem {
-                    Label("Home", systemImage: "house.fill")
+                    Label("Weekend", systemImage: "flag.checkered.2.crossed")
                 }
 
                 NavigationStack {
-                    PicksView()
+                    ScoreboardView()
                 }
                 .tabItem {
-                    Label("Picks", systemImage: "checklist")
+                    Label("Standings", systemImage: "chart.bar.fill")
                 }
 
                 NavigationStack {
@@ -34,14 +34,6 @@ struct RootTabView: View {
                 .tabItem {
                     Label("Results", systemImage: "flag.checkered")
                 }
-
-                NavigationStack {
-                    ScoreboardView()
-                }
-                .tabItem {
-                    Label("Scoreboard", systemImage: "chart.bar.fill")
-                }
-
 
                 NavigationStack {
                     SettingsView()
