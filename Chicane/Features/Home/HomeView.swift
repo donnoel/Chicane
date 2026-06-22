@@ -269,9 +269,7 @@ struct HomeView: View {
 
             Spacer()
 
-            Image(systemName: event.series.symbolName)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(ChicaneTheme.seriesColor(event.series))
+            SeriesArtwork(series: event.series)
         }
     }
 
@@ -695,6 +693,26 @@ struct HomeView: View {
         } catch {
             viewModel.showError(error.localizedDescription)
         }
+    }
+}
+
+private struct SeriesArtwork: View {
+    let series: RaceSeries
+
+    var body: some View {
+        Image(series.artworkName)
+            .resizable()
+            .scaledToFit()
+            .frame(width: width, height: 34)
+            .alignmentGuide(.firstTextBaseline) { context in
+                context[VerticalAlignment.center]
+            }
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
+    }
+
+    private var width: CGFloat {
+        series == .formula1 ? 58 : 46
     }
 }
 

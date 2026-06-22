@@ -24,12 +24,12 @@ enum RaceSeries: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var symbolName: String {
+    var artworkName: String {
         switch self {
         case .formula1:
-            return "car.fill"
+            return "SeriesFormula1"
         case .motoGP:
-            return "figure.outdoor.cycle"
+            return "SeriesMotoGP"
         }
     }
 }
