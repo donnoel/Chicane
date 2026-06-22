@@ -12,24 +12,30 @@ final class ChicaneUITests: XCTestCase {
         case lockedGates = "locked_gates"
     }
 
+    private enum Tab {
+        static let weekend = "Weekend"
+        static let standings = "Standings"
+        static let results = "Results"
+        static let settings = "Settings"
+    }
+
     func testLaunchShowsCoreTabShell() throws {
         let app = makeApp()
         app.launch()
 
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: Timeout.medium))
-        XCTAssertTrue(app.tabBars.buttons["Home"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Picks"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Results"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Scoreboard"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Settings"].exists)
+        XCTAssertTrue(app.tabBars.buttons[Tab.weekend].exists)
+        XCTAssertTrue(app.tabBars.buttons[Tab.standings].exists)
+        XCTAssertTrue(app.tabBars.buttons[Tab.results].exists)
+        XCTAssertTrue(app.tabBars.buttons[Tab.settings].exists)
     }
 
-    func testAddPlayerInSettingsThenPicksIsPlayable() throws {
+    func testAddPlayerInSettingsThenWeekendPicksArePlayable() throws {
         let app = makeApp()
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons["Settings"].waitForExistence(timeout: Timeout.medium))
-        app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.tabBars.buttons[Tab.settings].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.settings].tap()
 
         let addPlayerField = app.textFields["Add Player"]
         XCTAssertTrue(addPlayerField.waitForExistence(timeout: Timeout.medium))
@@ -42,10 +48,10 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts[playerName].waitForExistence(timeout: Timeout.medium))
         dismissKeyboardIfVisible(in: app)
 
-        let picksTab = app.tabBars.buttons["Picks"]
-        XCTAssertTrue(picksTab.waitForExistence(timeout: Timeout.medium))
-        picksTab.tap()
-        XCTAssertTrue(app.staticTexts["Podium Picks"].waitForExistence(timeout: Timeout.medium))
+        let weekendTab = app.tabBars.buttons[Tab.weekend]
+        XCTAssertTrue(weekendTab.waitForExistence(timeout: Timeout.medium))
+        weekendTab.tap()
+        XCTAssertTrue(app.staticTexts["Make your picks"].waitForExistence(timeout: Timeout.medium))
         XCTAssertTrue(app.descendants(matching: .any)["Position 1 selection"].waitForExistence(timeout: Timeout.short))
     }
 
@@ -53,24 +59,22 @@ final class ChicaneUITests: XCTestCase {
         let app = makeApp()
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons["Picks"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.tabBars.buttons[Tab.weekend].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["Make your picks"].waitForExistence(timeout: Timeout.medium))
 
-        app.tabBars.buttons["Picks"].tap()
-        XCTAssertTrue(app.staticTexts["Podium Picks"].waitForExistence(timeout: Timeout.medium))
-
-        app.tabBars.buttons["Results"].tap()
+        app.tabBars.buttons[Tab.results].tap()
         XCTAssertTrue(app.staticTexts["Race Results Podium"].waitForExistence(timeout: Timeout.medium))
 
-        app.tabBars.buttons["Scoreboard"].tap()
-        XCTAssertTrue(app.staticTexts["Season Scoreboard"].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.standings].tap()
+        XCTAssertTrue(app.staticTexts["Season Totals"].waitForExistence(timeout: Timeout.medium))
     }
 
     func testResultsShowsLockedStateWhenResultIsAlreadyLocked() throws {
         let app = makeApp(scenario: .lockedGates)
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons["Results"].waitForExistence(timeout: Timeout.medium))
-        app.tabBars.buttons["Results"].tap()
+        XCTAssertTrue(app.tabBars.buttons[Tab.results].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.results].tap()
 
         XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
         XCTAssertFalse(app.buttons["Fetch Official Results"].exists)
@@ -80,8 +84,8 @@ final class ChicaneUITests: XCTestCase {
         let app = makeApp(scenario: .lockedGates)
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons["Results"].waitForExistence(timeout: Timeout.medium))
-        app.tabBars.buttons["Results"].tap()
+        XCTAssertTrue(app.tabBars.buttons[Tab.results].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.results].tap()
 
         XCTAssertTrue(
             app.staticTexts["Season champion is locked"]
@@ -93,8 +97,8 @@ final class ChicaneUITests: XCTestCase {
         let app = makeApp(scenario: .default)
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons["Results"].waitForExistence(timeout: Timeout.medium))
-        app.tabBars.buttons["Results"].tap()
+        XCTAssertTrue(app.tabBars.buttons[Tab.results].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.results].tap()
 
         XCTAssertTrue(
             app.staticTexts["Fetch the official top three for this event."]
@@ -108,19 +112,18 @@ final class ChicaneUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: Timeout.medium))
-        XCTAssertTrue(app.tabBars.buttons["Home"].isHittable)
-        XCTAssertTrue(app.tabBars.buttons["Picks"].isHittable)
-        XCTAssertTrue(app.tabBars.buttons["Results"].isHittable)
-        XCTAssertTrue(app.tabBars.buttons["Scoreboard"].isHittable)
-        XCTAssertTrue(app.tabBars.buttons["Settings"].isHittable)
+        XCTAssertTrue(app.tabBars.buttons[Tab.weekend].isHittable)
+        XCTAssertTrue(app.tabBars.buttons[Tab.standings].isHittable)
+        XCTAssertTrue(app.tabBars.buttons[Tab.results].isHittable)
+        XCTAssertTrue(app.tabBars.buttons[Tab.settings].isHittable)
 
-        app.tabBars.buttons["Home"].tap()
+        app.tabBars.buttons[Tab.weekend].tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)["Standings series"]
+            app.descendants(matching: .any)["Position 1 selection"]
                 .waitForExistence(timeout: Timeout.medium)
         )
 
-        app.tabBars.buttons["Results"].tap()
+        app.tabBars.buttons[Tab.results].tap()
         XCTAssertTrue(
             app.descendants(matching: .any)["Fetch official results"]
                 .waitForExistence(timeout: Timeout.medium)
@@ -130,13 +133,13 @@ final class ChicaneUITests: XCTestCase {
                 .waitForExistence(timeout: Timeout.medium)
         )
 
-        app.tabBars.buttons["Scoreboard"].tap()
+        app.tabBars.buttons[Tab.standings].tap()
         XCTAssertTrue(
             app.descendants(matching: .any)["Scoreboard scope"]
                 .waitForExistence(timeout: Timeout.medium)
         )
 
-        app.tabBars.buttons["Settings"].tap()
+        app.tabBars.buttons[Tab.settings].tap()
         let playerNameField = app.descendants(matching: .any).matching(
             NSPredicate(format: "label BEGINSWITH %@", "Name for ")
         ).firstMatch
@@ -150,8 +153,8 @@ final class ChicaneUITests: XCTestCase {
         let app = makeApp(scenario: .lockedGates)
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons["Results"].waitForExistence(timeout: Timeout.medium))
-        app.tabBars.buttons["Results"].tap()
+        XCTAssertTrue(app.tabBars.buttons[Tab.results].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.results].tap()
 
         XCTAssertTrue(app.staticTexts["Race Results Podium"].waitForExistence(timeout: Timeout.medium))
         XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
