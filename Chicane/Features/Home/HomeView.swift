@@ -65,15 +65,15 @@ struct HomeView: View {
 
     private var raceQueue: [RaceEvent] {
         let events = viewModel.allEvents()
-        let now = Date()
-        let upcoming = events.filter { $0.raceDate >= now }
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let visibleEvents = events.filter { $0.raceDate >= startOfToday }
 
-        guard let firstUpcoming = upcoming.first else {
+        guard let firstVisibleEvent = visibleEvents.first else {
             return events.last.map { [$0] } ?? []
         }
 
-        let weekendEnd = firstUpcoming.raceDate.addingTimeInterval(Constants.weekendQueueWindow)
-        return upcoming.filter { $0.raceDate <= weekendEnd }
+        let weekendEnd = firstVisibleEvent.raceDate.addingTimeInterval(Constants.weekendQueueWindow)
+        return visibleEvents.filter { $0.raceDate <= weekendEnd }
     }
 
     private var selectedEvent: RaceEvent? {
@@ -356,13 +356,13 @@ struct HomeView: View {
         let weekendReady = allPlayersReady(for: event)
 
         HStack(spacing: 10) {
-            if currentComplete {
-                Button(nextActionTitle(for: player, event: event)) {
+            if currentComplete, let nextActionTitle = nextActionTitle(for: player, event: event) {
+                Button(nextActionTitle) {
                     advanceAfterCurrentPlayer(player, event: event)
                 }
                 .buttonStyle(LargeActionButtonStyle(tint: ChicaneTheme.seriesColor(event.series)))
                 .accessibilityHint("Moves to the next unfinished picker or race")
-            } else {
+            } else if !currentComplete {
                 Label("Picks save as soon as all three spots are unique.", systemImage: "checkmark.circle")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -531,14 +531,14 @@ struct HomeView: View {
         return letters.isEmpty ? "?" : letters.uppercased()
     }
 
-    private func nextActionTitle(for player: Player, event: RaceEvent) -> String {
+    private func nextActionTitle(for player: Player, event: RaceEvent) -> String? {
         if nextIncompletePlayer(after: player, event: event) != nil {
             return "Next Player"
         }
         if nextQueuedEvent(after: event) != nil {
             return "Next Race"
         }
-        return "Weekend Ready"
+        return nil
     }
 
     private func advanceAfterCurrentPlayer(_ player: Player, event: RaceEvent) {
