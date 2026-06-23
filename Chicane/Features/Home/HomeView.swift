@@ -324,9 +324,11 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(player.name)
                         .font(.title3.weight(.bold))
-                    Text(playerIsReady(player, for: event) ? "Saved automatically" : "Choose P1, P2, and P3")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    if playerIsReady(player, for: event) {
+                        Text("Saved automatically")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Spacer()
@@ -338,7 +340,7 @@ struct HomeView: View {
             }
 
             PodiumPickerSection(
-                title: participantPrompt(for: event),
+                title: "Podium",
                 drivers: viewModel.drivers(for: event.series),
                 participantSingular: participantSingular(for: event.series),
                 participantPlural: participantPlural(for: event.series),
@@ -361,7 +363,7 @@ struct HomeView: View {
                 .buttonStyle(LargeActionButtonStyle(tint: ChicaneTheme.seriesColor(event.series)))
                 .accessibilityHint("Moves to the next unfinished picker or race")
             } else if !currentComplete {
-                Label("Picks save as soon as all three spots are unique.", systemImage: "checkmark.circle")
+                Label("Picks save automatically when P1, P2, and P3 are set.", systemImage: "checkmark.circle")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
@@ -489,10 +491,6 @@ struct HomeView: View {
 
     private func participantPlural(for series: RaceSeries) -> String {
         series == .motoGP ? "riders" : "drivers"
-    }
-
-    private func participantPrompt(for event: RaceEvent) -> String {
-        "Pick 3 unique \(participantPlural(for: event.series))"
     }
 
     private func readyPlayerCount(for event: RaceEvent) -> Int {

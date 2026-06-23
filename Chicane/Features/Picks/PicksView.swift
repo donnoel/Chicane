@@ -283,7 +283,7 @@ struct PicksView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Label("Choose three unique \(participantPlural).", systemImage: "line.3.horizontal")
+                Label("Choose P1, P2, and P3.", systemImage: "line.3.horizontal")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
