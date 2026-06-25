@@ -4,12 +4,15 @@ import UIKit
 struct RootTabView: View {
     private enum Constants {
         static let leagueAutoSyncIntervalNanoseconds: UInt64 = 20_000_000_000
+        static let minimumInitialSplashNanoseconds: UInt64 = 900_000_000
     }
 
     @EnvironmentObject private var viewModel: AppViewModel
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var dismissBannerTask: Task<Void, Never>?
+    @State private var hasStartedInitialLoad = false
+    @State private var isInitialSplashVisible = true
 
     var body: some View {
         ZStack {
@@ -44,11 +47,10 @@ struct RootTabView: View {
             }
             .tint(.accentColor)
 
-            // Initial-load overlay — shown only while the very first load is in flight.
-            // Pull-to-refresh has its own built-in spinner so we suppress this overlay
-            // once hasLoaded is true (tracked via the tab content becoming non-empty).
-            if viewModel.isLoading {
+            if isInitialSplashVisible {
                 InitialLoadOverlay()
+                    .transition(.opacity)
+                    .zIndex(2)
             }
 
             BannerOverlay(message: viewModel.banner) {
@@ -57,7 +59,7 @@ struct RootTabView: View {
             .padding(.top, 10)
         }
         .task {
-            await viewModel.loadIfNeeded()
+            await performInitialLoad()
         }
         .task(id: leagueAutoSyncTaskID) {
             await runLeagueAutoSyncLoop()
@@ -138,33 +140,118 @@ struct RootTabView: View {
             await viewModel.syncLeagueIfNeeded()
         }
     }
+
+    private func performInitialLoad() async {
+        guard !hasStartedInitialLoad else { return }
+        hasStartedInitialLoad = true
+
+        async let load: Void = viewModel.loadIfNeeded()
+        async let minimumDuration: Void = waitForMinimumInitialSplashDuration()
+
+        await load
+        await minimumDuration
+        guard !Task.isCancelled else { return }
+
+        if reduceMotion {
+            isInitialSplashVisible = false
+        } else {
+            withAnimation(.easeInOut(duration: 0.55)) {
+                isInitialSplashVisible = false
+            }
+        }
+    }
+
+    private func waitForMinimumInitialSplashDuration() async {
+        do {
+            try await Task.sleep(nanoseconds: Constants.minimumInitialSplashNanoseconds)
+        } catch {
+            // The view is going away; no cleanup is needed.
+        }
+    }
 }
 
 // MARK: - Initial Load Overlay
 
-/// Full-screen spinner shown during the first cold-start data load.
-/// Rendered above the tab bar so the UI never looks like a blank shell.
+/// Full-screen splash shown during the first cold-start data load.
+/// Rendered above the tab bar so the UI never exposes partially loaded content.
 private struct InitialLoadOverlay: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hasAppeared = false
+
     var body: some View {
         ZStack {
-            // Dim the tab content without completely hiding it, so the tab bar
-            // items are still visible and orientation/layout settle naturally.
-            Color(.systemBackground)
-                .opacity(0.85)
+            Color.black
                 .ignoresSafeArea()
 
-            VStack(spacing: 16) {
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .scaleEffect(1.4)
-                    .tint(.primary)
+            GeometryReader { proxy in
+                Image("LaunchSplash")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .scaleEffect(reduceMotion ? 1 : (hasAppeared ? 1.02 : 1.08))
+                    .opacity(hasAppeared ? 1 : 0.88)
+                    .clipped()
+                    .accessibilityHidden(true)
+            }
+            .ignoresSafeArea()
 
-                Text("Loading…")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+            LinearGradient(
+                stops: [
+                    .init(color: .black.opacity(0.46), location: 0),
+                    .init(color: .black.opacity(0.08), location: 0.36),
+                    .init(color: .black.opacity(0.2), location: 0.64),
+                    .init(color: .black.opacity(0.62), location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+
+            VStack {
+                Text("The Podium")
+                    .font(.system(.largeTitle, design: .rounded, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.35), radius: 14, x: 0, y: 4)
+                    .padding(.top, 26)
+                    .opacity(hasAppeared ? 1 : 0)
+                    .offset(y: reduceMotion ? 0 : (hasAppeared ? 0 : -8))
+
+                Spacer()
+
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .controlSize(.small)
+                        .tint(.white)
+
+                    Text("Preparing race weekend")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.94))
+                }
+                .padding(.vertical, 11)
+                .padding(.horizontal, 16)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.28), radius: 18, x: 0, y: 10)
+                .opacity(hasAppeared ? 1 : 0)
+                .offset(y: reduceMotion ? 0 : (hasAppeared ? 0 : 12))
+                .padding(.bottom, 50)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Loading app data")
+        }
+        .onAppear {
+            if reduceMotion {
+                hasAppeared = true
+            } else {
+                withAnimation(.easeOut(duration: 0.9)) {
+                    hasAppeared = true
+                }
+            }
         }
     }
 }
