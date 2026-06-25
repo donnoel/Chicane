@@ -536,6 +536,99 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(remote?.picks.first?.podium, localEdit.podium)
     }
 
+    func testUpsertResultPrefersExplicitLocalMutationWhenRemoteTimestampIsAhead() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let eventID = "f1-r1"
+
+        var localState = PersistedState.default
+        localState.settings.leagueCode = "ABC123"
+        localState.updatedAt = date("2026-03-01T10:00:00Z")
+        localState.results = [
+            RaceResult(
+                series: .formula1,
+                eventID: eventID,
+                podium: Podium(p1: "a", p2: "b", p3: "c"),
+                isLocked: true,
+                updatedAt: date("2026-03-01T10:00:00Z")
+            )
+        ]
+        _ = try await localRepo.replaceState(localState)
+
+        var remoteState = localState
+        remoteState.updatedAt = date("2026-03-01T20:00:00Z")
+        remoteState.results = [
+            RaceResult(
+                series: .formula1,
+                eventID: eventID,
+                podium: Podium(p1: "x", p2: "y", p3: "z"),
+                isLocked: true,
+                updatedAt: date("2026-03-01T20:00:00Z")
+            )
+        ]
+        await cloudStore.seed(remoteState, for: "ABC123")
+
+        let localEdit = RaceResult(
+            series: .formula1,
+            eventID: eventID,
+            podium: Podium(p1: "c", p2: "b", p3: "a"),
+            isLocked: true,
+            updatedAt: date("2026-03-01T10:01:00Z")
+        )
+
+        let saved = try await repo.upsertResult(localEdit)
+
+        XCTAssertEqual(saved.results.first?.podium, localEdit.podium)
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertEqual(remote?.results.first?.podium, localEdit.podium)
+    }
+
+    func testUpsertChampionResultPrefersExplicitLocalMutationWhenRemoteTimestampIsAhead() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        var localState = PersistedState.default
+        localState.settings.leagueCode = "ABC123"
+        localState.updatedAt = date("2026-03-01T10:00:00Z")
+        localState.championResults = [
+            SeasonChampionResult(
+                series: .formula1,
+                driverID: "driver-a",
+                isLocked: true,
+                updatedAt: date("2026-03-01T10:00:00Z")
+            )
+        ]
+        _ = try await localRepo.replaceState(localState)
+
+        var remoteState = localState
+        remoteState.updatedAt = date("2026-03-01T20:00:00Z")
+        remoteState.championResults = [
+            SeasonChampionResult(
+                series: .formula1,
+                driverID: "driver-b",
+                isLocked: true,
+                updatedAt: date("2026-03-01T20:00:00Z")
+            )
+        ]
+        await cloudStore.seed(remoteState, for: "ABC123")
+
+        let localEdit = SeasonChampionResult(
+            series: .formula1,
+            driverID: "driver-c",
+            isLocked: true,
+            updatedAt: date("2026-03-01T10:01:00Z")
+        )
+
+        let saved = try await repo.upsertChampionResult(localEdit)
+
+        XCTAssertEqual(saved.championResults.first?.driverID, localEdit.driverID)
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertEqual(remote?.championResults.first?.driverID, localEdit.driverID)
+    }
+
     func testSaveSettingsPrefersExplicitLocalMutationWhenRemoteTimestampIsAhead() async throws {
         let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
         let cloudStore = MemoryLeagueSyncStore()

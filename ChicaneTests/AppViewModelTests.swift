@@ -586,6 +586,48 @@ final class AppViewModelTests: XCTestCase {
         XCTAssertEqual(mergedEvent?.id, candidateA.id)
     }
 
+    func testReloadPreservesExistingDriverAndEventStateWhenRefreshFails() async {
+        let f1Drivers = [
+            TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull")
+        ]
+        let motoGPDrivers = [
+            TestFixtures.driver(id: "mgp-bagnaia", series: .motoGP, name: "Francesco Bagnaia", team: "Ducati")
+        ]
+        let f1Event = TestFixtures.event(id: "f1-2026-australia", series: .formula1)
+        let motoGPEvent = TestFixtures.event(id: "mgp-2026-qatar", series: .motoGP)
+
+        let driverRepository = MockDriverRepository()
+        driverRepository.stubbedDrivers[.formula1] = f1Drivers
+        driverRepository.stubbedDrivers[.motoGP] = motoGPDrivers
+
+        let calendarRepository = MockCalendarRepository()
+        calendarRepository.stubbedEvents[.formula1] = [f1Event]
+        calendarRepository.stubbedEvents[.motoGP] = [motoGPEvent]
+
+        let viewModel = AppViewModel(
+            driverRepository: driverRepository,
+            calendarRepository: calendarRepository,
+            resultRepository: MockResultRepository(),
+            seasonRepository: LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        )
+
+        await viewModel.reload()
+        XCTAssertEqual(viewModel.drivers(for: .formula1).map(\.id), f1Drivers.map(\.id))
+        XCTAssertEqual(viewModel.drivers(for: .motoGP).map(\.id), motoGPDrivers.map(\.id))
+        XCTAssertEqual(viewModel.events(for: .formula1).map(\.id), [f1Event.id])
+        XCTAssertEqual(viewModel.events(for: .motoGP).map(\.id), [motoGPEvent.id])
+
+        driverRepository.errorToThrow = MockError.simulated
+        await viewModel.reload()
+
+        XCTAssertEqual(viewModel.drivers(for: .formula1).map(\.id), f1Drivers.map(\.id))
+        XCTAssertEqual(viewModel.drivers(for: .motoGP).map(\.id), motoGPDrivers.map(\.id))
+        XCTAssertEqual(viewModel.events(for: .formula1).map(\.id), [f1Event.id])
+        XCTAssertEqual(viewModel.events(for: .motoGP).map(\.id), [motoGPEvent.id])
+        XCTAssertEqual(viewModel.banner?.style, .error)
+        XCTAssertFalse(viewModel.banner?.text.isEmpty ?? true)
+    }
+
     private func makeViewModel(
         event: RaceEvent,
         drivers: [Driver],
