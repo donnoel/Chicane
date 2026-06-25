@@ -126,9 +126,7 @@ struct RootTabView: View {
 
     private var leagueAutoSyncTaskID: String {
         let phaseLabel = scenePhase == .active ? "active" : "inactive"
-        let code = viewModel.settings.leagueCode?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .uppercased() ?? ""
+        let code = viewModel.settings.normalizedLeagueCode ?? ""
         return "\(phaseLabel)-\(code)"
     }
 

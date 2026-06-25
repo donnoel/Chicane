@@ -225,6 +225,41 @@ final class PersistedStateNormalizationTests: XCTestCase {
         XCTAssertEqual(normalized.settings.playerBetTextByPlayerID[keepID], "Winner buys coffee")
         XCTAssertNil(normalized.settings.playerBetTextByPlayerID[dropID])
     }
+
+    func testNormalizedDropsRacePicksForRemovedPlayers() {
+        let keepID = UUID()
+        let dropID = UUID()
+        var state = PersistedState.default
+        state.players = [Player(id: keepID, name: "Keep")]
+        state.picks = [
+            TestFixtures.pick(eventID: "f1-r1", playerID: keepID),
+            TestFixtures.pick(eventID: "f1-r2", playerID: dropID)
+        ]
+
+        let normalized = state.normalized()
+
+        XCTAssertEqual(normalized.picks.count, 1)
+        XCTAssertEqual(normalized.picks.first?.playerID, keepID)
+        XCTAssertEqual(normalized.picks.first?.eventID, "f1-r1")
+    }
+
+    func testNormalizedNormalizesValidLeagueCode() {
+        var state = PersistedState.default
+        state.settings.leagueCode = " ab-c123 "
+
+        let normalized = state.normalized()
+
+        XCTAssertEqual(normalized.settings.leagueCode, "ABC123")
+    }
+
+    func testNormalizedClearsInvalidLeagueCode() {
+        var state = PersistedState.default
+        state.settings.leagueCode = "ABC"
+
+        let normalized = state.normalized()
+
+        XCTAssertNil(normalized.settings.leagueCode)
+    }
 }
 
 // MARK: - LocalSeasonRepository
@@ -317,7 +352,9 @@ final class LocalSeasonRepositoryTests: XCTestCase {
         let store = FileStateStore(baseDirectoryURL: tempDir)
         let repo = LocalSeasonRepository(store: store)
 
-        let playerID = UUID()
+        let player = TestFixtures.player(name: "Player")
+        let playerID = player.id
+        _ = try await repo.savePlayers([player])
         let pick1 = TestFixtures.pick(eventID: "f1-r1", playerID: playerID, p1: "a", p2: "b", p3: "c")
         let pick2 = TestFixtures.pick(eventID: "f1-r1", playerID: playerID, p1: "x", p2: "y", p3: "z")
 

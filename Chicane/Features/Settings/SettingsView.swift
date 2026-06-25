@@ -458,13 +458,7 @@ struct SettingsView: View {
     }
 
     private var activeLeagueCode: String? {
-        let trimmed = viewModel.settings.leagueCode?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .uppercased()
-        guard let trimmed, !trimmed.isEmpty else {
-            return nil
-        }
-        return trimmed
+        viewModel.settings.normalizedLeagueCode
     }
 
     private var hasBlankPlayerNames: Bool {

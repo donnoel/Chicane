@@ -165,6 +165,10 @@ struct SeasonChampionResult: Identifiable, Codable, Hashable, Sendable {
 }
 
 struct AppSettings: Codable, Hashable, Sendable {
+    static let leagueCodeLength = 6
+
+    // Legacy MVP fields are retained for Codable compatibility with existing
+    // local and CloudKit payloads until a schema migration intentionally removes them.
     var seasonBetText: String
     var playerBetTextByPlayerID: [UUID: String]
     var spoilerGateEnabled: Bool
@@ -215,6 +219,23 @@ struct AppSettings: Codable, Hashable, Sendable {
         showSpoilersSection: false,
         leagueCode: nil
     )
+
+    var normalizedLeagueCode: String? {
+        Self.normalizedLeagueCode(leagueCode)
+    }
+
+    static func normalizedLeagueCode(_ code: String?) -> String? {
+        guard let code else {
+            return nil
+        }
+
+        let allowed = code.uppercased().filter { $0.isLetter || $0.isNumber }
+        let normalized = String(allowed.prefix(leagueCodeLength))
+        guard normalized.count == leagueCodeLength else {
+            return nil
+        }
+        return normalized
+    }
 }
 
 struct PersistedState: Codable, Hashable, Sendable {
@@ -320,6 +341,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         .filter { !$0.name.isEmpty }
 
         let validPlayerIDs = Set(state.players.map(\.id))
+        state.picks = state.picks.filter { validPlayerIDs.contains($0.playerID) }
         state.championPicks = state.championPicks.filter { validPlayerIDs.contains($0.playerID) }
         state.settings.playerBetTextByPlayerID = state.settings.playerBetTextByPlayerID.reduce(into: [:]) { partialResult, entry in
             guard validPlayerIDs.contains(entry.key) else { return }
@@ -327,6 +349,7 @@ struct PersistedState: Codable, Hashable, Sendable {
             guard !trimmed.isEmpty else { return }
             partialResult[entry.key] = trimmed
         }
+        state.settings.leagueCode = state.settings.normalizedLeagueCode
 
         return state
     }

@@ -608,6 +608,31 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(stored.settings.leagueCode, "ABC123")
     }
 
+    func testJoinLeagueRejectsIncompleteLeagueCodeWithoutLookup() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = EventuallyAvailableLeagueSyncStore(
+            availableAfterAttempt: 1,
+            state: PersistedState.default
+        )
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        do {
+            _ = try await repo.joinLeague(code: "ABC")
+            XCTFail("Expected incomplete league code to be rejected")
+        } catch let error as RepositoryError {
+            guard case let .leagueNotFound(code) = error else {
+                XCTFail("Unexpected repository error: \(error)")
+                return
+            }
+            XCTAssertEqual(code, "ABC")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let attempts = await cloudStore.joinAttempts
+        XCTAssertEqual(attempts, 0)
+    }
+
     func testJoinLeagueRetriesTransientLeagueNotFound() async throws {
         let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
         let cloudStore = EventuallyAvailableLeagueSyncStore(

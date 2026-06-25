@@ -9,7 +9,6 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
         static let recordType = "LeagueState"
         static let stateDataField = "stateData"
         static let updatedAtField = "updatedAt"
-        static let codeLength = 6
         static let createAttempts = 8
         static let loadRecordAttempts = 4
         static let loadRecordRetryDelayNanoseconds: UInt64 = 350_000_000
@@ -49,7 +48,9 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
     }
 
     func joinLeague(code: String) async throws -> PersistedState {
-        let normalizedCode = normalized(code)
+        guard let normalizedCode = normalized(code) else {
+            throw RepositoryError.leagueNotFound(code: code.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
         guard let state = try await fetchState(for: normalizedCode) else {
             throw RepositoryError.leagueNotFound(code: normalizedCode)
         }
@@ -57,8 +58,7 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
     }
 
     func fetchState(for code: String) async throws -> PersistedState? {
-        let normalizedCode = normalized(code)
-        guard !normalizedCode.isEmpty else {
+        guard let normalizedCode = normalized(code) else {
             return nil
         }
 
@@ -71,8 +71,7 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
     }
 
     func pushState(_ state: PersistedState, for code: String) async throws {
-        let normalizedCode = normalized(code)
-        guard !normalizedCode.isEmpty else {
+        guard let normalizedCode = normalized(code) else {
             throw RepositoryError.leagueNotConfigured
         }
 
@@ -187,14 +186,13 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
         CKRecord.ID(recordName: "league-\(code)")
     }
 
-    private func normalized(_ code: String) -> String {
-        let allowed = code.uppercased().filter { $0.isLetter || $0.isNumber }
-        return String(allowed.prefix(Constants.codeLength))
+    private func normalized(_ code: String) -> String? {
+        AppSettings.normalizedLeagueCode(code)
     }
 
     private func makeLeagueCode() -> String {
         let source = UUID().uuidString.replacingOccurrences(of: "-", with: "").uppercased()
-        return String(source.prefix(Constants.codeLength))
+        return String(source.prefix(AppSettings.leagueCodeLength))
     }
 
     private func shouldRetry(_ error: CKError) -> Bool {

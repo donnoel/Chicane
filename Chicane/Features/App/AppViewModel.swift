@@ -519,11 +519,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private var activeLeagueCode: String? {
-        let trimmed = settings.leagueCode?.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let trimmed, !trimmed.isEmpty else {
-            return nil
-        }
-        return trimmed
+        settings.normalizedLeagueCode
     }
 
     private func persistState(

@@ -12,7 +12,6 @@ struct DeferredCloudSyncWarning: LocalizedError {
 
 actor CloudSyncSeasonRepository: SeasonRepository {
     private enum Constants {
-        static let leagueCodeLength = 6
         static let joinLookupAttempts = 8
         static let joinRetryDelayNanoseconds: UInt64 = 1_000_000_000
         static let synchronizeAttempts = 4
@@ -121,12 +120,12 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     }
 
     func joinLeague(code: String) async throws -> PersistedState {
-        let requestedCode = normalizedLeagueCode(code)
-            ?? code.trimmingCharacters(in: .whitespacesAndNewlines)
-        var sharedState = try await fetchSharedStateForJoin(code: requestedCode)
-        if let normalizedCode = normalizedLeagueCode(requestedCode) {
-            sharedState.settings.leagueCode = normalizedCode
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let requestedCode = normalizedLeagueCode(code) else {
+            throw RepositoryError.leagueNotFound(code: trimmedCode)
         }
+        var sharedState = try await fetchSharedStateForJoin(code: requestedCode)
+        sharedState.settings.leagueCode = requestedCode
         return try await localRepository.replaceState(sharedState)
     }
 
@@ -227,16 +226,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
     }
 
     private func normalizedLeagueCode(_ code: String?) -> String? {
-        guard let code else {
-            return nil
-        }
-
-        let allowed = code.uppercased().filter { $0.isLetter || $0.isNumber }
-        let normalized = String(allowed.prefix(Constants.leagueCodeLength))
-        guard !normalized.isEmpty else {
-            return nil
-        }
-        return normalized
+        AppSettings.normalizedLeagueCode(code)
     }
 
     private func fetchSharedStateForJoin(code: String) async throws -> PersistedState {
