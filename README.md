@@ -57,12 +57,12 @@ Chicane tracks standings across:
 
 ## Main Screens
 
-- **Home** — Next race countdown, race-track local time with relative day context, season standings snapshot, and player bet ledger
+- **Weekend** — Next race countdown, race-track local time with relative day context, season standings snapshot, current-weekend picks, and player bet ledger
   - Formula 1 countdown uses the official race-session start time from the event page when available, not a date-only noon placeholder.
   - MotoGP countdown uses the official MotoGP race (`RAC`) session start time when available, not the GP weekend end timestamp.
-- **Picks** — Enter each player's season champion and P1/P2/P3 predictions
+- **All races and manual picks** — Opened from Weekend to enter each player's season champion and P1/P2/P3 predictions for any event
+- **Standings** — Season standings and per-event history (F1, MotoGP, Combined)
 - **Results** — Enter official results and lock events, plus lock the season champion
-- **Scoreboard** — Season standings and per-event history (F1, MotoGP, Combined)
 - **Settings** — Manage players, shared league sync, per-player bets, and season reset
   - Player names cannot be blank when saving; use `Remove` to delete a player.
   - Shows the installed app version/build in an `About` section.
@@ -138,7 +138,8 @@ Chicane/
 │   ├── Data/
 │   │   ├── Persistence/         # LocalSeasonRepository, FileStateStore
 │   │   ├── Repositories/        # Driver, Calendar, Result repositories + protocols
-│   │   └── Services/            # Scoring, parsing, HTTP client
+│   │   ├── Services/            # Scoring, parsing, HTTP client
+│   │   └── Sync/                # CloudKit shared league sync
 │   ├── Features/
 │   │   ├── Home/
 │   │   ├── Picks/
@@ -158,7 +159,7 @@ Chicane/
 
 ### Requirements
 - macOS with Xcode 16+
-- Any available iOS Simulator runtime
+- An iOS 26-compatible Simulator runtime
 
 ### Xcode
 1. Open `Chicane.xcodeproj`

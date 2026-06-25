@@ -8,7 +8,7 @@
 - Success criteria: simple flow for older users (large controls, clear labels), deterministic scoring, reliable offline persistence, and low-friction shared-state sync.
 
 ## Current product phase (MVP implemented)
-1) MVP scope: Home, Picks, Results, Scoreboard, Settings.
+1) MVP scope: Weekend, Standings, Results, Settings, with full race/champion picks available from Weekend.
 2) Architecture boundaries: SwiftUI views + single app-level `AppViewModel`, repository layer, scoring services.
 3) Reliability/UX goals: no default spoilers, locked results protection, locked season champion protection, atomic file writes, online data with bundled fallback.
 4) Testing priorities: scoring rule correctness and standings aggregation.
@@ -16,7 +16,8 @@
 ## Architecture snapshot (current)
 - App entry/navigation:
   - `ChicaneApp` injects `AppViewModel`.
-  - `RootTabView` hosts tabs for Home, Picks, Results, Scoreboard, Settings.
+  - `RootTabView` hosts tabs for Weekend, Standings, Results, Settings.
+  - `PicksView` is opened from Weekend for all-race/manual picks and season champion selections.
 - Core view models/services:
   - `AppViewModel` (main-actor UI state orchestration)
   - `ScoringService` and `ScoreboardCalculator` (pure logic)
