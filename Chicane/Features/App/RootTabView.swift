@@ -85,9 +85,15 @@ struct RootTabView: View {
         }
 
         guard let seconds else { return }
+        let bannerID = banner.id
         dismissBannerTask = Task {
-            try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
+            do {
+                try await Task.sleep(nanoseconds: seconds * 1_000_000_000)
+            } catch {
+                return
+            }
             await MainActor.run {
+                guard viewModel.banner?.id == bannerID else { return }
                 dismissBanner(animated: true)
             }
         }

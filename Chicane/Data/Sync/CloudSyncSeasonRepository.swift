@@ -169,7 +169,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                 guard attempt < Constants.synchronizeAttempts else {
                     break
                 }
-                try? await Task.sleep(nanoseconds: Constants.synchronizeRetryDelayNanoseconds)
+                try await Task.sleep(nanoseconds: Constants.synchronizeRetryDelayNanoseconds)
             }
         }
 
@@ -212,7 +212,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                 guard attempt < Constants.deferredPushAttempts else {
                     break
                 }
-                try? await Task.sleep(nanoseconds: Constants.deferredPushRetryDelayNanoseconds)
+                try await Task.sleep(nanoseconds: Constants.deferredPushRetryDelayNanoseconds)
             }
         }
 

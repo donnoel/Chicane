@@ -121,7 +121,7 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
                     for: error,
                     fallback: Constants.pushRetryDelayNanoseconds
                 )
-                try? await Task.sleep(nanoseconds: retryDelay)
+                try await Task.sleep(nanoseconds: retryDelay)
 
                 if let latestRecord = try await loadRecord(for: normalizedCode) {
                     record = latestRecord
@@ -151,7 +151,7 @@ actor PublicCloudLeagueStore: LeagueSyncStore {
                     for: error,
                     fallback: Constants.loadRecordRetryDelayNanoseconds
                 )
-                try? await Task.sleep(nanoseconds: retryDelay)
+                try await Task.sleep(nanoseconds: retryDelay)
             } catch {
                 throw error
             }

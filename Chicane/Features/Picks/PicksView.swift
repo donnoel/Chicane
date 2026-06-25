@@ -432,9 +432,11 @@ struct PicksView: View {
 
     private func autosavePickIfNeeded(for player: Player, draft: PodiumDraft) {
         guard let selectedEventID else { return }
+        let series = selectedSeries
+        let eventID = selectedEventID
 
         let savedDraft: PodiumDraft
-        if let savedPick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
+        if let savedPick = viewModel.pick(for: series, eventID: eventID, playerID: player.id) {
             savedDraft = PodiumDraft(podium: savedPick.podium)
         } else {
             savedDraft = .empty
@@ -443,7 +445,7 @@ struct PicksView: View {
         guard AutosaveDecision.shouldAutosavePodiumPick(draft: draft, savedDraft: savedDraft) else { return }
 
         Task {
-            await savePick(for: player)
+            await savePick(for: player, series: series, eventID: eventID, draft: draft)
         }
     }
 
@@ -469,14 +471,11 @@ struct PicksView: View {
         }
     }
 
-    private func savePick(for player: Player) async {
-        guard let selectedEventID else { return }
-        guard let draft = draftsByPlayer[player.id] else { return }
-
+    private func savePick(for player: Player, series: RaceSeries, eventID: String, draft: PodiumDraft) async {
         do {
             let warning = try await viewModel.savePick(
-                series: selectedSeries,
-                eventID: selectedEventID,
+                series: series,
+                eventID: eventID,
                 playerID: player.id,
                 draft: draft
             )
@@ -484,7 +483,8 @@ struct PicksView: View {
                 warning: warning,
                 successMessage: "Saved \(player.name)'s picks for this event."
             )
-            if let savedPick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
+            guard selectedSeries == series, selectedEventID == eventID else { return }
+            if let savedPick = viewModel.pick(for: series, eventID: eventID, playerID: player.id) {
                 draftsByPlayer[player.id] = PodiumDraft(podium: savedPick.podium)
             }
         } catch {

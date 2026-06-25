@@ -667,13 +667,11 @@ struct HomeView: View {
         guard AutosaveDecision.shouldAutosavePodiumPick(draft: draft, savedDraft: savedDraft) else { return }
 
         Task {
-            await savePick(for: player, event: event)
+            await savePick(for: player, event: event, draft: draft)
         }
     }
 
-    private func savePick(for player: Player, event: RaceEvent) async {
-        guard let draft = draftsByPlayer[player.id] else { return }
-
+    private func savePick(for player: Player, event: RaceEvent, draft: PodiumDraft) async {
         do {
             let warning = try await viewModel.savePick(
                 series: event.series,
@@ -685,6 +683,7 @@ struct HomeView: View {
                 warning: warning,
                 successMessage: "Saved \(player.name)'s picks for \(event.title)."
             )
+            guard selectedEvent?.id == event.id else { return }
             if let savedPick = viewModel.pick(for: event.series, eventID: event.id, playerID: player.id) {
                 draftsByPlayer[player.id] = PodiumDraft(podium: savedPick.podium)
             }
