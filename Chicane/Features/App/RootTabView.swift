@@ -3,7 +3,7 @@ import UIKit
 
 struct RootTabView: View {
     private enum Constants {
-        static let leagueAutoSyncIntervalNanoseconds: UInt64 = 20_000_000_000
+        static let leagueAutoSyncIntervalNanoseconds: UInt64 = 300_000_000_000
         static let minimumInitialSplashNanoseconds: UInt64 = 900_000_000
     }
 

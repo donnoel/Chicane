@@ -12,7 +12,6 @@ struct HomeView: View {
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
     @State private var savedDraftsByPlayer: [UUID: PodiumDraft] = [:]
     @State private var hasInitialized = false
-    @State private var scrollOffset: CGFloat = 0
 
     var body: some View {
         ScrollView {
@@ -31,11 +30,10 @@ struct HomeView: View {
             .padding(.horizontal, 18)
             .padding(.top, 18)
             .padding(.bottom, 110)
-            .trackingScrollOffset { scrollOffset = $0 }
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .chicanePremiumBackground(scrollOffset: scrollOffset)
+        .chicanePremiumBackground()
         .refreshable {
             await viewModel.reload()
             if viewModel.banner == nil {

@@ -77,7 +77,133 @@ struct ScoringService: Sendable {
 }
 
 struct ScoreboardCalculator: Sendable {
-    private let scoringService = ScoringService()
+    private struct PickLookupKey: Hashable, Sendable {
+        let series: RaceSeries
+        let playerID: UUID
+    }
+
+    private struct ChampionPickLookupKey: Hashable, Sendable {
+        let series: RaceSeries
+        let playerID: UUID
+    }
+
+    private struct CalculationInputs: Sendable {
+        let players: [Player]
+        let eventsBySeries: [RaceSeries: [RaceEvent]]
+        let resolversBySeries: [RaceSeries: StoredIdentityResolver]
+        let picksBySeriesAndPlayer: [PickLookupKey: [RacePick]]
+        let championPickBySeriesAndPlayer: [ChampionPickLookupKey: SeasonChampionPick]
+        let championResultBySeries: [RaceSeries: SeasonChampionResult]
+
+        init(
+            players: [Player],
+            picks: [RacePick],
+            championPicks: [SeasonChampionPick],
+            championResults: [SeasonChampionResult],
+            events: [RaceEvent],
+            driversBySeries: [RaceSeries: [Driver]]
+        ) {
+            self.players = players
+            let groupedEvents = Dictionary(grouping: events, by: \.series)
+            self.eventsBySeries = groupedEvents
+
+            var resolvers: [RaceSeries: StoredIdentityResolver] = [:]
+            for series in RaceSeries.allCases {
+                resolvers[series] = StoredIdentityResolver(
+                    series: series,
+                    events: groupedEvents[series] ?? [],
+                    participants: driversBySeries[series] ?? []
+                )
+            }
+            self.resolversBySeries = resolvers
+
+            var pickLookup: [PickLookupKey: [RacePick]] = [:]
+            for pick in picks {
+                let key = PickLookupKey(series: pick.series, playerID: pick.playerID)
+                pickLookup[key, default: []].append(pick)
+            }
+            self.picksBySeriesAndPlayer = pickLookup.mapValues {
+                $0.sorted { $0.updatedAt > $1.updatedAt }
+            }
+
+            self.championPickBySeriesAndPlayer = championPicks.reduce(into: [:]) { output, pick in
+                let key = ChampionPickLookupKey(series: pick.series, playerID: pick.playerID)
+                guard let existing = output[key], existing.updatedAt >= pick.updatedAt else {
+                    output[key] = pick
+                    return
+                }
+            }
+
+            self.championResultBySeries = championResults.reduce(into: [:]) { output, result in
+                guard let existing = output[result.series], existing.updatedAt >= result.updatedAt else {
+                    output[result.series] = result
+                    return
+                }
+            }
+        }
+
+        func resolver(for series: RaceSeries) -> StoredIdentityResolver {
+            resolversBySeries[series] ?? StoredIdentityResolver(
+                series: series,
+                events: eventsBySeries[series] ?? [],
+                participants: []
+            )
+        }
+
+        func pointsByPlayer(for result: RaceResult) -> [UUID: Int] {
+            let resolver = resolver(for: result.series)
+            var output: [UUID: Int] = [:]
+            for player in players {
+                guard let pick = matchingPick(
+                    for: player.id,
+                    series: result.series,
+                    eventID: result.eventID,
+                    resolver: resolver
+                ) else {
+                    output[player.id] = 0
+                    continue
+                }
+                output[player.id] = resolver.points(for: pick.podium, result: result.podium)
+            }
+            return output
+        }
+
+        func championBonusByPlayer(for series: RaceSeries) -> [UUID: Int] {
+            guard let championResult = championResultBySeries[series] else {
+                return players.reduce(into: [UUID: Int]()) { output, player in
+                    output[player.id] = 0
+                }
+            }
+
+            let resolver = resolver(for: series)
+            return players.reduce(into: [UUID: Int]()) { output, player in
+                let key = ChampionPickLookupKey(series: series, playerID: player.id)
+                guard let championPick = championPickBySeriesAndPlayer[key] else {
+                    output[player.id] = 0
+                    return
+                }
+                output[player.id] = resolver.participantIDsMatch(
+                    championPick.driverID,
+                    championResult.driverID
+                ) ? 5 : 0
+            }
+        }
+
+        private func matchingPick(
+            for playerID: UUID,
+            series: RaceSeries,
+            eventID: String,
+            resolver: StoredIdentityResolver
+        ) -> RacePick? {
+            let candidates = picksBySeriesAndPlayer[PickLookupKey(series: series, playerID: playerID)] ?? []
+
+            if let exact = candidates.first(where: { $0.eventID == eventID }) {
+                return exact
+            }
+
+            return candidates.first { resolver.eventIDsMatch($0.eventID, eventID) }
+        }
+    }
 
     func standings(
         players: [Player],
@@ -89,6 +215,14 @@ struct ScoreboardCalculator: Sendable {
         scope: ScoreboardScope,
         driversBySeries: [RaceSeries: [Driver]] = [:]
     ) -> [PlayerStanding] {
+        let inputs = CalculationInputs(
+            players: players,
+            picks: picks,
+            championPicks: championPicks,
+            championResults: championResults,
+            events: events,
+            driversBySeries: driversBySeries
+        )
         let filteredResults = results.filter { result in
             guard let series = scope.series else { return true }
             return result.series == series
@@ -99,15 +233,7 @@ struct ScoreboardCalculator: Sendable {
         }
 
         var totals = filteredResults.reduce(into: totalByPlayerID) { totals, result in
-            let points = scoringService.pointsByPlayer(
-                players: players,
-                picks: picks,
-                result: result,
-                series: result.series,
-                eventID: result.eventID,
-                events: events.filter { $0.series == result.series },
-                participants: driversBySeries[result.series] ?? []
-            )
+            let points = inputs.pointsByPlayer(for: result)
             for (playerID, earned) in points {
                 totals[playerID, default: 0] += earned
             }
@@ -115,13 +241,7 @@ struct ScoreboardCalculator: Sendable {
 
         let bonusSeries = scope.series.map { [$0] } ?? RaceSeries.allCases
         for series in bonusSeries {
-            let bonus = scoringService.seasonChampionBonusByPlayer(
-                players: players,
-                championPicks: championPicks,
-                championResult: championResults.first(where: { $0.series == series }),
-                series: series,
-                participants: driversBySeries[series] ?? []
-            )
+            let bonus = inputs.championBonusByPlayer(for: series)
             for (playerID, earned) in bonus {
                 totals[playerID, default: 0] += earned
             }
@@ -146,27 +266,22 @@ struct ScoreboardCalculator: Sendable {
         scope: ScoreboardScope,
         driversBySeries: [RaceSeries: [Driver]] = [:]
     ) -> [EventScoreRow] {
+        let inputs = CalculationInputs(
+            players: players,
+            picks: picks,
+            championPicks: [],
+            championResults: [],
+            events: events,
+            driversBySeries: driversBySeries
+        )
         return results.compactMap { result in
-            let resolver = StoredIdentityResolver(
-                series: result.series,
-                events: events.filter { $0.series == result.series },
-                participants: driversBySeries[result.series] ?? []
-            )
-            guard let event = resolver.resolvedEvent(for: result.eventID) else { return nil }
-
             if let scopedSeries = scope.series, result.series != scopedSeries {
                 return nil
             }
 
-            let points = scoringService.pointsByPlayer(
-                players: players,
-                picks: picks,
-                result: result,
-                series: result.series,
-                eventID: result.eventID,
-                events: events.filter { $0.series == result.series },
-                participants: driversBySeries[result.series] ?? []
-            )
+            let resolver = inputs.resolver(for: result.series)
+            guard let event = resolver.resolvedEvent(for: result.eventID) else { return nil }
+            let points = inputs.pointsByPlayer(for: result)
 
             return EventScoreRow(
                 id: result.id,
