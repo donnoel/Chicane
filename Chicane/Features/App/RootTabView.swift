@@ -213,11 +213,8 @@ private struct InitialLoadOverlay: View {
             .accessibilityHidden(true)
 
             VStack {
-                Text("The Podium")
-                    .font(.system(.largeTitle, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.35), radius: 14, x: 0, y: 4)
-                    .padding(.top, 26)
+                SplashBrandLockup()
+                    .padding(.top, 24)
                     .opacity(hasAppeared ? 1 : 0)
                     .offset(y: reduceMotion ? 0 : (hasAppeared ? 0 : -8))
 
@@ -257,6 +254,76 @@ private struct InitialLoadOverlay: View {
                 }
             }
         }
+    }
+}
+
+private struct SplashBrandLockup: View {
+    private let gold = Color(red: 1, green: 0.78, blue: 0.22)
+    private let ember = Color(red: 1, green: 0.26, blue: 0.08)
+
+    var body: some View {
+        VStack(spacing: 3) {
+            HStack(spacing: 8) {
+                racingStripe
+
+                Image(systemName: "flag.checkered.2.crossed")
+                    .font(.system(size: 20, weight: .black))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.white)
+                    .shadow(color: ember.opacity(0.55), radius: 10, x: 0, y: 4)
+                    .accessibilityHidden(true)
+
+                racingStripe
+            }
+            .frame(maxWidth: 190)
+
+            Text("THE")
+                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                .tracking(3.5)
+                .foregroundStyle(.white.opacity(0.82))
+
+            Text("PODIUM")
+                .font(.system(size: 44, weight: .black, design: .rounded))
+                .tracking(1.4)
+                .lineLimit(1)
+                .minimumScaleFactor(0.84)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.white, gold, ember],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .shadow(color: .black.opacity(0.48), radius: 18, x: 0, y: 8)
+                .shadow(color: ember.opacity(0.5), radius: 24, x: 0, y: 10)
+                .overlay(alignment: .bottom) {
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [ember, gold, .white.opacity(0.9)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(height: 3)
+                        .padding(.horizontal, 18)
+                        .offset(y: 7)
+                }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var racingStripe: some View {
+        Capsule()
+            .fill(
+                LinearGradient(
+                    colors: [.white.opacity(0.95), gold, ember],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .frame(height: 4)
+            .shadow(color: gold.opacity(0.5), radius: 8, x: 0, y: 3)
     }
 }
 
