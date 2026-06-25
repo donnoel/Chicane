@@ -44,7 +44,12 @@ struct ChicaneApp: App {
             let runID = launchEnvironment["CHICANE_UI_TEST_RUN_ID"] ?? UUID().uuidString
             let scenarioRaw = launchEnvironment["CHICANE_UI_TEST_SCENARIO"] ?? "default"
             let scenario = UITestScenario(rawValue: scenarioRaw) ?? .default
-            let localSeasonRepository = makeUITestLocalSeasonRepository(runID: runID, scenario: scenario)
+            let shouldResetState = launchEnvironment["CHICANE_UI_TEST_PRESERVE_STATE"] != "1"
+            let localSeasonRepository = makeUITestLocalSeasonRepository(
+                runID: runID,
+                scenario: scenario,
+                shouldResetState: shouldResetState
+            )
             return AppViewModel(
                 driverRepository: UITestDriverRepository(),
                 calendarRepository: UITestCalendarRepository(),
@@ -81,7 +86,8 @@ struct ChicaneApp: App {
 
     private static func makeUITestLocalSeasonRepository(
         runID: String,
-        scenario: UITestScenario
+        scenario: UITestScenario,
+        shouldResetState: Bool
     ) -> LocalSeasonRepository {
         let fileManager = FileManager.default
         let baseDirectoryURL = fileManager.temporaryDirectory
@@ -92,10 +98,16 @@ struct ChicaneApp: App {
             .appendingPathComponent("Chicane", isDirectory: true)
             .appendingPathComponent("season_state_v1.json", isDirectory: false)
 
-        do {
-            try fileManager.removeItem(at: baseDirectoryURL)
-        } catch {
-            // If there is no previous run directory, this is expected.
+        if shouldResetState {
+            do {
+                try fileManager.removeItem(at: baseDirectoryURL)
+            } catch {
+                // If there is no previous run directory, this is expected.
+            }
+        }
+
+        if !shouldResetState && fileManager.fileExists(atPath: stateFileURL.path) {
+            return LocalSeasonRepository(store: store)
         }
 
         do {

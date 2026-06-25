@@ -55,6 +55,64 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["Position 1 selection"].waitForExistence(timeout: Timeout.short))
     }
 
+    func testWeekendPickAutosavesAndShowsReadyState() throws {
+        let app = makeApp()
+        app.launch()
+
+        completeWeekendPick(in: app, playerName: "UITest Player")
+
+        XCTAssertTrue(app.staticTexts["Saved automatically"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["Ready"].waitForExistence(timeout: Timeout.medium))
+    }
+
+    func testOfficialResultFetchLocksPodiumAndUpdatesStandings() throws {
+        let app = makeApp()
+        app.launch()
+
+        completeWeekendPick(in: app, playerName: "UITest Player")
+        fetchOfficialResult(in: app)
+
+        XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["Official Podium"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.descendants(matching: .any)["P1 Max Verstappen (Red Bull)"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["Event Points"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["UITest Player"].waitForExistence(timeout: Timeout.medium))
+
+        app.tabBars.buttons[Tab.standings].tap()
+        XCTAssertTrue(app.staticTexts["Season Totals"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["UITest Player leads with 3"].waitForExistence(timeout: Timeout.medium))
+    }
+
+    func testPlayerPickAndResultPersistAfterRelaunch() throws {
+        let runID = UUID().uuidString
+        let playerName = "Persistent Player \(UUID().uuidString.prefix(8))"
+        var app = makeApp(runID: runID)
+        app.launch()
+
+        addPlayer(named: playerName, in: app)
+        app.tabBars.buttons[Tab.weekend].tap()
+        completeWeekendPick(in: app, playerName: playerName)
+        fetchOfficialResult(in: app)
+        XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
+
+        app.terminate()
+
+        app = makeApp(runID: runID, preserveState: true)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons[Tab.weekend].waitForExistence(timeout: Timeout.medium))
+        app.descendants(matching: .any)["\(playerName) picks"].tap()
+        XCTAssertTrue(app.staticTexts["Saved automatically"].waitForExistence(timeout: Timeout.medium))
+
+        app.tabBars.buttons[Tab.results].tap()
+        XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.descendants(matching: .any)["P1 Max Verstappen (Red Bull)"].waitForExistence(timeout: Timeout.medium))
+
+        app.tabBars.buttons[Tab.standings].tap()
+        XCTAssertTrue(app.staticTexts[playerName].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["\(playerName) leads with 3"].waitForExistence(timeout: Timeout.medium))
+    }
+
     func testMainTabJourneyShowsCoreScreens() throws {
         let app = makeApp()
         app.launch()
@@ -162,12 +220,74 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["Fetch official results"].exists)
     }
 
-    private func makeApp(scenario: UITestScenario = .default) -> XCUIApplication {
+    private func makeApp(
+        scenario: UITestScenario = .default,
+        runID: String = UUID().uuidString,
+        preserveState: Bool = false
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["CHICANE_UI_TEST_MODE"] = "1"
         app.launchEnvironment["CHICANE_UI_TEST_SCENARIO"] = scenario.rawValue
-        app.launchEnvironment["CHICANE_UI_TEST_RUN_ID"] = UUID().uuidString
+        app.launchEnvironment["CHICANE_UI_TEST_RUN_ID"] = runID
+        if preserveState {
+            app.launchEnvironment["CHICANE_UI_TEST_PRESERVE_STATE"] = "1"
+        }
         return app
+    }
+
+    private func addPlayer(named playerName: String, in app: XCUIApplication) {
+        XCTAssertTrue(app.tabBars.buttons[Tab.settings].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.settings].tap()
+
+        let addPlayerField = app.textFields["Add Player"]
+        XCTAssertTrue(addPlayerField.waitForExistence(timeout: Timeout.medium))
+        addPlayerField.tap()
+        addPlayerField.typeText(playerName)
+        app.buttons["Add"].tap()
+
+        XCTAssertTrue(app.staticTexts[playerName].waitForExistence(timeout: Timeout.medium))
+        dismissKeyboardIfVisible(in: app)
+    }
+
+    private func completeWeekendPick(in app: XCUIApplication, playerName: String) {
+        XCTAssertTrue(app.tabBars.buttons[Tab.weekend].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.weekend].tap()
+
+        let playerPicker = app.descendants(matching: .any)["\(playerName) picks"]
+        if playerPicker.waitForExistence(timeout: Timeout.short), playerPicker.isHittable {
+            playerPicker.tap()
+        }
+
+        selectPodiumPosition(1, option: "Max Verstappen (Red Bull)", in: app)
+        selectPodiumPosition(2, option: "Lando Norris (McLaren)", in: app)
+        selectPodiumPosition(3, option: "Charles Leclerc (Ferrari)", in: app)
+    }
+
+    private func selectPodiumPosition(_ position: Int, option: String, in app: XCUIApplication) {
+        let picker = app.descendants(matching: .any)["Position \(position) selection"]
+        XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
+        picker.tap()
+
+        let optionElement = app.descendants(matching: .any)[option]
+        XCTAssertTrue(optionElement.waitForExistence(timeout: Timeout.medium))
+        optionElement.tap()
+
+        if !picker.waitForExistence(timeout: Timeout.short) {
+            let backButton = app.navigationBars.buttons.firstMatch
+            if backButton.exists {
+                backButton.tap()
+            }
+            XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
+        }
+    }
+
+    private func fetchOfficialResult(in app: XCUIApplication) {
+        XCTAssertTrue(app.tabBars.buttons[Tab.results].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.results].tap()
+
+        let fetchButton = app.descendants(matching: .any)["Fetch official results"]
+        XCTAssertTrue(fetchButton.waitForExistence(timeout: Timeout.medium))
+        fetchButton.tap()
     }
 
     private func dismissKeyboardIfVisible(in app: XCUIApplication) {
