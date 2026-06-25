@@ -19,3 +19,22 @@ struct AutosaveDecision {
         return savedDriverID != selectedDriverID
     }
 }
+
+struct DraftHydrationDecision {
+    static func shouldAdoptSavedDraft<Draft: Equatable>(
+        current: Draft,
+        previousSaved: Draft,
+        saved: Draft,
+        empty: Draft
+    ) -> Bool {
+        current == empty || current == previousSaved || current == saved
+    }
+
+    static func shouldAdoptSavedSelection(
+        current: String?,
+        previousSaved: String?,
+        saved: String?
+    ) -> Bool {
+        current == nil || current == previousSaved || current == saved
+    }
+}

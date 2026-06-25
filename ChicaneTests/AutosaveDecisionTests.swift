@@ -103,4 +103,53 @@ final class AutosaveDecisionTests: XCTestCase {
             )
         }
     }
+
+    func testDraftHydrationAdoptsSavedPodiumWhenLocalDraftWasOnlyMirroringPreviousSavedState() {
+        let previousSaved = PodiumDraft(p1: "a", p2: "b", p3: "c")
+        let resetSaved = PodiumDraft.empty
+
+        XCTAssertTrue(
+            DraftHydrationDecision.shouldAdoptSavedDraft(
+                current: previousSaved,
+                previousSaved: previousSaved,
+                saved: resetSaved,
+                empty: PodiumDraft.empty
+            )
+        )
+    }
+
+    func testDraftHydrationPreservesDirtyPodiumDraftAcrossSavedStateChanges() {
+        let previousSaved = PodiumDraft(p1: "a", p2: "b", p3: "c")
+        let dirtyDraft = PodiumDraft(p1: "x", p2: "b", p3: "c")
+        let syncedSaved = PodiumDraft(p1: "m", p2: "n", p3: "o")
+
+        XCTAssertFalse(
+            DraftHydrationDecision.shouldAdoptSavedDraft(
+                current: dirtyDraft,
+                previousSaved: previousSaved,
+                saved: syncedSaved,
+                empty: PodiumDraft.empty
+            )
+        )
+    }
+
+    func testDraftHydrationAdoptsSavedChampionSelectionWhenLocalSelectionWasOnlyMirroringPreviousSavedState() {
+        XCTAssertTrue(
+            DraftHydrationDecision.shouldAdoptSavedSelection(
+                current: "driver-a",
+                previousSaved: "driver-a",
+                saved: nil
+            )
+        )
+    }
+
+    func testDraftHydrationPreservesDirtyChampionSelectionAcrossSavedStateChanges() {
+        XCTAssertFalse(
+            DraftHydrationDecision.shouldAdoptSavedSelection(
+                current: "driver-b",
+                previousSaved: "driver-a",
+                saved: "driver-c"
+            )
+        )
+    }
 }

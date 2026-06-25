@@ -12,10 +12,10 @@ struct ScoreboardView: View {
     @EnvironmentObject private var viewModel: AppViewModel
     @State private var selectedScope: ScoreboardScope = .combined
     @State private var championDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
-    @State private var derivedData: ScoreboardDerivedData?
+    @State private var savedChampionDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
 
     var body: some View {
-        let derived = derivedData ?? makeDerivedData()
+        let derived = makeDerivedData()
 
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
@@ -57,34 +57,15 @@ struct ScoreboardView: View {
         }
         .task {
             hydrateChampionDrafts()
-            refreshDerivedData()
         }
         .onChange(of: selectedScope) {
             hydrateChampionDrafts()
-            refreshDerivedData()
         }
         .onChange(of: viewModel.players) {
             hydrateChampionDrafts()
-            refreshDerivedData()
         }
         .onChange(of: viewModel.championPicks) {
             hydrateChampionDrafts()
-            refreshDerivedData()
-        }
-        .onChange(of: viewModel.picks) {
-            refreshDerivedData()
-        }
-        .onChange(of: viewModel.results) {
-            refreshDerivedData()
-        }
-        .onChange(of: viewModel.championResults) {
-            refreshDerivedData()
-        }
-        .onChange(of: viewModel.eventsBySeries) {
-            refreshDerivedData()
-        }
-        .onChange(of: viewModel.driversBySeries) {
-            refreshDerivedData()
         }
     }
 
@@ -371,10 +352,6 @@ struct ScoreboardView: View {
         )
     }
 
-    private func refreshDerivedData() {
-        derivedData = makeDerivedData()
-    }
-
     private func championBinding(for series: RaceSeries, playerID: UUID) -> Binding<String?> {
         Binding(
             get: { championDraft(for: series, playerID: playerID) },
@@ -408,22 +385,40 @@ struct ScoreboardView: View {
                 output[entry.key] = filtered
             }
         }
+        savedChampionDraftsBySeries = savedChampionDraftsBySeries.reduce(into: [RaceSeries: [UUID: String]]()) { output, entry in
+            let filtered = entry.value.filter { currentPlayerIDs.contains($0.key) }
+            if !filtered.isEmpty {
+                output[entry.key] = filtered
+            }
+        }
 
         for series in RaceSeries.allCases {
-            var updated = championDraftsBySeries[series] ?? [:]
+            let currentDrafts = championDraftsBySeries[series] ?? [:]
+            let previousSavedDrafts = savedChampionDraftsBySeries[series] ?? [:]
+            var updatedDrafts: [UUID: String] = [:]
+            var updatedSavedDrafts: [UUID: String] = [:]
             for player in viewModel.players {
                 let savedSelection = viewModel.championPick(for: series, playerID: player.id)?.driverID
-                let currentSelection = updated[player.id]
+                let currentSelection = currentDrafts[player.id]
+                let previousSavedSelection = previousSavedDrafts[player.id]
 
-                if currentSelection == nil || currentSelection == savedSelection {
+                if let savedSelection {
+                    updatedSavedDrafts[player.id] = savedSelection
+                }
+                if DraftHydrationDecision.shouldAdoptSavedSelection(
+                    current: currentSelection,
+                    previousSaved: previousSavedSelection,
+                    saved: savedSelection
+                ) {
                     if let savedSelection {
-                        updated[player.id] = savedSelection
-                    } else {
-                        updated.removeValue(forKey: player.id)
+                        updatedDrafts[player.id] = savedSelection
                     }
+                } else if let currentSelection {
+                    updatedDrafts[player.id] = currentSelection
                 }
             }
-            championDraftsBySeries[series] = updated
+            championDraftsBySeries[series] = updatedDrafts
+            savedChampionDraftsBySeries[series] = updatedSavedDrafts
         }
     }
 
@@ -471,6 +466,14 @@ struct ScoreboardView: View {
                 for: series,
                 playerID: player.id
             )
+            let savedSelection = viewModel.championPick(for: series, playerID: player.id)?.driverID
+            var savedDrafts = savedChampionDraftsBySeries[series] ?? [:]
+            if let savedSelection {
+                savedDrafts[player.id] = savedSelection
+            } else {
+                savedDrafts.removeValue(forKey: player.id)
+            }
+            savedChampionDraftsBySeries[series] = savedDrafts
         } catch {
             viewModel.showError(error.localizedDescription)
         }

@@ -7,7 +7,9 @@ struct PicksView: View {
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
+    @State private var savedDraftsByPlayer: [UUID: PodiumDraft] = [:]
     @State private var championDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
+    @State private var savedChampionDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
     @State private var hasInitialized = false
 
     var body: some View {
@@ -64,7 +66,7 @@ struct PicksView: View {
             hydrateDrafts()
         }
         .onChange(of: viewModel.players) {
-            hydrateDrafts()
+            hydrateAvailablePicks()
             hydrateChampionDrafts()
         }
         .onChange(of: viewModel.picks) {
@@ -371,6 +373,7 @@ struct PicksView: View {
     private func hydrateDrafts() {
         guard let selectedEventID else {
             draftsByPlayer = [:]
+            savedDraftsByPlayer = [:]
             return
         }
 
@@ -383,6 +386,7 @@ struct PicksView: View {
             }
         }
         draftsByPlayer = updated
+        savedDraftsByPlayer = updated
     }
 
     private func hydrateChampionDrafts() {
@@ -393,25 +397,49 @@ struct PicksView: View {
                 output[entry.key] = filtered
             }
         }
-
-        var updated = championDraftsBySeries[selectedSeries] ?? [:]
-        for player in viewModel.players {
-            let savedSelection = viewModel.championPick(for: selectedSeries, playerID: player.id)?.driverID
-            let currentSelection = updated[player.id]
-
-            if currentSelection == nil || currentSelection == savedSelection {
-                if let savedSelection {
-                    updated[player.id] = savedSelection
-                } else {
-                    updated.removeValue(forKey: player.id)
-                }
+        savedChampionDraftsBySeries = savedChampionDraftsBySeries.reduce(into: [RaceSeries: [UUID: String]]()) { output, entry in
+            let filtered = entry.value.filter { currentPlayerIDs.contains($0.key) }
+            if !filtered.isEmpty {
+                output[entry.key] = filtered
             }
         }
-        championDraftsBySeries[selectedSeries] = updated
+
+        let currentDrafts = championDraftsBySeries[selectedSeries] ?? [:]
+        let previousSavedDrafts = savedChampionDraftsBySeries[selectedSeries] ?? [:]
+        var updatedDrafts: [UUID: String] = [:]
+        var updatedSavedDrafts: [UUID: String] = [:]
+        for player in viewModel.players {
+            let savedSelection = viewModel.championPick(for: selectedSeries, playerID: player.id)?.driverID
+            let currentSelection = currentDrafts[player.id]
+            let previousSavedSelection = previousSavedDrafts[player.id]
+
+            if let savedSelection {
+                updatedSavedDrafts[player.id] = savedSelection
+            }
+            if DraftHydrationDecision.shouldAdoptSavedSelection(
+                current: currentSelection,
+                previousSaved: previousSavedSelection,
+                saved: savedSelection
+            ) {
+                if let savedSelection {
+                    updatedDrafts[player.id] = savedSelection
+                }
+            } else if let currentSelection {
+                updatedDrafts[player.id] = currentSelection
+            }
+        }
+        championDraftsBySeries[selectedSeries] = updatedDrafts
+        savedChampionDraftsBySeries[selectedSeries] = updatedSavedDrafts
     }
 
     private func hydrateAvailablePicks() {
-        guard let selectedEventID else { return }
+        guard let selectedEventID else {
+            draftsByPlayer = [:]
+            savedDraftsByPlayer = [:]
+            return
+        }
+        var updatedDrafts: [UUID: PodiumDraft] = [:]
+        var updatedSavedDrafts: [UUID: PodiumDraft] = [:]
         for player in viewModel.players {
             let savedDraft: PodiumDraft
             if let pick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
@@ -420,10 +448,21 @@ struct PicksView: View {
                 savedDraft = .empty
             }
             let currentDraft = draftsByPlayer[player.id] ?? .empty
-            if currentDraft == .empty || currentDraft == savedDraft {
-                draftsByPlayer[player.id] = savedDraft
+            let previousSavedDraft = savedDraftsByPlayer[player.id] ?? .empty
+            updatedSavedDrafts[player.id] = savedDraft
+            if DraftHydrationDecision.shouldAdoptSavedDraft(
+                current: currentDraft,
+                previousSaved: previousSavedDraft,
+                saved: savedDraft,
+                empty: PodiumDraft.empty
+            ) {
+                updatedDrafts[player.id] = savedDraft
+            } else {
+                updatedDrafts[player.id] = currentDraft
             }
         }
+        draftsByPlayer = updatedDrafts
+        savedDraftsByPlayer = updatedSavedDrafts
     }
 
     private func hydrateAvailableChampionPicks() {
@@ -466,6 +505,17 @@ struct PicksView: View {
                 for: selectedSeries,
                 playerID: player.id
             )?.driverID, for: player.id)
+            let savedDraft = viewModel.championPick(
+                for: selectedSeries,
+                playerID: player.id
+            )?.driverID
+            var savedDrafts = savedChampionDraftsBySeries[selectedSeries] ?? [:]
+            if let savedDraft {
+                savedDrafts[player.id] = savedDraft
+            } else {
+                savedDrafts.removeValue(forKey: player.id)
+            }
+            savedChampionDraftsBySeries[selectedSeries] = savedDrafts
         } catch {
             viewModel.showError(error.localizedDescription)
         }
@@ -485,7 +535,9 @@ struct PicksView: View {
             )
             guard selectedSeries == series, selectedEventID == eventID else { return }
             if let savedPick = viewModel.pick(for: series, eventID: eventID, playerID: player.id) {
-                draftsByPlayer[player.id] = PodiumDraft(podium: savedPick.podium)
+                let savedDraft = PodiumDraft(podium: savedPick.podium)
+                draftsByPlayer[player.id] = savedDraft
+                savedDraftsByPlayer[player.id] = savedDraft
             }
         } catch {
             viewModel.showError(error.localizedDescription)

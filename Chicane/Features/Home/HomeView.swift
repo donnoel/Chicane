@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var selectedEventID: String?
     @State private var selectedPlayerID: UUID?
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
+    @State private var savedDraftsByPlayer: [UUID: PodiumDraft] = [:]
     @State private var hasInitialized = false
     @State private var scrollOffset: CGFloat = 0
 
@@ -54,7 +55,7 @@ struct HomeView: View {
             ensureSelectedPlayer()
         }
         .onChange(of: viewModel.players) {
-            hydrateDrafts()
+            hydrateAvailablePicks()
             ensureSelectedPlayer()
         }
         .onChange(of: viewModel.picks) {
@@ -621,6 +622,7 @@ struct HomeView: View {
     private func hydrateDrafts() {
         guard let selectedEvent else {
             draftsByPlayer = [:]
+            savedDraftsByPlayer = [:]
             return
         }
         hydrateDrafts(for: selectedEvent)
@@ -636,11 +638,18 @@ struct HomeView: View {
             }
         }
         draftsByPlayer = updated
+        savedDraftsByPlayer = updated
     }
 
     private func hydrateAvailablePicks() {
-        guard let selectedEvent else { return }
+        guard let selectedEvent else {
+            draftsByPlayer = [:]
+            savedDraftsByPlayer = [:]
+            return
+        }
 
+        var updatedDrafts: [UUID: PodiumDraft] = [:]
+        var updatedSavedDrafts: [UUID: PodiumDraft] = [:]
         for player in viewModel.players {
             let savedDraft: PodiumDraft
             if let pick = viewModel.pick(for: selectedEvent.series, eventID: selectedEvent.id, playerID: player.id) {
@@ -650,10 +659,21 @@ struct HomeView: View {
             }
 
             let currentDraft = draftsByPlayer[player.id] ?? .empty
-            if currentDraft == .empty || currentDraft == savedDraft {
-                draftsByPlayer[player.id] = savedDraft
+            let previousSavedDraft = savedDraftsByPlayer[player.id] ?? .empty
+            updatedSavedDrafts[player.id] = savedDraft
+            if DraftHydrationDecision.shouldAdoptSavedDraft(
+                current: currentDraft,
+                previousSaved: previousSavedDraft,
+                saved: savedDraft,
+                empty: PodiumDraft.empty
+            ) {
+                updatedDrafts[player.id] = savedDraft
+            } else {
+                updatedDrafts[player.id] = currentDraft
             }
         }
+        draftsByPlayer = updatedDrafts
+        savedDraftsByPlayer = updatedSavedDrafts
     }
 
     private func autosavePickIfNeeded(for player: Player, event: RaceEvent, draft: PodiumDraft) {
@@ -685,7 +705,9 @@ struct HomeView: View {
             )
             guard selectedEvent?.id == event.id else { return }
             if let savedPick = viewModel.pick(for: event.series, eventID: event.id, playerID: player.id) {
-                draftsByPlayer[player.id] = PodiumDraft(podium: savedPick.podium)
+                let savedDraft = PodiumDraft(podium: savedPick.podium)
+                draftsByPlayer[player.id] = savedDraft
+                savedDraftsByPlayer[player.id] = savedDraft
             }
         } catch {
             viewModel.showError(error.localizedDescription)
