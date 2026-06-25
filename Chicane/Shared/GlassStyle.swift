@@ -188,7 +188,7 @@ enum ChicaneTheme {
 /// Bubbles the scroll position of a ScrollView's content up through the
 /// preference system so the background can react to it.
 struct ScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
+    static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
     }
@@ -299,6 +299,7 @@ struct NeutralAppBackground: View {
 
 struct GlassCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     /// When non-nil the border stroke animates to reflect this colour —
@@ -362,8 +363,8 @@ struct GlassCardModifier: ViewModifier {
                         ),
                         lineWidth: reduceTransparency ? 1.1 : 0.8
                     )
-                    // Smooth spring transition whenever accentColor changes
-                    .animation(.spring(response: 0.45, dampingFraction: 0.85), value: accentColor)
+                    // Smooth spring transition whenever accentColor changes.
+                    .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.85), value: accentColor)
             )
             .shadow(color: ChicaneTheme.cardShadow(for: colorScheme), radius: 8, x: 0, y: 4)
     }
@@ -481,6 +482,8 @@ extension View {
 }
 
 struct LargeActionButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     /// Override the default F1-red→MotoGP-blue gradient with a solid tint.
     var tint: Color? = nil
 
@@ -505,13 +508,15 @@ struct LargeActionButtonStyle: ButtonStyle {
                     .fill(fill)
             )
             .foregroundStyle(.white)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.98 : 1))
             .shadow(color: (tint ?? ChicaneTheme.motoBlue).opacity(0.18), radius: 4, x: 0, y: 2)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
 struct SecondaryActionButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var tint: Color? = nil
 
     func makeBody(configuration: Configuration) -> some View {
@@ -531,6 +536,6 @@ struct SecondaryActionButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(base.opacity(0.28), lineWidth: 1)
             )
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

@@ -6,17 +6,17 @@ import XCTest
 final class AppViewModelTests: XCTestCase {
     private var tempDir: URL!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ChicaneAppViewModelTests-\(UUID().uuidString)", isDirectory: true)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         if let tempDir {
             try? FileManager.default.removeItem(at: tempDir)
         }
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testUpdateResultFromOfficialSourceLocksOfficialResultAndRejectsManualChanges() async throws {

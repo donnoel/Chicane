@@ -78,24 +78,6 @@ enum F1OfficialHTMLParser {
         ?? (try! NSRegularExpression(pattern: "(?!x)x"))
     }()
 
-    private static let raceSessionDateFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter
-    }()
-
-    private static let raceJSONLDDateFormatterWithFractionalSeconds: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
-
-    private static let raceJSONLDDateFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter
-    }()
-
     private static let monthMap: [String: Int] = [
         "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
         "jul": 7, "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12
@@ -262,7 +244,7 @@ enum F1OfficialHTMLParser {
             let startTime = html.substring(for: match.range(at: 1)),
             let gmtOffset = html.substring(for: match.range(at: 2)),
             let timeZoneID = html.substring(for: match.range(at: 3)),
-            let startDate = raceSessionDateFormatter.date(from: "\(startTime)\(gmtOffset)")
+            let startDate = parseInternetDateTime("\(startTime)\(gmtOffset)")
         else {
             guard let startDate = parseRaceStartDateFromJSONLD(in: html) else {
                 return nil
@@ -279,8 +261,19 @@ enum F1OfficialHTMLParser {
         guard let value = raceJSONLDStartDateRegex.firstCapture(in: html) else {
             return nil
         }
-        return raceJSONLDDateFormatterWithFractionalSeconds.date(from: value)
-            ?? raceJSONLDDateFormatter.date(from: value)
+        return parseInternetDateTime(value, includingFractionalSeconds: true)
+            ?? parseInternetDateTime(value)
+    }
+
+    private static func parseInternetDateTime(
+        _ value: String,
+        includingFractionalSeconds: Bool = false
+    ) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = includingFractionalSeconds
+            ? [.withInternetDateTime, .withFractionalSeconds]
+            : [.withInternetDateTime]
+        return formatter.date(from: value)
     }
 
     static func parseTopThreeDriverStandings(from html: String) -> [ChampionshipLeader] {

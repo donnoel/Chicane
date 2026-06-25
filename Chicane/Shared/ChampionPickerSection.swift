@@ -51,7 +51,8 @@ struct ChampionPickerSection: View {
                     )
             )
             .shadow(color: ChicaneTheme.fieldShadow(for: colorScheme), radius: 4, x: 0, y: 2)
-            .accessibilityLabel(title)
+            .accessibilityIdentifier(title.isEmpty ? "ChampionSelection" : "ChampionPickSelection")
+            .accessibilityLabel(title.isEmpty ? "Champion selection" : "\(title) selection")
             .accessibilityHint("Select a \(participantSingular)")
         }
         .disabled(isDisabled)

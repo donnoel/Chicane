@@ -138,12 +138,16 @@ struct PicksView: View {
         VStack(alignment: .leading, spacing: isPhoneLayout ? 10 : 14) {
             playerHeader(for: player)
             podiumPane(for: player, grouped: horizontalSizeClass == .regular)
+            championPane(for: player, grouped: horizontalSizeClass == .regular)
         }
         .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
     private func playerHeader(for player: Player) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        let summaryStatus = playerSummaryStatus(for: player)
+        let summaryTint = summaryStatus == "Open" ? Color.secondary : ChicaneTheme.seriesColor(selectedSeries)
+
+        return HStack(alignment: .top, spacing: 10) {
             Text(initials(from: player.name))
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
@@ -156,7 +160,7 @@ struct PicksView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(player.name)
                     .font(.title3.weight(.bold))
-                Text("Podium picks")
+                Text("Podium and champion picks")
                     .font(isPhoneLayout ? .footnote : .subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -164,16 +168,16 @@ struct PicksView: View {
             Spacer()
 
             if isPhoneLayout {
-                if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
+                if summaryStatus != "Open" {
                     statusBadge(
-                        title: "Saved",
-                        tint: ChicaneTheme.seriesColor(selectedSeries)
+                        title: summaryStatus,
+                        tint: summaryTint
                     )
                 }
             } else {
                 statusBadge(
-                    title: viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil ? "Podium Saved" : "Podium Open",
-                    tint: viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil ? ChicaneTheme.seriesColor(selectedSeries) : .secondary
+                    title: summaryStatus,
+                    tint: summaryTint
                 )
             }
         }

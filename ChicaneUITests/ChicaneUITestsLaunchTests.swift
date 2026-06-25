@@ -5,6 +5,7 @@ final class ChicaneUITestsLaunchTests: XCTestCase {
         true
     }
 
+    @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
         app.launch()
