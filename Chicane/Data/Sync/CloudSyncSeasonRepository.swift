@@ -29,6 +29,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         var preferLocalSettings = false
         var preferLocalReset = false
         var preferredPickKeys: Set<PickKey> = []
+        var deletedPickKeys: Set<PickKey> = []
         var preferredResultKeys: Set<ResultKey> = []
         var preferredChampionPickKeys: Set<ChampionPickKey> = []
         var preferredChampionResultSeries: Set<RaceSeries> = []
@@ -73,6 +74,14 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         return try await pushIfNeeded(
             state,
             preference: MergePreference(preferredPickKeys: [PickKey(pick: pick)])
+        )
+    }
+
+    func deletePick(series: RaceSeries, eventID: String, playerID: UUID) async throws -> PersistedState {
+        let state = try await localRepository.deletePick(series: series, eventID: eventID, playerID: playerID)
+        return try await pushIfNeeded(
+            state,
+            preference: MergePreference(deletedPickKeys: [PickKey(series: series, eventID: eventID, playerID: playerID)])
         )
     }
 
@@ -283,7 +292,8 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                 local.picks,
                 remote.picks,
                 resetCutoff: resetCutoff,
-                preferredLocalKeys: preference.preferredPickKeys
+                preferredLocalKeys: preference.preferredPickKeys,
+                deletedKeys: preference.deletedPickKeys
             ),
             results: mergeResults(
                 local.results,
@@ -435,13 +445,16 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         _ local: [RacePick],
         _ remote: [RacePick],
         resetCutoff: Date?,
-        preferredLocalKeys: Set<PickKey>
+        preferredLocalKeys: Set<PickKey>,
+        deletedKeys: Set<PickKey>
     ) -> [RacePick] {
         let filteredLocal = local.filter { pick in
+            guard !deletedKeys.contains(PickKey(pick: pick)) else { return false }
             guard let resetCutoff else { return true }
             return pick.updatedAt >= resetCutoff
         }
         let filteredRemote = remote.filter { pick in
+            guard !deletedKeys.contains(PickKey(pick: pick)) else { return false }
             guard let resetCutoff else { return true }
             return pick.updatedAt >= resetCutoff
         }
@@ -690,6 +703,12 @@ private struct PickKey: Hashable {
     let series: RaceSeries
     let eventID: String
     let playerID: UUID
+
+    init(series: RaceSeries, eventID: String, playerID: UUID) {
+        self.series = series
+        self.eventID = eventID
+        self.playerID = playerID
+    }
 
     init(pick: RacePick) {
         self.series = pick.series

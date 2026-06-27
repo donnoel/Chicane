@@ -276,6 +276,36 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(remote?.picks.count, 2)
     }
 
+    func testDeletingPickRemovesRemotePickForSamePlayerAndEvent() async throws {
+        let localRepo = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let cloudStore = MemoryLeagueSyncStore()
+        let repo = CloudSyncSeasonRepository(localRepository: localRepo, cloudStore: cloudStore)
+
+        let mom = Player(id: UUID(), name: "Mom")
+        let son = Player(id: UUID(), name: "Son")
+        let momPick = TestFixtures.pick(series: .motoGP, eventID: "mgp-r1", playerID: mom.id)
+        let sonPick = TestFixtures.pick(series: .motoGP, eventID: "mgp-r1", playerID: son.id, p1: "x", p2: "y", p3: "z")
+
+        var localState = PersistedState.default
+        localState.settings.leagueCode = "ABC123"
+        localState.players = [mom, son]
+        localState.picks = [momPick, sonPick]
+        try await localRepo.replaceState(localState)
+
+        var remoteState = localState
+        remoteState.picks = [momPick, sonPick]
+        await cloudStore.seed(remoteState, for: "ABC123")
+
+        let saved = try await repo.deletePick(series: .motoGP, eventID: "mgp-r1", playerID: mom.id)
+
+        XCTAssertFalse(saved.picks.contains { $0.playerID == mom.id && $0.eventID == "mgp-r1" })
+        XCTAssertTrue(saved.picks.contains { $0.playerID == son.id && $0.eventID == "mgp-r1" })
+
+        let remote = await cloudStore.state(for: "ABC123")
+        XCTAssertFalse(remote?.picks.contains { $0.playerID == mom.id && $0.eventID == "mgp-r1" } ?? true)
+        XCTAssertTrue(remote?.picks.contains { $0.playerID == son.id && $0.eventID == "mgp-r1" } ?? false)
+    }
+
     func testTwoDevicesConvergePlayersPicksAndBets() async throws {
         let cloudStore = MemoryLeagueSyncStore()
 

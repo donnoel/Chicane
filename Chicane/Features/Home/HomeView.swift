@@ -706,6 +706,9 @@ struct HomeView: View {
                 let savedDraft = PodiumDraft(podium: savedPick.podium)
                 draftsByPlayer[player.id] = savedDraft
                 savedDraftsByPlayer[player.id] = savedDraft
+            } else {
+                draftsByPlayer[player.id] = .empty
+                savedDraftsByPlayer[player.id] = .empty
             }
         } catch {
             viewModel.showError(error.localizedDescription)

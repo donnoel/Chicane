@@ -366,6 +366,24 @@ final class LocalSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(matchingPicks.first?.podium.p1, "x")
     }
 
+    func testDeletePickClearsExistingPickForSamePlayerAndEvent() async throws {
+        let store = FileStateStore(baseDirectoryURL: tempDir)
+        let repo = LocalSeasonRepository(store: store)
+
+        let player = TestFixtures.player(name: "Player")
+        let otherPlayer = TestFixtures.player(name: "Other")
+        _ = try await repo.savePlayers([player, otherPlayer])
+        _ = try await repo.upsertPick(TestFixtures.pick(eventID: "f1-r1", playerID: player.id))
+        _ = try await repo.upsertPick(TestFixtures.pick(eventID: "f1-r1", playerID: otherPlayer.id))
+        _ = try await repo.upsertPick(TestFixtures.pick(eventID: "f1-r2", playerID: player.id))
+
+        let state = try await repo.deletePick(series: .formula1, eventID: "f1-r1", playerID: player.id)
+
+        XCTAssertFalse(state.picks.contains { $0.eventID == "f1-r1" && $0.playerID == player.id })
+        XCTAssertTrue(state.picks.contains { $0.eventID == "f1-r1" && $0.playerID == otherPlayer.id })
+        XCTAssertTrue(state.picks.contains { $0.eventID == "f1-r2" && $0.playerID == player.id })
+    }
+
     func testResetSeasonClearsPicksResultsAndChampionSelections() async throws {
         let store = FileStateStore(baseDirectoryURL: tempDir)
         let repo = LocalSeasonRepository(store: store)

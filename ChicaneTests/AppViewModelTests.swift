@@ -795,6 +795,15 @@ private actor ManualSyncPermissionFailureSeasonRepository: SeasonRepository {
         return state
     }
 
+    func deletePick(series: RaceSeries, eventID: String, playerID: UUID) async throws -> PersistedState {
+        state.picks.removeAll {
+            $0.series == series &&
+            $0.eventID == eventID &&
+            $0.playerID == playerID
+        }
+        return state
+    }
+
     func upsertResult(_ result: RaceResult) async throws -> PersistedState {
         state.results.removeAll {
             $0.series == result.series && $0.eventID == result.eventID

@@ -26,6 +26,12 @@ final class AutosaveDecisionTests: XCTestCase {
                 expected: false
             ),
             Case(
+                name: "saves when existing pick is cleared",
+                draft: .empty,
+                savedDraft: completeDraft,
+                expected: true
+            ),
+            Case(
                 name: "does not save when complete and unchanged",
                 draft: completeDraft,
                 savedDraft: completeDraft,

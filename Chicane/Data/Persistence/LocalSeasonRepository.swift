@@ -180,6 +180,16 @@ actor LocalSeasonRepository: SeasonRepository {
         }
     }
 
+    func deletePick(series: RaceSeries, eventID: String, playerID: UUID) async throws -> PersistedState {
+        try await mutateState(kind: .picks) { state in
+            state.picks.removeAll {
+                $0.series == series &&
+                $0.eventID == eventID &&
+                $0.playerID == playerID
+            }
+        }
+    }
+
     func upsertResult(_ result: RaceResult) async throws -> PersistedState {
         guard result.podium.isUnique else {
             throw RepositoryError.invalidPodium

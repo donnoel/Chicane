@@ -198,6 +198,12 @@ final class AppViewModel: ObservableObject {
         playerID: UUID,
         draft: PodiumDraft
     ) async throws -> String? {
+        if draft == .empty {
+            return try await persistState {
+                try await seasonRepository.deletePick(series: series, eventID: eventID, playerID: playerID)
+            }
+        }
+
         guard let podium = draft.toPodium() else {
             throw RepositoryError.invalidPodium
         }
