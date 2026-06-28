@@ -47,6 +47,13 @@ struct PicksView: View {
         }
         .navigationTitle("Picks")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isPhoneLayout {
+                ToolbarItem(placement: .topBarTrailing) {
+                    phoneSettingsLink
+                }
+            }
+        }
         .chicaneBackground()
         .task {
             guard !hasInitialized else { return }
@@ -130,12 +137,27 @@ struct PicksView: View {
         }
     }
 
+    private var phoneSettingsLink: some View {
+        NavigationLink {
+            SettingsView()
+        } label: {
+            Image(systemName: "gear")
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open Settings")
+        .accessibilityHint("Opens league, player, bet, and app settings")
+    }
+
     private var noPlayersCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("No players yet", systemImage: "person.2")
                 .font(.headline)
 
-            Text("Add at least one player in Settings to enter podium picks on this iPad.")
+            Text("Add at least one player in Settings to enter podium picks on this \(isPhoneLayout ? "iPhone" : "iPad").")
                 .font(.body)
                 .foregroundStyle(.secondary)
         }

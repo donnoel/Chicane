@@ -28,6 +28,7 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons[Tab.standings].exists)
         XCTAssertTrue(app.tabBars.buttons[Tab.results].exists)
         XCTAssertFalse(app.tabBars.buttons["Settings"].exists)
+        openAllRacesAndManualPicks(in: app)
         XCTAssertTrue(app.buttons["Open Settings"].waitForExistence(timeout: Timeout.medium))
     }
 
@@ -237,6 +238,8 @@ final class ChicaneUITests: XCTestCase {
             app.descendants(matching: .any)["Position 1 selection"]
                 .waitForExistence(timeout: Timeout.medium)
         )
+        XCTAssertFalse(app.buttons["Open Settings"].exists)
+        openAllRacesAndManualPicks(in: app)
         XCTAssertTrue(app.buttons["Open Settings"].waitForExistence(timeout: Timeout.medium))
 
         app.tabBars.buttons[Tab.results].tap()
@@ -309,12 +312,11 @@ final class ChicaneUITests: XCTestCase {
     }
 
     private func openSettings(in app: XCUIApplication) {
-        let weekendTab = app.tabBars.buttons[Tab.weekend]
-        if weekendTab.waitForExistence(timeout: Timeout.short), !weekendTab.isSelected {
-            weekendTab.tap()
+        let settingsButton = app.buttons["Open Settings"]
+        if !settingsButton.waitForExistence(timeout: Timeout.short) {
+            openAllRacesAndManualPicks(in: app)
         }
 
-        let settingsButton = app.buttons["Open Settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: Timeout.medium))
         settingsButton.tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: Timeout.medium))
@@ -342,8 +344,19 @@ final class ChicaneUITests: XCTestCase {
     }
 
     private func openAllRacesAndManualPicks(in app: XCUIApplication) {
+        let isPicksScreen = {
+            app.buttons["Open Settings"].exists && app.buttons["BackButton"].exists
+        }
+
+        if app.staticTexts["Podium Picks"].exists || isPicksScreen() {
+            return
+        }
+
         XCTAssertTrue(app.tabBars.buttons[Tab.weekend].waitForExistence(timeout: Timeout.medium))
         app.tabBars.buttons[Tab.weekend].tap()
+        if app.staticTexts["Podium Picks"].exists || isPicksScreen() {
+            return
+        }
 
         let allRacesLink = app.buttons["All races and manual picks"]
         scrollToElementIfNeeded(allRacesLink, in: app)
