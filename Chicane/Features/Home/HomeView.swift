@@ -60,6 +60,10 @@ struct HomeView: View {
             hydrateAvailablePicks()
             ensureSelectedPlayer()
         }
+        .onChange(of: viewModel.results) {
+            hydrateAvailablePicks()
+            ensureSelectedPlayer()
+        }
     }
 
     private var raceQueue: [RaceEvent] {
@@ -312,7 +316,9 @@ struct HomeView: View {
     }
 
     private func activePlayerCard(player: Player, event: RaceEvent) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let picksAreLocked = viewModel.resultIsLocked(for: event.series, eventID: event.id)
+
+        return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
                 Text(initials(from: player.name))
                     .font(.headline.weight(.black))
@@ -323,7 +329,11 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(player.name)
                         .font(.title3.weight(.bold))
-                    if playerIsReady(player, for: event) {
+                    if picksAreLocked {
+                        Text("Locked after official result")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } else if playerIsReady(player, for: event) {
                         Text("Saved automatically")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -333,8 +343,8 @@ struct HomeView: View {
                 Spacer()
 
                 statusBadge(
-                    title: playerIsReady(player, for: event) ? "Ready" : "Open",
-                    tint: playerAccent(for: player, event: event)
+                    title: picksAreLocked ? "Locked" : (playerIsReady(player, for: event) ? "Ready" : "Open"),
+                    tint: picksAreLocked ? .green : playerAccent(for: player, event: event)
                 )
             }
 
@@ -343,8 +353,15 @@ struct HomeView: View {
                 drivers: viewModel.drivers(for: event.series),
                 participantSingular: participantSingular(for: event.series),
                 participantPlural: participantPlural(for: event.series),
-                draft: binding(for: player.id, event: event)
+                draft: binding(for: player.id, event: event),
+                isDisabled: picksAreLocked
             )
+
+            if picksAreLocked {
+                Label("Locked once official results are retrieved.", systemImage: "lock.fill")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
         }
         .groupedCard(accent: playerAccent(for: player, event: event))
     }
@@ -675,6 +692,8 @@ struct HomeView: View {
     }
 
     private func autosavePickIfNeeded(for player: Player, event: RaceEvent, draft: PodiumDraft) {
+        guard !viewModel.resultIsLocked(for: event.series, eventID: event.id) else { return }
+
         let savedDraft: PodiumDraft
         if let savedPick = viewModel.pick(for: event.series, eventID: event.id, playerID: player.id) {
             savedDraft = PodiumDraft(podium: savedPick.podium)

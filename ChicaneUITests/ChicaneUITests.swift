@@ -177,6 +177,25 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Fetch Official Results"].exists)
     }
 
+    func testWeekendPicksAreLockedWhenOfficialResultIsLocked() throws {
+        let app = makeApp(scenario: .lockedGates)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons[Tab.weekend].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.weekend].tap()
+
+        XCTAssertTrue(app.staticTexts["Make your picks"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(
+            app.staticTexts["Locked once official results are retrieved."]
+                .waitForExistence(timeout: Timeout.medium)
+        )
+
+        let picker = app.descendants(matching: .any)["Position 1 selection"]
+        XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
+        XCTAssertFalse(picker.isEnabled)
+        XCTAssertTrue(app.staticTexts["Max Verstappen (Red Bull)"].exists)
+    }
+
     func testResultsHidesSeasonChampionStatusWhenSeasonChampionIsLocked() throws {
         let app = makeApp(scenario: .lockedGates)
         app.launch()

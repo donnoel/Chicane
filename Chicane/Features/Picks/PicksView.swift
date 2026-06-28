@@ -72,6 +72,9 @@ struct PicksView: View {
         .onChange(of: viewModel.picks) {
             hydrateAvailablePicks()
         }
+        .onChange(of: viewModel.results) {
+            hydrateAvailablePicks()
+        }
         .onChange(of: viewModel.championPicks) {
             hydrateAvailableChampionPicks()
         }
@@ -104,6 +107,11 @@ struct PicksView: View {
 
     private var championPicksAreLocked: Bool {
         viewModel.championResult(for: selectedSeries)?.isLocked ?? false
+    }
+
+    private var podiumPicksAreLocked: Bool {
+        guard let selectedEventID else { return false }
+        return viewModel.resultIsLocked(for: selectedSeries, eventID: selectedEventID)
     }
 
     private var championDraftsByPlayer: [UUID: String] {
@@ -235,7 +243,8 @@ struct PicksView: View {
                 drivers: drivers,
                 participantSingular: participantSingular,
                 participantPlural: participantPlural,
-                draft: binding(for: player.id)
+                draft: binding(for: player.id),
+                isDisabled: podiumPicksAreLocked
             )
 
             podiumStatusText(for: player)
@@ -284,7 +293,11 @@ struct PicksView: View {
 
     private func podiumStatusText(for player: Player) -> some View {
         Group {
-            if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
+            if podiumPicksAreLocked {
+                Label("Locked once official results are retrieved.", systemImage: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
                 Label("Saved automatically. Edit anytime before results are locked.", systemImage: "checkmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -477,6 +490,7 @@ struct PicksView: View {
         guard let selectedEventID else { return }
         let series = selectedSeries
         let eventID = selectedEventID
+        guard !viewModel.resultIsLocked(for: series, eventID: eventID) else { return }
 
         let savedDraft: PodiumDraft
         if let savedPick = viewModel.pick(for: series, eventID: eventID, playerID: player.id) {

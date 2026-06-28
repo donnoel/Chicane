@@ -187,6 +187,10 @@ final class AppViewModel: ObservableObject {
         )
     }
 
+    func resultIsLocked(for series: RaceSeries, eventID: String) -> Bool {
+        result(for: series, eventID: eventID)?.isLocked ?? false
+    }
+
     func championshipLeaders(for series: RaceSeries) -> [ChampionshipLeader] {
         championshipLeadersBySeries[series] ?? []
     }
@@ -198,6 +202,10 @@ final class AppViewModel: ObservableObject {
         playerID: UUID,
         draft: PodiumDraft
     ) async throws -> String? {
+        if resultIsLocked(for: series, eventID: eventID) {
+            throw AppViewModelError.pickLocked
+        }
+
         if draft == .empty {
             return try await persistState {
                 try await seasonRepository.deletePick(series: series, eventID: eventID, playerID: playerID)
@@ -728,6 +736,7 @@ final class AppViewModel: ObservableObject {
 }
 
 enum AppViewModelError: LocalizedError {
+    case pickLocked
     case resultLocked
     case championPickLocked
     case championResultLocked
@@ -738,6 +747,8 @@ enum AppViewModelError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .pickLocked:
+            return "Podium picks lock once official results are retrieved."
         case .resultLocked:
             return "Official results are final once retrieved."
         case .championPickLocked:

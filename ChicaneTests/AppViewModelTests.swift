@@ -54,6 +54,24 @@ final class AppViewModelTests: XCTestCase {
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+
+        do {
+            try await viewModel.savePick(
+                series: .formula1,
+                eventID: event.id,
+                playerID: UUID(),
+                draft: PodiumDraft(p1: drivers[2].id, p2: drivers[1].id, p3: drivers[0].id)
+            )
+            XCTFail("Expected a locked-pick error")
+        } catch let error as AppViewModelError {
+            if case .pickLocked = error {
+                // Expected path.
+            } else {
+                XCTFail("Unexpected AppViewModelError: \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 
     func testUpdateResultFromOfficialSourceCanCorrectLockedOfficialResult() async throws {

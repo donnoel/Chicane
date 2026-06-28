@@ -119,6 +119,20 @@ struct ChicaneApp: App {
             case .default:
                 break
             case .lockedGates:
+                state.picks = [
+                    RacePick(
+                        id: UUID(),
+                        series: .formula1,
+                        eventID: UITestFixtures.eventID,
+                        playerID: UITestFixtures.playerID,
+                        podium: Podium(
+                            p1: UITestFixtures.driver1ID,
+                            p2: UITestFixtures.driver2ID,
+                            p3: UITestFixtures.driver3ID
+                        ),
+                        updatedAt: Date()
+                    )
+                ]
                 state.results = [
                     RaceResult(
                         series: .formula1,
