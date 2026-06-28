@@ -22,6 +22,7 @@ struct ResultsView: View {
     @State private var selectedEventID: String?
     @State private var isUpdatingResults = false
     @State private var hasInitialized = false
+    @State private var selectionFollowsDefault = true
     @State private var inlineResultStatus: InlineStatus?
 
     var body: some View {
@@ -30,7 +31,7 @@ struct ResultsView: View {
                 EventPickerHeader(
                     title: "Race Results Podium",
                     selectedSeries: $selectedSeries,
-                    selectedEventID: $selectedEventID,
+                    selectedEventID: selectedEventBinding,
                     events: events,
                     eventPickerLabel: "Event result"
                 )
@@ -83,6 +84,16 @@ struct ResultsView: View {
         events.map(\.id)
     }
 
+    private var selectedEventBinding: Binding<String?> {
+        Binding(
+            get: { selectedEventID },
+            set: { newValue in
+                selectionFollowsDefault = false
+                selectedEventID = newValue
+            }
+        )
+    }
+
     private var selectedEvent: RaceEvent? {
         guard let selectedEventID else { return nil }
         return events.first(where: { $0.id == selectedEventID })
@@ -91,10 +102,6 @@ struct ResultsView: View {
     private var currentResult: RaceResult? {
         guard let selectedEventID else { return nil }
         return viewModel.result(for: selectedSeries, eventID: selectedEventID)
-    }
-
-    private var currentChampionResult: SeasonChampionResult? {
-        viewModel.championResult(for: selectedSeries)
     }
 
     private var participantSingular: String {
@@ -156,27 +163,10 @@ struct ResultsView: View {
         .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
-    private var seasonChampionCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Season Champion")
-                .font(.headline.weight(.semibold))
-            championSummaryContent
-        }
-        .sectionCard(accent: ChicaneTheme.seriesColor(selectedSeries))
-    }
-
     private var resultsContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             resultFeatureCard
-
-            if horizontalSizeClass == .regular {
-                HStack(alignment: .top, spacing: 12) {
-                    seasonChampionCard
-                    pointsCard
-                }
-            } else {
-                supportCard
-            }
+            pointsCard
         }
     }
 
@@ -368,61 +358,6 @@ struct ResultsView: View {
         .sectionCard()
     }
 
-    private var supportCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            seasonChampionSection
-            Divider().opacity(0.24)
-            pointsSection
-        }
-        .groupedCard()
-    }
-
-    private var seasonChampionSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Season Champion")
-                .font(.subheadline.weight(.semibold))
-            championSummaryContent
-        }
-    }
-
-    private var pointsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Event Points")
-                .font(.subheadline.weight(.semibold))
-            pointsSummaryContent
-        }
-    }
-
-    @ViewBuilder
-    private var championSummaryContent: some View {
-        if let currentChampionResult {
-            Label(
-                currentChampionResult.isLocked ? "Season champion is locked" : "Season champion saved",
-                systemImage: currentChampionResult.isLocked ? "lock.fill" : "checkmark.seal.fill"
-            )
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(currentChampionResult.isLocked ? .green : .orange)
-        }
-
-        if let currentChampionResult,
-           let champion = participantsByID[currentChampionResult.driverID] {
-            Text("Official season champion")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Text("\(champion.name) (\(champion.team))")
-                .font(.body.weight(.semibold))
-        } else {
-            Text("This will be filled in automatically at the end of the season.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-
-        Text("Matching picks receive a 5-point season bonus.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-    }
-
     private var selectedEventPoints: [UUID: Int] {
         selectedEventID.map { viewModel.eventPoints(series: selectedSeries, eventID: $0) } ?? [:]
     }
@@ -469,12 +404,8 @@ struct ResultsView: View {
     }
 
     private func initializeSelectionForSeries() {
-        let now = Date()
-        if let recent = events.filter({ $0.raceDate < now }).max(by: { $0.raceDate < $1.raceDate }) {
-            selectedEventID = recent.id
-        } else {
-            selectedEventID = events.min(by: { $0.raceDate < $1.raceDate })?.id
-        }
+        selectionFollowsDefault = true
+        selectedEventID = defaultEventID()
     }
 
     private func ensureValidSelection() {
@@ -483,8 +414,15 @@ struct ResultsView: View {
             initializeSelectionForSeries()
             return
         }
+
+        if selectionFollowsDefault, selectedEventID != defaultEventID() {
+            initializeSelectionForSeries()
+        }
     }
 
+    private func defaultEventID() -> String? {
+        ResultsEventSelection.defaultEvent(in: events)?.id
+    }
 
     private func updateResults() async {
         guard let selectedEventID else { return }

@@ -177,17 +177,16 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Fetch Official Results"].exists)
     }
 
-    func testChampionPickShowsLockedMessageWhenSeasonChampionIsLocked() throws {
+    func testResultsHidesSeasonChampionStatusWhenSeasonChampionIsLocked() throws {
         let app = makeApp(scenario: .lockedGates)
         app.launch()
 
         XCTAssertTrue(app.tabBars.buttons[Tab.results].waitForExistence(timeout: Timeout.medium))
         app.tabBars.buttons[Tab.results].tap()
 
-        XCTAssertTrue(
-            app.staticTexts["Season champion is locked"]
-                .waitForExistence(timeout: Timeout.medium)
-        )
+        XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertFalse(app.staticTexts["Season champion is locked"].exists)
+        XCTAssertFalse(app.staticTexts["Season Champion"].exists)
     }
 
     func testResultsStartsSpoilerSafeBeforeAnyOfficialResultIsFetched() throws {
@@ -255,7 +254,8 @@ final class ChicaneUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Race Results Podium"].waitForExistence(timeout: Timeout.medium))
         XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
-        XCTAssertTrue(app.staticTexts["Season champion is locked"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertFalse(app.staticTexts["Season champion is locked"].exists)
+        XCTAssertFalse(app.staticTexts["Season Champion"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["Fetch official results"].exists)
     }
 
