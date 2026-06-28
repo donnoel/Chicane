@@ -369,18 +369,24 @@ final class AppViewModel: ObservableObject {
     func saveChampionPick(
         series: RaceSeries,
         playerID: UUID,
-        driverID: String
+        driverID: String,
+        isLocked: Bool = false
     ) async throws -> String? {
         if let existingResult = championResult(for: series), existingResult.isLocked {
             throw AppViewModelError.championPickLocked
         }
 
         let existingPick = championPick(for: series, playerID: playerID)
+        if existingPick?.isLocked == true {
+            throw AppViewModelError.championPickLocked
+        }
+
         let pick = SeasonChampionPick(
             id: existingPick?.id ?? UUID(),
             series: series,
             playerID: playerID,
             driverID: driverID,
+            isLocked: isLocked,
             updatedAt: Date()
         )
 
@@ -752,7 +758,7 @@ enum AppViewModelError: LocalizedError {
         case .resultLocked:
             return "Official results are final once retrieved."
         case .championPickLocked:
-            return "Champion picks lock once the official season champion is entered."
+            return "Champion picks are locked and cannot be changed."
         case .championResultLocked:
             return "Season champion is locked and cannot be changed."
         case .playerNameEmpty:

@@ -13,11 +13,65 @@ struct ScoreboardView: View {
     @State private var selectedScope: ScoreboardScope = .combined
     @State private var championDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
     @State private var savedChampionDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
+    @State private var pendingChampionLock: ChampionLockRequest?
+
+    private struct ChampionLockRequest: Identifiable {
+        let player: Player
+        let series: RaceSeries
+        let driverID: String
+
+        var id: String {
+            "\(series.rawValue)-\(player.id.uuidString)"
+        }
+    }
 
     var body: some View {
+        scoreboardContent
+            .navigationTitle("Standings")
+            .navigationBarTitleDisplayMode(.inline)
+            .chicaneBackground()
+            .refreshable {
+                await viewModel.reload()
+                // If reload failed it will have shown an error banner already.
+                if viewModel.banner == nil {
+                    viewModel.showInfo("Updated")
+                }
+            }
+            .task {
+                hydrateChampionDrafts()
+            }
+            .onChange(of: selectedScope) {
+                hydrateChampionDrafts()
+            }
+            .onChange(of: viewModel.players) {
+                hydrateChampionDrafts()
+            }
+            .onChange(of: viewModel.championPicks) {
+                hydrateChampionDrafts()
+            }
+            .alert("Lock champion pick?", isPresented: championLockConfirmationIsPresented) {
+                Button("Cancel", role: .cancel) {}
+                Button("Lock Pick") { confirmPendingChampionLock() }
+            } message: {
+                Text(pendingChampionLock.map(championLockMessage) ?? "")
+            }
+    }
+
+    private var championLockConfirmationIsPresented: Binding<Bool> {
+        Binding(
+            get: { pendingChampionLock != nil },
+            set: { isPresented in
+                if !isPresented {
+                    pendingChampionLock = nil
+                }
+            }
+        )
+    }
+
+    private var scoreboardContent: some View {
         let derived = makeDerivedData()
 
-        ScrollView {
+        return ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Standings")
@@ -27,15 +81,7 @@ struct ScoreboardView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Picker("Scope", selection: $selectedScope) {
-                    ForEach(ScoreboardScope.allCases) { scope in
-                        Text(scope.title).tag(scope)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .tint(ChicaneTheme.motoBlue)
-                .accessibilityLabel("Scoreboard scope")
-
+                scopePicker
                 standingsCard(
                     standings: derived.standings,
                     leaderText: derived.leaderText
@@ -45,28 +91,17 @@ struct ScoreboardView: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 18)
         }
-        .navigationTitle("Standings")
-        .navigationBarTitleDisplayMode(.inline)
-        .chicaneBackground()
-        .refreshable {
-            await viewModel.reload()
-            // If reload failed it will have shown an error banner already.
-            if viewModel.banner == nil {
-                viewModel.showInfo("Updated")
+    }
+
+    private var scopePicker: some View {
+        Picker("Scope", selection: $selectedScope) {
+            ForEach(ScoreboardScope.allCases) { scope in
+                Text(scope.title).tag(scope)
             }
         }
-        .task {
-            hydrateChampionDrafts()
-        }
-        .onChange(of: selectedScope) {
-            hydrateChampionDrafts()
-        }
-        .onChange(of: viewModel.players) {
-            hydrateChampionDrafts()
-        }
-        .onChange(of: viewModel.championPicks) {
-            hydrateChampionDrafts()
-        }
+        .pickerStyle(.segmented)
+        .tint(ChicaneTheme.motoBlue)
+        .accessibilityLabel("Scoreboard scope")
     }
 
     @ViewBuilder
@@ -189,19 +224,28 @@ struct ScoreboardView: View {
                         }
 
                         let participants = viewModel.drivers(for: series)
-                        let picksAreLocked = viewModel.championResult(for: series)?.isLocked ?? false
+                        let seriesIsLocked = viewModel.championResult(for: series)?.isLocked ?? false
 
                         ForEach(viewModel.players) { player in
+                            let pick = viewModel.championPick(for: series, playerID: player.id)
+                            let pickIsLocked = seriesIsLocked || pick?.isLocked == true
+
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(player.name)
-                                    .font(.footnote.weight(.semibold))
+                                HStack(alignment: .center, spacing: 8) {
+                                    Text(player.name)
+                                        .font(.footnote.weight(.semibold))
+                                    Spacer()
+                                    if !pickIsLocked {
+                                        championLockButton(for: player, series: series)
+                                    }
+                                }
 
                                 ChampionPickerSection(
                                     title: "",
                                     drivers: participants,
                                     participantSingular: series == .motoGP ? "rider" : "driver",
                                     selection: championBinding(for: series, playerID: player.id),
-                                    isDisabled: picksAreLocked
+                                    isDisabled: pickIsLocked
                                 )
 
                                 championStatusText(for: player, series: series)
@@ -220,6 +264,31 @@ struct ScoreboardView: View {
             }
         }
         .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
+    }
+
+    private func championLockButton(for player: Player, series: RaceSeries) -> some View {
+        Button {
+            guard let driverID = championDraft(for: series, playerID: player.id) else { return }
+            pendingChampionLock = ChampionLockRequest(
+                player: player,
+                series: series,
+                driverID: driverID
+            )
+        } label: {
+            Image(systemName: "lock")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 34, height: 30)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(.thinMaterial)
+                )
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(championDraft(for: series, playerID: player.id) == nil)
+        .accessibilityLabel("Lock \(series.title) champion pick for \(player.name)")
+        .accessibilityHint("Makes this champion pick final")
     }
 
     private func historyCard(history: [EventScoreRow]) -> some View {
@@ -424,11 +493,12 @@ struct ScoreboardView: View {
 
     private func autosaveChampionPickIfNeeded(for player: Player, series: RaceSeries, driverID: String?) {
         let isLocked = viewModel.championResult(for: series)?.isLocked == true
-        let savedDriverID = viewModel.championPick(for: series, playerID: player.id)?.driverID
+        let savedPick = viewModel.championPick(for: series, playerID: player.id)
+        let savedDriverID = savedPick?.driverID
         guard AutosaveDecision.shouldAutosaveChampionPick(
             selectedDriverID: driverID,
             savedDriverID: savedDriverID,
-            isLocked: isLocked
+            isLocked: isLocked || savedPick?.isLocked == true
         ) else { return }
 
         Task {
@@ -436,15 +506,38 @@ struct ScoreboardView: View {
         }
     }
 
+    @ViewBuilder
     private func championStatusText(for player: Player, series: RaceSeries) -> some View {
+        let savedPick = viewModel.championPick(for: series, playerID: player.id)
+
         Group {
             if viewModel.championResult(for: series)?.isLocked == true {
                 Label("Locked once the official season champion is entered.", systemImage: "lock.fill")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+            } else if savedPick?.isLocked == true {
+                Label("Locked in.", systemImage: "lock.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             } else {
                 EmptyView()
             }
+        }
+    }
+
+    private func championLockMessage(for request: ChampionLockRequest) -> String {
+        "Lock \(request.player.name)'s \(request.series.title) champion pick? This pick will become final."
+    }
+
+    private func confirmPendingChampionLock() {
+        guard let request = pendingChampionLock else { return }
+        confirmChampionLock(request)
+        pendingChampionLock = nil
+    }
+
+    private func confirmChampionLock(_ request: ChampionLockRequest) {
+        Task {
+            await lockChampionPick(request)
         }
     }
 
@@ -457,10 +550,9 @@ struct ScoreboardView: View {
                 playerID: player.id,
                 driverID: driverID
             )
-            viewModel.showSaveOutcome(
-                warning: warning,
-                successMessage: "Saved \(player.name)'s world champion pick."
-            )
+            if let warning, !warning.isEmpty {
+                viewModel.showError(warning)
+            }
             setChampionDraft(
                 viewModel.championPick(for: series, playerID: player.id)?.driverID,
                 for: series,
@@ -474,6 +566,36 @@ struct ScoreboardView: View {
                 savedDrafts.removeValue(forKey: player.id)
             }
             savedChampionDraftsBySeries[series] = savedDrafts
+        } catch {
+            viewModel.showError(error.localizedDescription)
+        }
+    }
+
+    private func lockChampionPick(_ request: ChampionLockRequest) async {
+        do {
+            let warning = try await viewModel.saveChampionPick(
+                series: request.series,
+                playerID: request.player.id,
+                driverID: request.driverID,
+                isLocked: true
+            )
+            viewModel.showSaveOutcome(
+                warning: warning,
+                successMessage: "Locked \(request.player.name)'s world champion pick."
+            )
+            setChampionDraft(
+                viewModel.championPick(for: request.series, playerID: request.player.id)?.driverID,
+                for: request.series,
+                playerID: request.player.id
+            )
+            let savedSelection = viewModel.championPick(for: request.series, playerID: request.player.id)?.driverID
+            var savedDrafts = savedChampionDraftsBySeries[request.series] ?? [:]
+            if let savedSelection {
+                savedDrafts[request.player.id] = savedSelection
+            } else {
+                savedDrafts.removeValue(forKey: request.player.id)
+            }
+            savedChampionDraftsBySeries[request.series] = savedDrafts
         } catch {
             viewModel.showError(error.localizedDescription)
         }

@@ -74,16 +74,23 @@ final class ChicaneUITests: XCTestCase {
         openAllRacesAndManualPicks(in: app)
         selectChampionPick(option: "Max Verstappen (Red Bull)", in: app)
 
-        let saveChampionButton = app.buttons["Save world champion pick for UITest Player"]
-        scrollToElementIfNeeded(saveChampionButton, in: app)
-        XCTAssertTrue(saveChampionButton.waitForExistence(timeout: Timeout.medium))
-        XCTAssertTrue(saveChampionButton.isEnabled)
-        saveChampionButton.tap()
-
         XCTAssertTrue(
-            app.staticTexts["Saved and still editable until the season champion is entered."]
+            app.staticTexts["Saved quietly. Lock it in when ready."]
                 .waitForExistence(timeout: Timeout.medium)
         )
+
+        let lockChampionButton = app.buttons["Lock world champion pick for UITest Player"]
+        scrollToElementIfNeeded(lockChampionButton, in: app)
+        XCTAssertTrue(lockChampionButton.waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(lockChampionButton.isEnabled)
+        lockChampionButton.tap()
+        XCTAssertTrue(app.alerts["Lock champion pick?"].waitForExistence(timeout: Timeout.medium))
+        app.alerts["Lock champion pick?"].buttons["Lock Pick"].tap()
+        XCTAssertTrue(
+            app.staticTexts["Locked in as a final champion pick."]
+                .waitForExistence(timeout: Timeout.medium)
+        )
+        XCTAssertFalse(lockChampionButton.exists)
 
         app.terminate()
 
@@ -96,9 +103,7 @@ final class ChicaneUITests: XCTestCase {
         scrollToElementIfNeeded(lockedMessage, in: app)
         XCTAssertTrue(lockedMessage.waitForExistence(timeout: Timeout.medium))
 
-        let lockedSaveButton = app.buttons["Save world champion pick for UITest Player"]
-        XCTAssertTrue(lockedSaveButton.waitForExistence(timeout: Timeout.medium))
-        XCTAssertFalse(lockedSaveButton.isEnabled)
+        XCTAssertFalse(app.buttons["Lock world champion pick for UITest Player"].exists)
     }
 
     func testOfficialResultFetchLocksPodiumAndUpdatesStandings() throws {

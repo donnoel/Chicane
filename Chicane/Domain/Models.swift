@@ -123,7 +123,43 @@ struct SeasonChampionPick: Identifiable, Codable, Hashable, Sendable {
     let series: RaceSeries
     let playerID: UUID
     var driverID: String
+    var isLocked: Bool
     var updatedAt: Date
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case series
+        case playerID
+        case driverID
+        case isLocked
+        case updatedAt
+    }
+
+    init(
+        id: UUID,
+        series: RaceSeries,
+        playerID: UUID,
+        driverID: String,
+        isLocked: Bool = false,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.series = series
+        self.playerID = playerID
+        self.driverID = driverID
+        self.isLocked = isLocked
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        series = try container.decode(RaceSeries.self, forKey: .series)
+        playerID = try container.decode(UUID.self, forKey: .playerID)
+        driverID = try container.decode(String.self, forKey: .driverID)
+        isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+    }
 }
 
 struct SeasonChampionResult: Identifiable, Codable, Hashable, Sendable {

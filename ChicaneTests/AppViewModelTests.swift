@@ -192,6 +192,50 @@ final class AppViewModelTests: XCTestCase {
         )
     }
 
+    func testSaveChampionPickRejectsChangesAfterPlayerLocksPick() async throws {
+        let event = TestFixtures.event(id: "f1-2026-player-champion-lock", series: .formula1)
+        let drivers = [
+            TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
+            TestFixtures.driver(id: "f1-lando", series: .formula1, name: "Lando Norris", team: "McLaren")
+        ]
+        let player = Player(id: UUID(), name: "Don")
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: drivers,
+            podiumNames: drivers.map(\.name)
+        )
+
+        await viewModel.reload()
+        try await viewModel.savePlayers([player])
+        try await viewModel.saveChampionPick(
+            series: .formula1,
+            playerID: player.id,
+            driverID: drivers[0].id,
+            isLocked: true
+        )
+
+        do {
+            try await viewModel.saveChampionPick(
+                series: .formula1,
+                playerID: player.id,
+                driverID: drivers[1].id
+            )
+            XCTFail("Expected champion-pick lock error")
+        } catch let error as AppViewModelError {
+            if case .championPickLocked = error {
+                // Expected path.
+            } else {
+                XCTFail("Unexpected AppViewModelError: \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let pick = viewModel.championPick(for: .formula1, playerID: player.id)
+        XCTAssertEqual(pick?.driverID, drivers[0].id)
+        XCTAssertEqual(pick?.isLocked, true)
+    }
+
     func testSavePlayersRejectsBlankNamesWithoutDeletingPlayerData() async throws {
         let event = TestFixtures.event(id: "f1-2026-blank-name", series: .formula1)
         let drivers = [

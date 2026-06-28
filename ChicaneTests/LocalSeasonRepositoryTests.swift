@@ -134,6 +134,7 @@ final class FileStateStoreTests: XCTestCase {
                 series: .formula1,
                 playerID: player.id,
                 driverID: "driver-a",
+                isLocked: true,
                 updatedAt: Date()
             )
         ]
@@ -151,9 +152,29 @@ final class FileStateStoreTests: XCTestCase {
 
         XCTAssertEqual(loaded.championPicks.count, 1)
         XCTAssertEqual(loaded.championPicks.first?.playerID, player.id)
+        XCTAssertEqual(loaded.championPicks.first?.isLocked, true)
         XCTAssertEqual(loaded.championResults.count, 1)
         XCTAssertEqual(loaded.championResults.first?.driverID, "driver-a")
         XCTAssertEqual(loaded.championResults.first?.isLocked, true)
+    }
+
+    func testSeasonChampionPickDecodeDefaultsMissingLockFlagToUnlocked() throws {
+        let json = """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "series": "formula1",
+          "playerID": "00000000-0000-0000-0000-000000000002",
+          "driverID": "driver-a",
+          "updatedAt": "2026-03-03T12:00:00Z"
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let pick = try decoder.decode(SeasonChampionPick.self, from: Data(json.utf8))
+
+        XCTAssertFalse(pick.isLocked)
     }
 
     func testSeasonChampionResultDecodeDefaultsMissingLockFlagToLocked() throws {
