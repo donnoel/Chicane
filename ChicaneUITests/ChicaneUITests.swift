@@ -17,7 +17,6 @@ final class ChicaneUITests: XCTestCase {
         static let weekend = "Weekend"
         static let standings = "Standings"
         static let results = "Results"
-        static let settings = "Settings"
     }
 
     func testLaunchShowsCoreTabShell() throws {
@@ -28,15 +27,15 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons[Tab.weekend].exists)
         XCTAssertTrue(app.tabBars.buttons[Tab.standings].exists)
         XCTAssertTrue(app.tabBars.buttons[Tab.results].exists)
-        XCTAssertTrue(app.tabBars.buttons[Tab.settings].exists)
+        XCTAssertFalse(app.tabBars.buttons["Settings"].exists)
+        XCTAssertTrue(app.buttons["Open Settings"].waitForExistence(timeout: Timeout.medium))
     }
 
     func testAddPlayerInSettingsThenWeekendPicksArePlayable() throws {
         let app = makeApp()
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons[Tab.settings].waitForExistence(timeout: Timeout.medium))
-        app.tabBars.buttons[Tab.settings].tap()
+        openSettings(in: app)
 
         let addPlayerField = app.textFields["Add Player"]
         XCTAssertTrue(addPlayerField.waitForExistence(timeout: Timeout.medium))
@@ -48,6 +47,7 @@ final class ChicaneUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts[playerName].waitForExistence(timeout: Timeout.medium))
         dismissKeyboardIfVisible(in: app)
+        navigateBackIfPossible(in: app)
 
         let weekendTab = app.tabBars.buttons[Tab.weekend]
         XCTAssertTrue(weekendTab.waitForExistence(timeout: Timeout.medium))
@@ -230,13 +230,14 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons[Tab.weekend].isHittable)
         XCTAssertTrue(app.tabBars.buttons[Tab.standings].isHittable)
         XCTAssertTrue(app.tabBars.buttons[Tab.results].isHittable)
-        XCTAssertTrue(app.tabBars.buttons[Tab.settings].isHittable)
+        XCTAssertFalse(app.tabBars.buttons["Settings"].exists)
 
         app.tabBars.buttons[Tab.weekend].tap()
         XCTAssertTrue(
             app.descendants(matching: .any)["Position 1 selection"]
                 .waitForExistence(timeout: Timeout.medium)
         )
+        XCTAssertTrue(app.buttons["Open Settings"].waitForExistence(timeout: Timeout.medium))
 
         app.tabBars.buttons[Tab.results].tap()
         XCTAssertTrue(
@@ -254,7 +255,7 @@ final class ChicaneUITests: XCTestCase {
                 .waitForExistence(timeout: Timeout.medium)
         )
 
-        app.tabBars.buttons[Tab.settings].tap()
+        openSettings(in: app)
         let playerNameField = app.descendants(matching: .any).matching(
             NSPredicate(format: "label BEGINSWITH %@", "Name for ")
         ).firstMatch
@@ -294,8 +295,7 @@ final class ChicaneUITests: XCTestCase {
     }
 
     private func addPlayer(named playerName: String, in app: XCUIApplication) {
-        XCTAssertTrue(app.tabBars.buttons[Tab.settings].waitForExistence(timeout: Timeout.medium))
-        app.tabBars.buttons[Tab.settings].tap()
+        openSettings(in: app)
 
         let addPlayerField = app.textFields["Add Player"]
         XCTAssertTrue(addPlayerField.waitForExistence(timeout: Timeout.medium))
@@ -305,6 +305,26 @@ final class ChicaneUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts[playerName].waitForExistence(timeout: Timeout.medium))
         dismissKeyboardIfVisible(in: app)
+        navigateBackIfPossible(in: app)
+    }
+
+    private func openSettings(in app: XCUIApplication) {
+        let weekendTab = app.tabBars.buttons[Tab.weekend]
+        if weekendTab.waitForExistence(timeout: Timeout.short), !weekendTab.isSelected {
+            weekendTab.tap()
+        }
+
+        let settingsButton = app.buttons["Open Settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: Timeout.medium))
+        settingsButton.tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: Timeout.medium))
+    }
+
+    private func navigateBackIfPossible(in app: XCUIApplication) {
+        let backButton = app.navigationBars.buttons.firstMatch
+        if backButton.waitForExistence(timeout: Timeout.short) {
+            backButton.tap()
+        }
     }
 
     private func completeWeekendPick(in app: XCUIApplication, playerName: String) {

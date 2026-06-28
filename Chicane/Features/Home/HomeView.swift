@@ -18,6 +18,9 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 18) {
                 if let selectedEvent {
                     hero(for: selectedEvent)
+                    if isPhoneLayout && !viewModel.players.isEmpty {
+                        phoneSettingsLink
+                    }
                     pickFlow(for: selectedEvent)
                     weekendQueueCard
                     standingsPreview
@@ -175,6 +178,25 @@ struct HomeView: View {
         .shadow(color: ChicaneTheme.seriesColor(event.series).opacity(0.24), radius: 18, x: 0, y: 10)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Race weekend. Next up, \(event.accessibilitySummary)")
+    }
+
+    private var phoneSettingsLink: some View {
+        HStack {
+            Spacer()
+            NavigationLink {
+                SettingsView()
+            } label: {
+                Label("Settings", systemImage: "gearshape.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .background(.regularMaterial, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open Settings")
+            .accessibilityHint("Opens league, player, bet, and app settings")
+        }
+        .padding(.top, -4)
     }
 
     private var weekendQueueCard: some View {
