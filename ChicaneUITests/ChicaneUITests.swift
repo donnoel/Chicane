@@ -147,7 +147,7 @@ final class ChicaneUITests: XCTestCase {
 
         XCTAssertTrue(app.tabBars.buttons[Tab.weekend].waitForExistence(timeout: Timeout.medium))
         app.descendants(matching: .any)["\(playerName) picks"].tap()
-        XCTAssertTrue(app.staticTexts["Saved automatically"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["Locked once official results are retrieved."].waitForExistence(timeout: Timeout.medium))
 
         app.tabBars.buttons[Tab.results].tap()
         XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
@@ -166,7 +166,7 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Make your picks"].waitForExistence(timeout: Timeout.medium))
 
         app.tabBars.buttons[Tab.results].tap()
-        XCTAssertTrue(app.staticTexts["Race Results Podium"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["Official Results"].waitForExistence(timeout: Timeout.medium))
 
         app.tabBars.buttons[Tab.standings].tap()
         XCTAssertTrue(app.staticTexts["Season Totals"].waitForExistence(timeout: Timeout.medium))
@@ -280,7 +280,7 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons[Tab.results].waitForExistence(timeout: Timeout.medium))
         app.tabBars.buttons[Tab.results].tap()
 
-        XCTAssertTrue(app.staticTexts["Race Results Podium"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["Official Results"].waitForExistence(timeout: Timeout.medium))
         XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
         XCTAssertFalse(app.staticTexts["Season champion is locked"].exists)
         XCTAssertFalse(app.staticTexts["Season Champion"].exists)
@@ -363,7 +363,7 @@ final class ChicaneUITests: XCTestCase {
             return
         }
 
-        let allRacesLink = app.buttons["All races and manual picks"]
+        let allRacesLink = app.buttons["Manage race and champion picks"]
         scrollToElementIfNeeded(allRacesLink, in: app)
         XCTAssertTrue(allRacesLink.waitForExistence(timeout: Timeout.medium))
         allRacesLink.tap()
@@ -372,7 +372,10 @@ final class ChicaneUITests: XCTestCase {
     }
 
     private func selectChampionPick(option: String, in app: XCUIApplication) {
-        let picker = app.staticTexts.matching(identifier: "Champion pick").element(boundBy: 1)
+        var picker = app.descendants(matching: .any)["ChampionPickSelection"]
+        if !picker.exists {
+            picker = app.descendants(matching: .any)["Champion pick selection"]
+        }
         scrollToElementIfNeeded(picker, in: app)
         XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
         picker.tap()
