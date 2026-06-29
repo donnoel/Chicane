@@ -194,7 +194,7 @@ struct SettingsView: View {
         } header: {
             Text("Player Bets")
         } footer: {
-            Text("These notes show in Bet Ledger on Home.")
+            Text("These notes appear on the Weekend screen under Player bets.")
         }
     }
 
