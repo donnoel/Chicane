@@ -93,6 +93,17 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         )
     }
 
+    func upsertResult(_ result: RaceResult, lockingPicks picks: [RacePick]) async throws -> PersistedState {
+        let state = try await localRepository.upsertResult(result, lockingPicks: picks)
+        return try await pushIfNeeded(
+            state,
+            preference: MergePreference(
+                preferredPickKeys: Set(picks.map { PickKey(pick: $0) }),
+                preferredResultKeys: [ResultKey(result: result)]
+            )
+        )
+    }
+
     func upsertChampionPick(_ pick: SeasonChampionPick) async throws -> PersistedState {
         let state = try await localRepository.upsertChampionPick(pick)
         return try await pushIfNeeded(

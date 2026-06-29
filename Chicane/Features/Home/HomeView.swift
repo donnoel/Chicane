@@ -337,7 +337,7 @@ struct HomeView: View {
     }
 
     private func activePlayerCard(player: Player, event: RaceEvent) -> some View {
-        let picksAreLocked = viewModel.resultIsLocked(for: event.series, eventID: event.id)
+        let picksAreLocked = viewModel.pickIsLocked(for: event.series, eventID: event.id, playerID: player.id)
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
@@ -745,7 +745,7 @@ struct HomeView: View {
     }
 
     private func autosavePickIfNeeded(for player: Player, event: RaceEvent, draft: PodiumDraft) {
-        guard !viewModel.resultIsLocked(for: event.series, eventID: event.id) else { return }
+        guard !viewModel.pickIsLocked(for: event.series, eventID: event.id, playerID: player.id) else { return }
 
         let savedDraft: PodiumDraft
         if let savedPick = viewModel.pick(for: event.series, eventID: event.id, playerID: player.id) {

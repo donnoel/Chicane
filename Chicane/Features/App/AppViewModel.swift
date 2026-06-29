@@ -191,6 +191,22 @@ final class AppViewModel: ObservableObject {
         result(for: series, eventID: eventID)?.isLocked ?? false
     }
 
+    func pickIsLocked(for series: RaceSeries, eventID: String, playerID: UUID) -> Bool {
+        if resultIsLocked(for: series, eventID: eventID) {
+            return true
+        }
+
+        guard let savedPick = pick(for: series, eventID: eventID, playerID: playerID) else {
+            return false
+        }
+
+        if savedPick.isLocked {
+            return true
+        }
+
+        return savedPick.eventID != eventID && resultIsLocked(for: series, eventID: savedPick.eventID)
+    }
+
     func championshipLeaders(for series: RaceSeries) -> [ChampionshipLeader] {
         championshipLeadersBySeries[series] ?? []
     }
@@ -202,7 +218,7 @@ final class AppViewModel: ObservableObject {
         playerID: UUID,
         draft: PodiumDraft
     ) async throws -> String? {
-        if resultIsLocked(for: series, eventID: eventID) {
+        if pickIsLocked(for: series, eventID: eventID, playerID: playerID) {
             throw AppViewModelError.pickLocked
         }
 
@@ -224,6 +240,7 @@ final class AppViewModel: ObservableObject {
             eventID: existingPick?.eventID ?? eventID,
             playerID: playerID,
             podium: podium,
+            isLocked: existingPick?.isLocked ?? false,
             updatedAt: Date()
         )
 
@@ -254,9 +271,7 @@ final class AppViewModel: ObservableObject {
             isLocked: lockResult,
             updatedAt: Date()
         )
-        return try await persistState {
-            try await seasonRepository.upsertResult(result)
-        }
+        return try await persistResultAndLockPicks(result)
     }
 
     @discardableResult
@@ -309,8 +324,16 @@ final class AppViewModel: ObservableObject {
             isLocked: lockResult,
             updatedAt: Date()
         )
+        return try await persistResultAndLockPicks(result)
+    }
+
+    private func persistResultAndLockPicks(_ result: RaceResult) async throws -> String? {
+        let picksToLock = players.compactMap { player in
+            pick(for: result.series, eventID: result.eventID, playerID: player.id)
+        }
+
         return try await persistState {
-            try await seasonRepository.upsertResult(result)
+            try await seasonRepository.upsertResult(result, lockingPicks: picksToLock)
         }
     }
 

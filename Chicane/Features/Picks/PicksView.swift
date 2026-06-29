@@ -142,9 +142,9 @@ struct PicksView: View {
         viewModel.championResult(for: selectedSeries)?.isLocked ?? false
     }
 
-    private var podiumPicksAreLocked: Bool {
+    private func podiumPickIsLocked(for player: Player) -> Bool {
         guard let selectedEventID else { return false }
-        return viewModel.resultIsLocked(for: selectedSeries, eventID: selectedEventID)
+        return viewModel.pickIsLocked(for: selectedSeries, eventID: selectedEventID, playerID: player.id)
     }
 
     private var championDraftsByPlayer: [UUID: String] {
@@ -303,6 +303,7 @@ struct PicksView: View {
 
     @ViewBuilder
     private func podiumPane(for player: Player, grouped: Bool) -> some View {
+        let podiumPickIsLocked = podiumPickIsLocked(for: player)
         let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 8 : 12) {
             Text("Podium")
                 .font(ChicaneTypography.cardTitle)
@@ -313,7 +314,7 @@ struct PicksView: View {
                 participantSingular: participantSingular,
                 participantPlural: participantPlural,
                 draft: binding(for: player.id),
-                isDisabled: podiumPicksAreLocked
+                isDisabled: podiumPickIsLocked
             )
 
             podiumStatusText(for: player)
@@ -385,7 +386,7 @@ struct PicksView: View {
 
     private func podiumStatusText(for player: Player) -> some View {
         Group {
-            if podiumPicksAreLocked {
+            if podiumPickIsLocked(for: player) {
                 Label("Locked once official results are retrieved.", systemImage: "lock.fill")
                     .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
@@ -584,7 +585,7 @@ struct PicksView: View {
         guard let selectedEventID else { return }
         let series = selectedSeries
         let eventID = selectedEventID
-        guard !viewModel.resultIsLocked(for: series, eventID: eventID) else { return }
+        guard !viewModel.pickIsLocked(for: series, eventID: eventID, playerID: player.id) else { return }
 
         let savedDraft: PodiumDraft
         if let savedPick = viewModel.pick(for: series, eventID: eventID, playerID: player.id) {

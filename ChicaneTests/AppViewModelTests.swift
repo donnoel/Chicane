@@ -26,17 +26,34 @@ final class AppViewModelTests: XCTestCase {
             TestFixtures.driver(id: "f1-lando", series: .formula1, name: "Lando Norris", team: "McLaren"),
             TestFixtures.driver(id: "f1-charles", series: .formula1, name: "Charles Leclerc", team: "Ferrari")
         ]
+        let player = Player(id: UUID(), name: "Don")
+        let localRepository = LocalSeasonRepository(
+            store: FileStateStore(baseDirectoryURL: tempDir)
+        )
+        var localState = PersistedState.default
+        localState.players = [player]
+        _ = try await localRepository.replaceState(localState)
         let viewModel = makeViewModel(
             event: event,
             drivers: drivers,
-            podiumNames: drivers.map(\.name)
+            podiumNames: drivers.map(\.name),
+            seasonRepository: localRepository
         )
 
         await viewModel.reload()
+        try await viewModel.savePick(
+            series: .formula1,
+            eventID: event.id,
+            playerID: player.id,
+            draft: PodiumDraft(p1: drivers[2].id, p2: drivers[1].id, p3: drivers[0].id)
+        )
+        XCTAssertEqual(viewModel.pick(for: .formula1, eventID: event.id, playerID: player.id)?.isLocked, false)
+
         try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
 
         let storedResult = viewModel.result(for: .formula1, eventID: event.id)
         XCTAssertEqual(storedResult?.isLocked, true)
+        XCTAssertEqual(viewModel.pick(for: .formula1, eventID: event.id, playerID: player.id)?.isLocked, true)
 
         do {
             try await viewModel.saveResult(
@@ -59,7 +76,7 @@ final class AppViewModelTests: XCTestCase {
             try await viewModel.savePick(
                 series: .formula1,
                 eventID: event.id,
-                playerID: UUID(),
+                playerID: player.id,
                 draft: PodiumDraft(p1: drivers[2].id, p2: drivers[1].id, p3: drivers[0].id)
             )
             XCTFail("Expected a locked-pick error")
@@ -871,6 +888,26 @@ private actor ManualSyncPermissionFailureSeasonRepository: SeasonRepository {
             $0.series == result.series && $0.eventID == result.eventID
         }
         state.results.append(result)
+        return state
+    }
+
+    func upsertResult(_ result: RaceResult, lockingPicks picks: [RacePick]) async throws -> PersistedState {
+        state.results.removeAll {
+            $0.series == result.series && $0.eventID == result.eventID
+        }
+        state.results.append(result)
+
+        for pick in picks {
+            var lockedPick = pick
+            lockedPick.isLocked = true
+            lockedPick.updatedAt = result.updatedAt
+            state.picks.removeAll {
+                $0.series == lockedPick.series &&
+                $0.eventID == lockedPick.eventID &&
+                $0.playerID == lockedPick.playerID
+            }
+            state.picks.append(lockedPick)
+        }
         return state
     }
 

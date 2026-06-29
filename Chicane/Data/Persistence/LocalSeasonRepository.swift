@@ -203,6 +203,35 @@ actor LocalSeasonRepository: SeasonRepository {
         }
     }
 
+    func upsertResult(_ result: RaceResult, lockingPicks picks: [RacePick]) async throws -> PersistedState {
+        guard result.podium.isUnique else {
+            throw RepositoryError.invalidPodium
+        }
+
+        return try await mutateState(kind: .results) { state in
+            state.results.removeAll {
+                $0.series == result.series && $0.eventID == result.eventID
+            }
+            state.results.append(result)
+
+            let lockedPicks = picks.map { pick in
+                var lockedPick = pick
+                lockedPick.isLocked = true
+                lockedPick.updatedAt = result.updatedAt
+                return lockedPick
+            }
+
+            for lockedPick in lockedPicks {
+                state.picks.removeAll {
+                    $0.series == lockedPick.series &&
+                    $0.eventID == lockedPick.eventID &&
+                    $0.playerID == lockedPick.playerID
+                }
+                state.picks.append(lockedPick)
+            }
+        }
+    }
+
     func upsertChampionPick(_ pick: SeasonChampionPick) async throws -> PersistedState {
         return try await mutateState(kind: .championPicks) { state in
             state.championPicks.removeAll {
