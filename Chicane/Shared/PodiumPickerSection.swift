@@ -54,19 +54,13 @@ struct PodiumPickerSection: View {
         selection: Binding<String?>
     ) -> some View {
         ZStack(alignment: .leading) {
-            Picker(selection: selection) {
-                Text("Choose \(participantSingular)")
-                    .tag(Optional<String>.none)
-                ForEach(drivers) { driver in
-                    Text("\(driver.name) (\(driver.team))")
-                        .tag(Optional(driver.id))
-                        .disabled(draft.isSelectionDisabled(driverID: driver.id, for: position))
-                }
-            } label: {
-                EmptyView()
-            }
-            .pickerStyle(.navigationLink)
-            .tint(.primary)
+            ParticipantSelectionField(
+                title: "Position \(position) selection",
+                drivers: drivers,
+                participantSingular: participantSingular,
+                disabledDriverIDs: disabledDriverIDs(for: position),
+                selection: selection
+            )
             .padding(.leading, 58)
             .padding(.trailing, 12)
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
@@ -89,5 +83,9 @@ struct PodiumPickerSection: View {
             .padding(.leading, 12)
             .allowsHitTesting(false)
         }
+    }
+
+    private func disabledDriverIDs(for position: Int) -> Set<String> {
+        Set(drivers.map(\.id).filter { draft.isSelectionDisabled(driverID: $0, for: position) })
     }
 }

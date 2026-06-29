@@ -30,16 +30,12 @@ struct ChampionPickerSection: View {
                 .foregroundStyle(.secondary)
                 .accessibilityAddTraits(.isHeader)
 
-            Picker(title, selection: $selection) {
-                Text("Choose \(participantSingular)")
-                    .tag(Optional<String>.none)
-                ForEach(drivers) { driver in
-                    Text("\(driver.name) (\(driver.team))")
-                        .tag(Optional(driver.id))
-                }
-            }
-            .pickerStyle(.navigationLink)
-            .tint(.primary)
+            ParticipantSelectionField(
+                title: title.isEmpty ? "Champion selection" : "\(title) selection",
+                drivers: drivers,
+                participantSingular: participantSingular,
+                selection: $selection
+            )
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .background(
