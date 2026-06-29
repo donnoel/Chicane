@@ -10,7 +10,6 @@ struct RootTabView: View {
     @EnvironmentObject private var viewModel: AppViewModel
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var dismissBannerTask: Task<Void, Never>?
     @State private var hasStartedInitialLoad = false
     @State private var isInitialSplashVisible = true
@@ -66,33 +65,8 @@ struct RootTabView: View {
 
     private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
-            if horizontalSizeClass == .compact {
-                content()
-            } else {
-                content()
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            settingsLink(iconSize: 18)
-                        }
-                    }
-            }
+            content()
         }
-    }
-
-    private func settingsLink(iconSize: CGFloat) -> some View {
-        NavigationLink {
-            SettingsView()
-        } label: {
-            Image(systemName: "gear")
-                .font(.system(size: iconSize, weight: .regular))
-                .foregroundStyle(.secondary)
-                .frame(width: 58, height: 34)
-                .padding(.vertical, 5)
-                .contentShape(Capsule(style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open Settings")
-        .accessibilityHint("Opens league, player, bet, and app settings")
     }
 
     private func scheduleBannerAutoDismissIfNeeded() {

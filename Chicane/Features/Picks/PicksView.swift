@@ -59,10 +59,8 @@ struct PicksView: View {
         .navigationTitle("Picks")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if isPhoneLayout {
-                ToolbarItem(placement: .topBarTrailing) {
-                    phoneSettingsLink
-                }
+            ToolbarItem(placement: .topBarTrailing) {
+                settingsLink
             }
         }
         .chicaneBackground()
@@ -165,7 +163,7 @@ struct PicksView: View {
         }
     }
 
-    private var phoneSettingsLink: some View {
+    private var settingsLink: some View {
         NavigationLink {
             SettingsView()
         } label: {
