@@ -29,7 +29,10 @@ struct ResultsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 EventPickerHeader(
-                    title: "Race Results Podium",
+                    title: "Official Results",
+                    subtitle: "Fetch locked podiums and event points.",
+                    headerSystemImage: "flag.checkered",
+                    headerTint: ChicaneTheme.seriesColor(selectedSeries),
                     selectedSeries: $selectedSeries,
                     selectedEventID: selectedEventBinding,
                     events: events,

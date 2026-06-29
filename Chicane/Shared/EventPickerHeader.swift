@@ -9,6 +9,9 @@ struct EventPickerHeader: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let title: String
+    var subtitle: String?
+    var headerSystemImage: String?
+    var headerTint: Color = .accentColor
     @Binding var selectedSeries: RaceSeries
     @Binding var selectedEventID: String?
     let events: [RaceEvent]
@@ -17,8 +20,12 @@ struct EventPickerHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(ChicaneTypography.screenTitle)
+            PageHeader(
+                title: title,
+                subtitle: subtitle,
+                systemImage: headerSystemImage,
+                tint: headerTint
+            )
 
             Picker("Series", selection: $selectedSeries) {
                 ForEach(RaceSeries.allCases) { series in

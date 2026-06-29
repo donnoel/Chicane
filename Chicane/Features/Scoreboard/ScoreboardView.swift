@@ -73,13 +73,12 @@ struct ScoreboardView: View {
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Standings")
-                        .font(ChicaneTypography.screenTitle)
-                    Text("Who's winning now, with details below when you want them.")
-                        .font(ChicaneTypography.subtitle)
-                        .foregroundStyle(.secondary)
-                }
+                PageHeader(
+                    title: "Standings",
+                    subtitle: "Season totals, champion picks, and event history.",
+                    systemImage: "trophy.fill",
+                    tint: ChicaneTheme.scopeColor(selectedScope)
+                )
 
                 scopePicker
                 standingsCard(
