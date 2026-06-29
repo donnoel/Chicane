@@ -89,7 +89,7 @@ struct SettingsView: View {
             ForEach(viewModel.players) { player in
                 HStack(spacing: 8) {
                     TextField("Player name", text: binding(for: player.id))
-                        .font(.body)
+                        .font(ChicaneTypography.body)
                         .textInputAutocapitalization(.words)
                         .disableAutocorrection(true)
                         .focused($focusedField, equals: .player(player.id))
@@ -120,7 +120,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
 
                 TextField("Add Player", text: $newPlayerName)
-                    .font(.body)
+                    .font(ChicaneTypography.body)
                     .textInputAutocapitalization(.words)
                     .disableAutocorrection(true)
                     .focused($focusedField, equals: .newPlayer)
@@ -147,7 +147,7 @@ struct SettingsView: View {
                     await savePlayerNames()
                 }
             }
-            .font(.callout.weight(.semibold))
+            .font(ChicaneTypography.button)
             .disabled(hasBlankPlayerNames)
             .padding(.top, -2)
         } header: {
@@ -161,21 +161,21 @@ struct SettingsView: View {
         Section {
             if viewModel.players.isEmpty {
                 Text("Add players first, then set what each person is betting.")
-                    .font(.footnote)
+                    .font(ChicaneTypography.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 2)
             } else {
                 ForEach(viewModel.players) { player in
                     VStack(alignment: .leading, spacing: 1) {
                         Text(player.name)
-                            .font(.caption.weight(.semibold))
+                            .font(ChicaneTypography.captionSemibold)
                             .foregroundStyle(.secondary)
                         TextField(
                             "What \(player.name) is betting",
                             text: betBinding(for: player.id),
                             axis: .vertical
                         )
-                        .font(.body)
+                        .font(ChicaneTypography.body)
                         .focused($focusedField, equals: .playerBet(player.id))
                         .lineLimit(1...2)
                         .textFieldStyle(.plain)
@@ -189,7 +189,7 @@ struct SettingsView: View {
                         await savePlayerBets()
                     }
                 }
-                .font(.callout.weight(.semibold))
+                .font(ChicaneTypography.button)
             }
         } header: {
             Text("Player Bets")
@@ -207,12 +207,12 @@ struct SettingsView: View {
 
                 LabeledContent("League Code") {
                     Text(code)
-                        .font(.body.monospaced())
+                        .font(ChicaneTypography.leagueCode)
                         .textSelection(.enabled)
                 }
 
                 Text("Use this same code on every phone so picks and results sync through iCloud.")
-                    .font(.footnote)
+                    .font(ChicaneTypography.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.top, 1)
 
@@ -222,7 +222,7 @@ struct SettingsView: View {
                         viewModel.showInfo("League Code Copied")
                     }
                 }
-                .font(.callout.weight(.semibold))
+                .font(ChicaneTypography.button)
                 .padding(.vertical, -1)
 
                 Button("Sync Now") {
@@ -231,13 +231,13 @@ struct SettingsView: View {
                         await viewModel.syncLeagueIfNeeded(showBannerOnSuccess: true)
                     }
                 }
-                .font(.callout.weight(.semibold))
+                .font(ChicaneTypography.button)
                 .padding(.vertical, -1)
 
                 Button("Leave Shared League", role: .destructive) {
                     showLeaveLeagueConfirmation = true
                 }
-                .font(.callout.weight(.semibold))
+                .font(ChicaneTypography.button)
                 .padding(.vertical, -1)
             } else {
                 if viewModel.isSyncing {
@@ -249,17 +249,17 @@ struct SettingsView: View {
                         sharedLeagueStatusMessage = await viewModel.createLeague()
                     }
                 }
-                .font(.callout.weight(.semibold))
+                .font(ChicaneTypography.button)
                 .padding(.vertical, -1)
 
                 Text("Create a shared league on one phone, then enter that code on the other phones.")
-                    .font(.footnote)
+                    .font(ChicaneTypography.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.top, 1)
 
                 HStack(spacing: 8) {
                     TextField("Enter League Code", text: $joinLeagueCode)
-                        .font(.body)
+                        .font(ChicaneTypography.body)
                         .textInputAutocapitalization(.characters)
                         .disableAutocorrection(true)
                         .onSubmit {
@@ -273,7 +273,7 @@ struct SettingsView: View {
                             await joinLeague()
                         }
                     }
-                    .font(.callout.weight(.semibold))
+                    .font(ChicaneTypography.button)
                     .disabled(joinLeagueCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 .frame(minHeight: 28)
@@ -281,7 +281,7 @@ struct SettingsView: View {
 
             if let sharedLeagueStatusMessage, !sharedLeagueStatusMessage.isEmpty {
                 Text(sharedLeagueStatusMessage)
-                    .font(.footnote)
+                    .font(ChicaneTypography.footnote)
                     .foregroundStyle(.red)
             }
         } header: {
@@ -296,7 +296,7 @@ struct SettingsView: View {
             Button("Reset Season", role: .destructive) {
                 showResetConfirmation = true
             }
-            .font(.callout.weight(.semibold))
+            .font(ChicaneTypography.button)
         } header: {
             Text("Season")
         } footer: {

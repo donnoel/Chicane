@@ -18,7 +18,7 @@ struct EventPickerHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.title2.weight(.bold))
+                .font(ChicaneTypography.screenTitle)
 
             Picker("Series", selection: $selectedSeries) {
                 ForEach(RaceSeries.allCases) { series in
@@ -70,27 +70,27 @@ struct EventSummaryCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(event.title)
-                    .font(.title3.weight(.semibold))
+                    .font(ChicaneTypography.cardTitleStrong)
                 Spacer()
                 Text(event.series.shortTitle)
-                    .font(.caption.weight(.bold))
+                    .font(ChicaneTypography.chip)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(ChicaneTheme.seriesColor(event.series), in: Capsule())
             }
             Text("Round \(event.round) · \(event.circuit)")
-                .font(.subheadline)
+                .font(ChicaneTypography.subtitle)
                 .foregroundStyle(Color.secondary.opacity(subtitleOpacity))
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 if let trackLocalTime = event.trackLocalTimeString(at: context.date) {
                     Label("Track now: \(trackLocalTime)", systemImage: "clock")
-                        .font(.footnote.weight(.semibold))
+                        .font(ChicaneTypography.footnoteSemibold)
                         .foregroundStyle(Color.secondary.opacity(subtitleOpacity))
                 }
             }
             Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
-                .font(.subheadline)
+                .font(ChicaneTypography.subtitle)
         }
         .sectionCard(accent: ChicaneTheme.seriesColor(event.series))
     }

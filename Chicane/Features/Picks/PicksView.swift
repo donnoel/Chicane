@@ -45,9 +45,9 @@ struct PicksView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("No event selected", systemImage: "calendar")
-                            .font(.headline)
+                            .font(ChicaneTypography.cardTitle)
                         Text("Choose an event above to enter picks.")
-                            .font(.body)
+                            .font(ChicaneTypography.body)
                             .foregroundStyle(.secondary)
                     }
                     .groupedCard()
@@ -183,10 +183,10 @@ struct PicksView: View {
     private var noPlayersCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("No players yet", systemImage: "person.2")
-                .font(.headline)
+                .font(ChicaneTypography.cardTitle)
 
             Text("Add at least one player in Settings to enter podium picks on this \(isPhoneLayout ? "iPhone" : "iPad").")
-                .font(.body)
+                .font(ChicaneTypography.body)
                 .foregroundStyle(.secondary)
         }
         .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
@@ -207,7 +207,7 @@ struct PicksView: View {
 
         return HStack(alignment: .top, spacing: 10) {
             Text(initials(from: player.name))
-                .font(.subheadline.weight(.bold))
+                .font(ChicaneTypography.initials)
                 .foregroundStyle(.white)
                 .frame(width: isPhoneLayout ? 36 : 40, height: isPhoneLayout ? 36 : 40)
                 .background(
@@ -217,9 +217,9 @@ struct PicksView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(player.name)
-                    .font(.title3.weight(.bold))
+                    .font(ChicaneTypography.cardTitleStrong)
                 Text("Podium and champion picks")
-                    .font(isPhoneLayout ? .footnote : .subheadline)
+                    .font(isPhoneLayout ? ChicaneTypography.footnote : ChicaneTypography.subtitle)
                     .foregroundStyle(.secondary)
             }
 
@@ -249,7 +249,7 @@ struct PicksView: View {
         let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 8 : 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text("World Champion")
-                    .font(.headline.weight(.semibold))
+                    .font(ChicaneTypography.cardTitle)
                 Spacer()
                 statusBadge(
                     title: isLocked ? "Locked" : "Season pick",
@@ -307,7 +307,7 @@ struct PicksView: View {
     private func podiumPane(for player: Player, grouped: Bool) -> some View {
         let content = VStack(alignment: .leading, spacing: isPhoneLayout ? 8 : 12) {
             Text("Podium")
-                .font(.headline.weight(.semibold))
+                .font(ChicaneTypography.cardTitle)
 
             PodiumPickerSection(
                 title: "",
@@ -351,19 +351,19 @@ struct PicksView: View {
         Group {
             if championPicksAreLocked {
                 Label("Locked once the official season champion is entered.", systemImage: "lock.fill")
-                    .font(.caption)
+                    .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
             } else if savedPick?.isLocked == true {
                 Label("Locked in as a final champion pick.", systemImage: "lock.fill")
-                    .font(.caption)
+                    .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
             } else if savedPick != nil {
                 Label("Saved quietly. Lock it in when ready.", systemImage: "flag.checkered.circle.fill")
-                    .font(.caption)
+                    .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
             } else {
                 Label("Choose one \(participantSingular) for the season title, then lock it in when ready.", systemImage: "person.crop.square")
-                    .font(.caption)
+                    .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
             }
         }
@@ -389,15 +389,15 @@ struct PicksView: View {
         Group {
             if podiumPicksAreLocked {
                 Label("Locked once official results are retrieved.", systemImage: "lock.fill")
-                    .font(.caption)
+                    .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
             } else if viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil {
                 Label("Saved automatically. Edit anytime before results are locked.", systemImage: "checkmark.circle.fill")
-                    .font(.caption)
+                    .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
             } else {
                 Label("Choose P1, P2, and P3.", systemImage: "line.3.horizontal")
-                    .font(.caption)
+                    .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
             }
         }
@@ -405,7 +405,7 @@ struct PicksView: View {
 
     private func statusBadge(title: String, tint: Color) -> some View {
         Text(title)
-            .font(.caption2.weight(.semibold))
+            .font(ChicaneTypography.badge)
             .foregroundStyle(tint)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)

@@ -56,10 +56,10 @@ struct RaceCountdownCard: View {
             // Header row with label + series badge
             HStack {
                 Label("Next Race", systemImage: "calendar")
-                    .font(.headline)
+                    .font(ChicaneTypography.cardTitle)
                 Spacer()
                 Text(event.series.shortTitle)
-                    .font(.caption.weight(.semibold))
+                    .font(ChicaneTypography.captionSemibold)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
@@ -68,13 +68,13 @@ struct RaceCountdownCard: View {
 
             // Race name and circuit
             Text(event.title)
-                .font(.title2.weight(.semibold))
+                .font(ChicaneTypography.screenTitle)
             Text(event.circuit)
-                .font(.subheadline)
+                .font(ChicaneTypography.subtitle)
                 .foregroundStyle(.secondary)
             if let trackLocalTime = event.trackLocalTimeString(at: now) {
                 Label("Track now: \(trackLocalTime)", systemImage: "clock")
-                    .font(.footnote.weight(.semibold))
+                    .font(ChicaneTypography.footnoteSemibold)
                     .foregroundStyle(.secondary)
             }
 
@@ -131,7 +131,7 @@ struct RaceCountdownCard: View {
                 RaceWeekendBadge(color: seriesColor)
             } else {
                 Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
-                    .font(.subheadline)
+                    .font(ChicaneTypography.subtitle)
                     .foregroundStyle(.secondary)
             }
         }
@@ -144,7 +144,7 @@ struct RaceCountdownCard: View {
             Image(systemName: "flag.checkered")
                 .foregroundStyle(seriesColor)
             Text("Race complete")
-                .font(.body.weight(.semibold))
+                .font(ChicaneTypography.bodySemibold)
                 .foregroundStyle(.secondary)
         }
     }
@@ -164,7 +164,7 @@ struct CountdownUnitView: View {
     var body: some View {
         VStack(spacing: 4) {
             Text(String(format: "%02d", value))
-                .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
+                .font(ChicaneTypography.countdownNumber)
                 .foregroundStyle(accentColor ?? .primary)
                 // Smooth digit roll on every tick
                 .contentTransition(.numericText(countsDown: true))
@@ -184,7 +184,7 @@ struct CountdownUnitView: View {
                 .shadow(color: accentColor?.opacity(0.18) ?? ChicaneTheme.fieldShadow(for: colorScheme), radius: 6, x: 0, y: 3)
 
             Text(label)
-                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                .font(ChicaneTypography.countdownLabel)
                 .tracking(0.8)
                 .foregroundStyle(accentColor?.opacity(0.8) ?? .secondary)
         }
@@ -214,7 +214,7 @@ private struct RaceWeekendBadge: View {
                 .onAppear { pulsing = true }
 
             Text("Race weekend")
-                .font(.caption.weight(.semibold))
+                .font(ChicaneTypography.captionSemibold)
                 .foregroundStyle(color)
         }
     }

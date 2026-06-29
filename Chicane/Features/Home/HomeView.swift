@@ -99,7 +99,7 @@ struct HomeView: View {
         NavigationLink {
             PicksView()
         } label: {
-            Label("All races and manual picks", systemImage: "list.bullet.rectangle")
+            Label("Manage race and champion picks", systemImage: "list.bullet.rectangle")
         }
         .buttonStyle(SecondaryActionButtonStyle(tint: .accentColor))
         .accessibilityHint("Opens the full race picker for older or custom entries")
@@ -108,9 +108,9 @@ struct HomeView: View {
     private var emptyCalendarCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("No race calendar", systemImage: "calendar.badge.exclamationmark")
-                .font(.headline)
+                .font(ChicaneTypography.cardTitle)
             Text("Pull to refresh, or check Settings if the calendar still does not load.")
-                .font(.body)
+                .font(ChicaneTypography.body)
                 .foregroundStyle(.secondary)
         }
         .groupedCard()
@@ -127,18 +127,18 @@ struct HomeView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Race Weekend")
-                        .font(.caption.weight(.bold))
+                        .font(ChicaneTypography.heroEyebrow)
                         .textCase(.uppercase)
                         .foregroundStyle(.white.opacity(0.82))
                     Text("Next up")
-                        .font(.title3.weight(.bold))
+                        .font(ChicaneTypography.heroKicker)
                         .foregroundStyle(.white)
                 }
 
                 Spacer()
 
                 Text(event.series.shortTitle)
-                    .font(.caption.weight(.bold))
+                    .font(ChicaneTypography.chip)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
@@ -147,12 +147,12 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(event.title)
-                    .font(.system(size: isPhoneLayout ? 28 : 40, weight: .black, design: .rounded))
+                    .font(ChicaneTypography.heroTitle(isPhoneLayout: isPhoneLayout))
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.72)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(event.circuit)
-                    .font(.headline.weight(.semibold))
+                    .font(ChicaneTypography.heroSubtitle)
                     .foregroundStyle(.white.opacity(0.84))
             }
 
@@ -182,14 +182,14 @@ struct HomeView: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(raceQueue.count > 1 ? "This weekend" : "Pick queue")
-                        .font(.headline.weight(.semibold))
+                        .font(ChicaneTypography.cardTitle)
                     Text(raceQueue.count > 1 ? "Start with the earliest race, then move to the next." : "Chicane starts with the next race automatically.")
-                        .font(.subheadline)
+                        .font(ChicaneTypography.subtitle)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text("\(currentQueueIndex + 1) of \(max(raceQueue.count, 1))")
-                    .font(.caption.weight(.bold))
+                    .font(ChicaneTypography.captionBold)
                     .foregroundStyle(.secondary)
             }
 
@@ -208,17 +208,17 @@ struct HomeView: View {
         } label: {
             HStack(spacing: 12) {
                 Text("\(index + 1)")
-                    .font(.caption.weight(.black))
+                    .font(ChicaneTypography.captionHeavy)
                     .foregroundStyle(.white)
                     .frame(width: 28, height: 28)
                     .background(ChicaneTheme.seriesColor(event.series), in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(event.title)
-                        .font(.subheadline.weight(.semibold))
+                        .font(ChicaneTypography.subtitleSemibold)
                         .foregroundStyle(.primary)
                     Text(queueDateText(for: event))
-                        .font(.caption)
+                        .font(ChicaneTypography.caption)
                         .foregroundStyle(.secondary)
                 }
 
@@ -231,7 +231,7 @@ struct HomeView: View {
                         .accessibilityLabel("Ready")
                 } else if selectedEventID == event.id {
                     Text("Now")
-                        .font(.caption2.weight(.bold))
+                        .font(ChicaneTypography.badgeStrong)
                         .foregroundStyle(ChicaneTheme.seriesColor(event.series))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -264,9 +264,9 @@ struct HomeView: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Make your picks")
-                    .font(.title2.weight(.bold))
+                    .font(ChicaneTypography.screenTitle)
                 Text("\(readyPlayerCount(for: event)) of \(viewModel.players.count) players ready")
-                    .font(.subheadline)
+                    .font(ChicaneTypography.subtitle)
                     .foregroundStyle(.secondary)
             }
 
@@ -285,18 +285,18 @@ struct HomeView: View {
                     } label: {
                         HStack(spacing: 6) {
                             Text(initials(from: player.name))
-                                .font(.caption2.weight(.black))
+                                .font(ChicaneTypography.initialsSmall)
                                 .foregroundStyle(.white)
                                 .frame(width: 25, height: 25)
                                 .background(playerAccent(for: player, event: event), in: Circle())
 
                             Text(player.name)
-                                .font(.caption.weight(.semibold))
+                                .font(ChicaneTypography.captionSemibold)
                                 .lineLimit(1)
 
                             if playerIsReady(player, for: event) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.caption)
+                                    .font(ChicaneTypography.caption)
                             }
                         }
                         .foregroundStyle(selectedPlayerID == player.id ? .white : .primary)
@@ -321,21 +321,21 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
                 Text(initials(from: player.name))
-                    .font(.headline.weight(.black))
+                    .font(ChicaneTypography.initialsLarge)
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
                     .background(playerAccent(for: player, event: event), in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(player.name)
-                        .font(.title3.weight(.bold))
+                        .font(ChicaneTypography.cardTitleStrong)
                     if picksAreLocked {
                         Text("Locked after official result")
-                            .font(.subheadline)
+                            .font(ChicaneTypography.subtitle)
                             .foregroundStyle(.secondary)
                     } else if playerIsReady(player, for: event) {
                         Text("Saved automatically")
-                            .font(.subheadline)
+                            .font(ChicaneTypography.subtitle)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -359,7 +359,7 @@ struct HomeView: View {
 
             if picksAreLocked {
                 Label("Locked once official results are retrieved.", systemImage: "lock.fill")
-                    .font(.footnote.weight(.semibold))
+                    .font(ChicaneTypography.footnoteSemibold)
                     .foregroundStyle(.secondary)
             }
         }
@@ -380,13 +380,13 @@ struct HomeView: View {
                 .accessibilityHint("Moves to the next unfinished picker or race")
             } else if !currentComplete {
                 Label("Picks save automatically when P1, P2, and P3 are set.", systemImage: "checkmark.circle")
-                    .font(.footnote.weight(.semibold))
+                    .font(ChicaneTypography.footnoteSemibold)
                     .foregroundStyle(.secondary)
             }
 
             if weekendReady && nextQueuedEvent(after: event) == nil {
                 Label("Weekend ready", systemImage: "flag.checkered")
-                    .font(.footnote.weight(.bold))
+                    .font(ChicaneTypography.footnoteBold)
                     .foregroundStyle(ChicaneTheme.seriesColor(event.series))
             }
         }
@@ -395,9 +395,9 @@ struct HomeView: View {
     private var noPlayersCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Add players to start", systemImage: "person.2")
-                .font(.headline)
+                .font(ChicaneTypography.cardTitle)
             Text("Once players are set up, this screen becomes the one-stop place for podium picks.")
-                .font(.body)
+                .font(ChicaneTypography.body)
                 .foregroundStyle(.secondary)
 
             NavigationLink {
@@ -417,9 +417,9 @@ struct HomeView: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Who's winning")
-                        .font(.headline.weight(.semibold))
+                        .font(ChicaneTypography.cardTitle)
                     Text("Combined standings")
-                        .font(.subheadline)
+                        .font(ChicaneTypography.subtitle)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -436,20 +436,20 @@ struct HomeView: View {
 
             if standings.isEmpty {
                 Text("No points yet")
-                    .font(.body)
+                    .font(ChicaneTypography.body)
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(Array(standings.prefix(3).enumerated()), id: \.element.id) { index, standing in
                     HStack(spacing: 12) {
                         Text("\(index + 1)")
-                            .font(.caption.weight(.black))
+                            .font(ChicaneTypography.captionHeavy)
                             .foregroundStyle(index == 0 ? ChicaneTheme.glowAmber : .secondary)
                             .frame(width: 20)
                         Text(standing.player.name)
-                            .font(.body.weight(index == 0 ? .bold : .semibold))
+                            .font(index == 0 ? ChicaneTypography.bodyBold : ChicaneTypography.bodySemibold)
                         Spacer()
                         AnimatedScoreText(value: standing.points)
-                            .font(.body.weight(.bold))
+                            .font(ChicaneTypography.score)
                     }
 
                     if index < min(standings.count, 3) - 1 {
@@ -468,7 +468,7 @@ struct HomeView: View {
 
     private func startTimePill(for event: RaceEvent) -> some View {
         Label(queueDateText(for: event), systemImage: "clock")
-            .font(.caption.weight(.bold))
+            .font(ChicaneTypography.chip)
             .foregroundStyle(.white)
             .padding(.horizontal, 11)
             .padding(.vertical, 8)
@@ -477,7 +477,7 @@ struct HomeView: View {
 
     private func pickProgressPill(for event: RaceEvent) -> some View {
         Text(viewModel.players.isEmpty ? "Add players" : "\(readyPlayerCount(for: event))/\(viewModel.players.count) ready")
-            .font(.caption.weight(.bold))
+            .font(ChicaneTypography.chip)
             .foregroundStyle(.white)
             .padding(.horizontal, 11)
             .padding(.vertical, 8)
@@ -530,7 +530,7 @@ struct HomeView: View {
 
     private func statusBadge(title: String, tint: Color) -> some View {
         Text(title)
-            .font(.caption2.weight(.bold))
+            .font(ChicaneTypography.badgeStrong)
             .foregroundStyle(tint)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)

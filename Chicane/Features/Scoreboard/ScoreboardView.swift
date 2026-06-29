@@ -75,9 +75,9 @@ struct ScoreboardView: View {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Standings")
-                        .font(.title2.weight(.bold))
+                        .font(ChicaneTypography.screenTitle)
                     Text("Who's winning now, with details below when you want them.")
-                        .font(.subheadline)
+                        .font(ChicaneTypography.subtitle)
                         .foregroundStyle(.secondary)
                 }
 
@@ -133,9 +133,9 @@ struct ScoreboardView: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Season Totals")
-                        .font(.headline.weight(.semibold))
+                        .font(ChicaneTypography.cardTitle)
                     Text(selectedScope.title)
-                        .font(.subheadline)
+                        .font(ChicaneTypography.subtitle)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -146,7 +146,7 @@ struct ScoreboardView: View {
 
             if standings.isEmpty {
                 Text("No points yet")
-                    .font(.body)
+                    .font(ChicaneTypography.body)
                     .foregroundStyle(.secondary)
             } else {
                 let leaderPoints = standings.first?.points ?? 0
@@ -155,14 +155,14 @@ struct ScoreboardView: View {
                     HStack(alignment: .lastTextBaseline) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Leader")
-                                .font(.caption.weight(.semibold))
+                                .font(ChicaneTypography.captionSemibold)
                                 .foregroundStyle(.secondary)
                             Text(leader.player.name)
-                                .font(.title3.weight(.bold))
+                                .font(ChicaneTypography.cardTitleStrong)
                         }
                         Spacer()
                         AnimatedScoreText(value: leader.points)
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .font(ChicaneTypography.leaderScore)
                     }
                     .padding(.bottom, 6)
                 }
@@ -171,21 +171,21 @@ struct ScoreboardView: View {
                     ForEach(Array(standings.enumerated()), id: \.element.id) { index, standing in
                         HStack(spacing: 12) {
                             Text("\(index + 1)")
-                                .font(.caption.weight(.bold))
+                                .font(ChicaneTypography.captionBold)
                                 .foregroundStyle(index == 0 ? ChicaneTheme.scopeColor(selectedScope) : .secondary)
                                 .frame(width: 18, alignment: .leading)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(standing.player.name)
-                                    .font(.body.weight(index == 0 ? .bold : .semibold))
+                                    .font(index == 0 ? ChicaneTypography.bodyBold : ChicaneTypography.bodySemibold)
                                 if index > 0 {
                                     Text("\(leaderPoints - standing.points) back")
-                                        .font(.caption)
+                                        .font(ChicaneTypography.caption)
                                         .foregroundStyle(.secondary)
                                 }
                             }
                             Spacer()
                             AnimatedScoreText(value: standing.points)
-                                .font(.body.weight(.bold))
+                                .font(ChicaneTypography.score)
                         }
                         .padding(.vertical, 10)
 
@@ -196,7 +196,7 @@ struct ScoreboardView: View {
                 }
 
                 Text(leaderText)
-                    .font(.footnote.weight(.semibold))
+                    .font(ChicaneTypography.footnoteSemibold)
                     .foregroundStyle(ChicaneTheme.scopeColor(selectedScope))
             }
         }
@@ -208,18 +208,18 @@ struct ScoreboardView: View {
 
         return VStack(alignment: .leading, spacing: 12) {
             Text("Season Champion Picks")
-                .font(.headline.weight(.semibold))
+                .font(ChicaneTypography.cardTitle)
 
             if viewModel.players.isEmpty {
                 Text("No players yet")
-                    .font(.body)
+                    .font(ChicaneTypography.body)
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(seriesToShow) { series in
                     VStack(alignment: .leading, spacing: 6) {
                         if seriesToShow.count > 1 {
                             Text(series.title)
-                                .font(.subheadline.weight(.semibold))
+                                .font(ChicaneTypography.sectionTitle)
                                 .foregroundStyle(ChicaneTheme.seriesColor(series))
                         }
 
@@ -233,7 +233,7 @@ struct ScoreboardView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(alignment: .center, spacing: 8) {
                                     Text(player.name)
-                                        .font(.footnote.weight(.semibold))
+                                        .font(ChicaneTypography.footnoteSemibold)
                                     Spacer()
                                     if !pickIsLocked {
                                         championLockButton(for: player, series: series)
@@ -296,9 +296,9 @@ struct ScoreboardView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Event History")
-                        .font(.headline.weight(.semibold))
+                        .font(ChicaneTypography.cardTitle)
                     Text("Compact race summaries")
-                        .font(.subheadline)
+                        .font(ChicaneTypography.subtitle)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -308,7 +308,7 @@ struct ScoreboardView: View {
 
             if history.isEmpty {
                 Text("No event results entered yet")
-                    .font(.body)
+                    .font(ChicaneTypography.body)
                     .foregroundStyle(.secondary)
             } else {
                 LazyVStack(spacing: 12) {
@@ -317,14 +317,14 @@ struct ScoreboardView: View {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(row.event.title)
-                                        .font(.body.weight(.semibold))
+                                        .font(ChicaneTypography.bodySemibold)
                                     Text(DateFormatter.dayMonthYear.string(from: row.event.raceDate))
-                                        .font(.caption)
+                                        .font(ChicaneTypography.caption)
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
                                 Text(row.series.shortTitle)
-                                    .font(.caption2.weight(.bold))
+                                    .font(ChicaneTypography.badgeStrong)
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
@@ -334,10 +334,10 @@ struct ScoreboardView: View {
                             ForEach(viewModel.players) { player in
                                 HStack(spacing: 12) {
                                     Text(player.name)
-                                        .font(.subheadline.weight(.medium))
+                                        .font(ChicaneTypography.subtitleMedium)
                                     Spacer()
                                     AnimatedScoreText(value: row.pointsByPlayerID[player.id, default: 0], entryDelay: 0.22)
-                                        .font(.subheadline.weight(.bold))
+                                        .font(ChicaneTypography.subtitleSemibold)
                                 }
                                 .padding(.vertical, 2)
                             }
@@ -367,18 +367,18 @@ struct ScoreboardView: View {
 
         return VStack(alignment: .leading, spacing: 16) {
             Text("Official Championship Top 3")
-                .font(.headline.weight(.semibold))
+                .font(ChicaneTypography.cardTitle)
 
             if seriesToShow.allSatisfy({ viewModel.championshipLeaders(for: $0).isEmpty }) {
                 Text("Leaders unavailable. Fetch Results to refresh.")
-                    .font(.body)
+                    .font(ChicaneTypography.body)
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(seriesToShow) { series in
                     let leaders = viewModel.championshipLeaders(for: series)
                     if !leaders.isEmpty {
                         Text(series.title)
-                            .font(.subheadline.weight(.semibold))
+                            .font(ChicaneTypography.sectionTitle)
                             .foregroundStyle(ChicaneTheme.seriesColor(series))
                             .padding(.bottom, 2)
 
@@ -386,13 +386,13 @@ struct ScoreboardView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 HStack {
                                     Text("\(leader.position). \(leader.name)")
-                                        .font(.body.weight(.semibold))
+                                        .font(ChicaneTypography.bodySemibold)
                                     Spacer()
                                     Text("\(leader.points) pts")
-                                        .font(.body.weight(.bold))
+                                        .font(ChicaneTypography.bodyBold)
                                 }
                                 Text(leader.team)
-                                    .font(.caption)
+                                    .font(ChicaneTypography.caption)
                                     .foregroundStyle(.secondary)
                             }
                             .padding(.vertical, 4)
@@ -513,11 +513,11 @@ struct ScoreboardView: View {
         Group {
             if viewModel.championResult(for: series)?.isLocked == true {
                 Label("Locked once the official season champion is entered.", systemImage: "lock.fill")
-                    .font(.caption2)
+                    .font(ChicaneTypography.caption2)
                     .foregroundStyle(.secondary)
             } else if savedPick?.isLocked == true {
                 Label("Locked in.", systemImage: "lock.fill")
-                    .font(.caption2)
+                    .font(ChicaneTypography.caption2)
                     .foregroundStyle(.secondary)
             } else {
                 EmptyView()

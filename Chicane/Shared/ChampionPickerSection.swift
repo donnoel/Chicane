@@ -26,7 +26,7 @@ struct ChampionPickerSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(ChicaneTypography.sectionTitle)
                 .foregroundStyle(.secondary)
                 .accessibilityAddTraits(.isHeader)
 

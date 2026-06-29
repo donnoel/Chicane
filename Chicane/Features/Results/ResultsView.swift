@@ -41,9 +41,9 @@ struct ResultsView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("No event selected", systemImage: "calendar")
-                            .font(.headline)
+                            .font(ChicaneTypography.cardTitle)
                         Text("Choose an event above to enter the result.")
-                            .font(.body)
+                            .font(ChicaneTypography.body)
                             .foregroundStyle(.secondary)
                     }
                     .groupedCard()
@@ -126,12 +126,12 @@ struct ResultsView: View {
                 officialPodiumSection(for: currentResult.podium)
 
                 Text("Official results stay locked once retrieved.")
-                    .font(.caption)
+                    .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Fetch the official top three for this event.")
-                        .font(.body)
+                        .font(ChicaneTypography.body)
                         .foregroundStyle(.secondary)
                 }
 
@@ -174,11 +174,11 @@ struct ResultsView: View {
         HStack {
             if differentiateWithoutColor {
                 Label("Locked result: Official result is locked", systemImage: "lock.fill")
-                    .font(.subheadline.weight(.semibold))
+                    .font(ChicaneTypography.sectionTitle)
                     .foregroundStyle(.primary)
             } else {
                 Label("Official result is locked", systemImage: "lock.fill")
-                    .font(.subheadline.weight(.semibold))
+                    .font(ChicaneTypography.sectionTitle)
                     .foregroundStyle(.green)
             }
 
@@ -214,7 +214,7 @@ struct ResultsView: View {
                 .accessibilityHidden(true)
 
             Text(status.text)
-                .font(.footnote)
+                .font(ChicaneTypography.footnote)
                 .foregroundStyle(.secondary)
 
             Spacer(minLength: 0)
@@ -238,7 +238,7 @@ struct ResultsView: View {
         .overlay(alignment: .topLeading) {
             if differentiateWithoutColor {
                 Text(status.style == .error ? "Error" : "Info")
-                    .font(.caption2.weight(.semibold))
+                    .font(ChicaneTypography.badge)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(
@@ -257,18 +257,18 @@ struct ResultsView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Official Event Result")
-                        .font(.headline.weight(.semibold))
+                        .font(ChicaneTypography.cardTitle)
                     Text(event.title)
-                        .font(.title3.weight(.bold))
+                        .font(ChicaneTypography.cardTitleStrong)
                     Text("Round \(event.round) · \(event.circuit)")
-                        .font(.subheadline)
+                        .font(ChicaneTypography.subtitle)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
                 Text(event.series.shortTitle)
-                    .font(.caption.weight(.bold))
+                    .font(ChicaneTypography.chip)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
@@ -276,7 +276,7 @@ struct ResultsView: View {
             }
 
             Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
-                .font(.subheadline.weight(.semibold))
+                .font(ChicaneTypography.subtitleSemibold)
                 .foregroundStyle(.secondary)
         }
     }
@@ -284,7 +284,7 @@ struct ResultsView: View {
     private func officialPodiumSection(for podium: Podium) -> some View {
         VStack(alignment: .leading, spacing: horizontalSizeClass == .regular ? 20 : 14) {
             Text("Official Podium")
-                .font(.headline.weight(.semibold))
+                .font(ChicaneTypography.cardTitle)
                 .accessibilityAddTraits(.isHeader)
 
             officialPodiumRow(position: 1, title: "P1", participantID: podium.p1)
@@ -300,7 +300,7 @@ struct ResultsView: View {
             PodiumMedalView(position: position, isSelected: true)
 
             Text(label)
-                .font(.body.weight(.medium))
+                .font(ChicaneTypography.bodyMedium)
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
@@ -352,7 +352,7 @@ struct ResultsView: View {
     private var pointsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Event Points")
-                .font(.subheadline.weight(.semibold))
+                .font(ChicaneTypography.sectionTitle)
             pointsSummaryContent
         }
         .sectionCard()
@@ -374,20 +374,20 @@ struct ResultsView: View {
     private var pointsSummaryContent: some View {
         if selectedEventPoints.isEmpty {
             Text("Fetch official results to compute points.")
-                .font(.body)
+                .font(ChicaneTypography.body)
                 .foregroundStyle(.secondary)
         } else if !hasAnySavedPickForSelectedEvent {
             Text("No saved picks for this event.")
-                .font(.body)
+                .font(ChicaneTypography.body)
                 .foregroundStyle(.secondary)
         } else {
             ForEach(viewModel.players) { player in
                 HStack {
                     Text(player.name)
-                        .font(.body.weight(.medium))
+                        .font(ChicaneTypography.bodyMedium)
                     Spacer()
                     AnimatedScoreText(value: selectedEventPoints[player.id, default: 0])
-                        .font(.body.weight(.bold))
+                        .font(ChicaneTypography.score)
                 }
                 if player.id != viewModel.players.last?.id {
                     Divider().opacity(0.4)

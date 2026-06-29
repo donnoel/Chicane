@@ -500,7 +500,7 @@ struct LargeActionButtonStyle: ButtonStyle {
         }
 
         return configuration.label
-            .font(.subheadline.weight(.semibold))
+            .font(ChicaneTypography.button)
             .frame(minHeight: 46)
             .frame(maxWidth: .infinity)
             .background(
@@ -524,7 +524,7 @@ struct SecondaryActionButtonStyle: ButtonStyle {
         let backgroundOpacity = configuration.isPressed ? 0.16 : 0.12
 
         return configuration.label
-            .font(.subheadline.weight(.semibold))
+            .font(ChicaneTypography.button)
             .frame(minHeight: 46)
             .frame(maxWidth: .infinity)
             .foregroundStyle(base)

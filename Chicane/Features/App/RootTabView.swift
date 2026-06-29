@@ -252,7 +252,7 @@ private struct InitialLoadOverlay: View {
                         .tint(.white)
 
                     Text("Preparing race weekend")
-                        .font(.callout.weight(.semibold))
+                        .font(ChicaneTypography.splashStatus)
                         .foregroundStyle(.white.opacity(0.94))
                 }
                 .padding(.vertical, 11)
@@ -303,12 +303,12 @@ private struct SplashBrandLockup: View {
             .frame(maxWidth: 190)
 
             Text("THE")
-                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                .font(ChicaneTypography.splashEyebrow)
                 .tracking(3.5)
                 .foregroundStyle(.white.opacity(0.82))
 
             Text("PODIUM")
-                .font(.system(size: 44, weight: .black, design: .rounded))
+                .font(ChicaneTypography.splashLogo)
                 .tracking(1.4)
                 .lineLimit(1)
                 .minimumScaleFactor(0.84)
@@ -382,7 +382,7 @@ private struct BannerView: View {
                 .accessibilityHidden(true)
 
             Text(message.text)
-                .font(.callout)
+                .font(ChicaneTypography.body)
                 .multilineTextAlignment(.leading)
                 .lineLimit(3)
 

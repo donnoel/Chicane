@@ -30,7 +30,7 @@ struct PodiumPickerSection: View {
         VStack(alignment: .leading, spacing: 14) {
             if !title.isEmpty {
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(ChicaneTypography.sectionTitle)
                     .foregroundStyle(.secondary)
                     .accessibilityAddTraits(.isHeader)
             }
@@ -41,7 +41,7 @@ struct PodiumPickerSection: View {
 
             if draft.hasDuplicates {
                 Text("Pick 3 unique \(participantPlural)")
-                    .font(.subheadline.weight(.semibold))
+                    .font(ChicaneTypography.sectionTitle)
                     .foregroundStyle(ChicaneTheme.f1Red)
                     .accessibilityLabel("Error: Pick 3 unique \(participantPlural)")
             }

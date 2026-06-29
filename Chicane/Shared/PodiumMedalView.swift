@@ -47,7 +47,7 @@ struct PodiumMedalView: View {
                 .offset(y: -11)
 
             Text("\(position)")
-                .font(.system(size: 17, weight: .black, design: .rounded))
+                .font(ChicaneTypography.medalNumber)
                 .foregroundStyle(numberColor)
                 .shadow(color: .white.opacity(position == 2 ? 0.35 : 0.18), radius: 0.5, x: 0, y: 0.5)
                 .offset(y: 0.5)
