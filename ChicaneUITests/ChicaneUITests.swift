@@ -343,9 +343,9 @@ final class ChicaneUITests: XCTestCase {
             playerPicker.tap()
         }
 
-        selectPodiumPosition(1, option: "Max Verstappen (Red Bull)", in: app)
-        selectPodiumPosition(2, option: "Lando Norris (McLaren)", in: app)
         selectPodiumPosition(3, option: "Charles Leclerc (Ferrari)", in: app)
+        selectPodiumPosition(2, option: "Lando Norris (McLaren)", in: app)
+        selectPodiumPosition(1, option: "Max Verstappen (Red Bull)", in: app)
     }
 
     private func openAllRacesAndManualPicks(in app: XCUIApplication) {
@@ -389,20 +389,29 @@ final class ChicaneUITests: XCTestCase {
 
     private func selectPodiumPosition(_ position: Int, option: String, in app: XCUIApplication) {
         let picker = app.descendants(matching: .any)["Position \(position) selection"]
-        XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
-        scrollToElementIfNeeded(picker, in: app)
-        XCTAssertTrue(picker.isHittable)
-        picker.tap()
-
         let pickerNavigationBar = app.navigationBars["Position \(position) selection"]
-        XCTAssertTrue(pickerNavigationBar.waitForExistence(timeout: Timeout.medium))
+
+        guard openPodiumPicker(picker, navigationBar: pickerNavigationBar, in: app) else {
+            XCTFail("Failed to open Position \(position) picker")
+            return
+        }
 
         let optionElement = app.descendants(matching: .any)[option]
-        XCTAssertTrue(optionElement.waitForExistence(timeout: Timeout.medium))
-        XCTAssertTrue(waitUntilHittable(optionElement))
+        guard optionElement.waitForExistence(timeout: Timeout.medium) else {
+            XCTFail("Missing picker option: \(option)")
+            return
+        }
+        guard waitUntilHittable(optionElement) else {
+            XCTFail("Picker option was not hittable: \(option)")
+            return
+        }
         optionElement.tap()
 
-        XCTAssertTrue(waitUntilGone(pickerNavigationBar))
+        guard waitUntilGone(pickerNavigationBar) else {
+            XCTFail("Position \(position) picker did not dismiss")
+            return
+        }
+        recoverWeekendTabIfNeeded(in: app)
         XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
     }
 
@@ -432,6 +441,41 @@ final class ChicaneUITests: XCTestCase {
             }
             app.swipeUp()
         }
+    }
+
+    private func openPodiumPicker(
+        _ picker: XCUIElement,
+        navigationBar: XCUIElement,
+        in app: XCUIApplication
+    ) -> Bool {
+        recoverWeekendTabIfNeeded(in: app)
+
+        for _ in 0..<3 {
+            guard picker.waitForExistence(timeout: Timeout.medium) else {
+                return false
+            }
+            scrollToElementIfNeeded(picker, in: app)
+            guard picker.isHittable else {
+                continue
+            }
+
+            picker.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            if navigationBar.waitForExistence(timeout: Timeout.short) {
+                return true
+            }
+            recoverWeekendTabIfNeeded(in: app)
+        }
+        return navigationBar.exists
+    }
+
+    private func recoverWeekendTabIfNeeded(in app: XCUIApplication) {
+        let weekendTab = app.tabBars.buttons[Tab.weekend]
+        guard weekendTab.waitForExistence(timeout: Timeout.short), !weekendTab.isSelected else {
+            return
+        }
+
+        weekendTab.tap()
+        XCTAssertTrue(app.staticTexts["Make your picks"].waitForExistence(timeout: Timeout.medium))
     }
 
     private func waitUntilHittable(_ element: XCUIElement, timeout: TimeInterval = Timeout.medium) -> Bool {
