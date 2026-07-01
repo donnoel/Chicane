@@ -16,8 +16,16 @@ enum DevicePlayerSelection {
     }
 
     static func editablePlayers(in players: [Player], rawValue: String) -> [Player] {
-        guard let selectedPlayer = selectedPlayer(in: players, rawValue: rawValue) else {
+        guard !players.isEmpty else {
             return []
+        }
+
+        guard let selectedID = UUID(uuidString: rawValue) else {
+            return players
+        }
+
+        guard let selectedPlayer = players.first(where: { $0.id == selectedID }) else {
+            return players
         }
         return [selectedPlayer]
     }

@@ -390,19 +390,20 @@ final class ChicaneUITests: XCTestCase {
     private func selectPodiumPosition(_ position: Int, option: String, in app: XCUIApplication) {
         let picker = app.descendants(matching: .any)["Position \(position) selection"]
         XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
+        scrollToElementIfNeeded(picker, in: app)
+        XCTAssertTrue(picker.isHittable)
         picker.tap()
+
+        let pickerNavigationBar = app.navigationBars["Position \(position) selection"]
+        XCTAssertTrue(pickerNavigationBar.waitForExistence(timeout: Timeout.medium))
 
         let optionElement = app.descendants(matching: .any)[option]
         XCTAssertTrue(optionElement.waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(waitUntilHittable(optionElement))
         optionElement.tap()
 
-        if !picker.waitForExistence(timeout: Timeout.short) {
-            let backButton = app.navigationBars.buttons.firstMatch
-            if backButton.exists {
-                backButton.tap()
-            }
-            XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
-        }
+        XCTAssertTrue(waitUntilGone(pickerNavigationBar))
+        XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
     }
 
     private func fetchOfficialResult(in app: XCUIApplication) {
@@ -431,5 +432,17 @@ final class ChicaneUITests: XCTestCase {
             }
             app.swipeUp()
         }
+    }
+
+    private func waitUntilHittable(_ element: XCUIElement, timeout: TimeInterval = Timeout.medium) -> Bool {
+        let predicate = NSPredicate(format: "isHittable == true")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    private func waitUntilGone(_ element: XCUIElement, timeout: TimeInterval = Timeout.medium) -> Bool {
+        let predicate = NSPredicate(format: "exists == false")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 }

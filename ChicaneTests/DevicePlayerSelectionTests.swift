@@ -14,12 +14,12 @@ final class DevicePlayerSelectionTests: XCTestCase {
         XCTAssertEqual(editablePlayers, [mom])
     }
 
-    func testEditablePlayersRequiresSelectionWhenMultiplePlayersExist() {
+    func testEditablePlayersShowsAllPlayersUntilADevicePlayerIsSelected() {
         let son = Player(id: UUID(), name: "Son")
         let mom = Player(id: UUID(), name: "Mom")
 
-        XCTAssertTrue(DevicePlayerSelection.editablePlayers(in: [son, mom], rawValue: "").isEmpty)
-        XCTAssertTrue(DevicePlayerSelection.editablePlayers(in: [son, mom], rawValue: UUID().uuidString).isEmpty)
+        XCTAssertEqual(DevicePlayerSelection.editablePlayers(in: [son, mom], rawValue: ""), [son, mom])
+        XCTAssertEqual(DevicePlayerSelection.editablePlayers(in: [son, mom], rawValue: UUID().uuidString), [son, mom])
     }
 
     func testSinglePlayerIsEditableWithoutStoredSelection() {
