@@ -312,6 +312,7 @@ struct StoredIdentityResolver: Sendable {
     let participants: [Driver]
 
     private let aliasToParticipantKey: [String: String]
+    private let aliasToParticipantID: [String: String]
 
     init(
         series: RaceSeries,
@@ -322,6 +323,9 @@ struct StoredIdentityResolver: Sendable {
         self.events = events.filter { $0.series == series }
         self.participants = participants.filter { $0.series == series }
         self.aliasToParticipantKey = StoredIdentityResolver.makeParticipantAliasMap(
+            participants: self.participants
+        )
+        self.aliasToParticipantID = StoredIdentityResolver.makeParticipantIDAliasMap(
             participants: self.participants
         )
     }
@@ -431,6 +435,20 @@ struct StoredIdentityResolver: Sendable {
         participantKeysMatch(lhs, rhs)
     }
 
+    func resolvedParticipantID(for rawID: String) -> String? {
+        if let participant = participants.first(where: { $0.id == rawID }) {
+            return participant.id
+        }
+
+        for alias in legacyParticipantAliases(for: rawID) {
+            if let participantID = aliasToParticipantID[alias] {
+                return participantID
+            }
+        }
+
+        return nil
+    }
+
     private func newestPick(
         in picks: [RacePick],
         matching predicate: (RacePick) -> Bool
@@ -483,7 +501,7 @@ struct StoredIdentityResolver: Sendable {
         }
 
         if !strippedTokens.isEmpty {
-            aliases.append(strippedTokens.joined())
+            aliases.append(contentsOf: Self.joinedTokenSuffixes(strippedTokens))
         }
 
         var uniqueAliases: [String] = []
@@ -533,6 +551,20 @@ struct StoredIdentityResolver: Sendable {
         }
     }
 
+    private static func makeParticipantIDAliasMap(participants: [Driver]) -> [String: String] {
+        let aliasCounts = participants.reduce(into: [String: Int]()) { counts, participant in
+            for alias in participantAliases(for: participant) {
+                counts[alias, default: 0] += 1
+            }
+        }
+
+        return participants.reduce(into: [String: String]()) { aliases, participant in
+            for alias in participantAliases(for: participant) where aliasCounts[alias] == 1 {
+                aliases[alias] = participant.id
+            }
+        }
+    }
+
     private static func participantAliases(for participant: Driver) -> Set<String> {
         let tokens = normalizedTokens(participant.name)
         guard !tokens.isEmpty else {
@@ -540,7 +572,7 @@ struct StoredIdentityResolver: Sendable {
         }
 
         var aliases = Set<String>()
-        aliases.insert(tokens.joined())
+        aliases.formUnion(joinedTokenSuffixes(tokens))
 
         if let surname = tokens.last {
             aliases.insert(surname)
@@ -551,6 +583,14 @@ struct StoredIdentityResolver: Sendable {
         }
 
         return aliases
+    }
+
+    private static func joinedTokenSuffixes(_ tokens: [String]) -> [String] {
+        guard !tokens.isEmpty else { return [] }
+
+        return tokens.indices.map { index in
+            tokens[index...].joined()
+        }
     }
 }
 

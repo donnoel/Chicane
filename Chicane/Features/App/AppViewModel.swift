@@ -110,6 +110,7 @@ final class AppViewModel: ObservableObject {
             driversBySeries[.motoGP]   = mergedMotoGPDrivers
             eventsBySeries[.formula1]  = mergedF1Events
             eventsBySeries[.motoGP]    = mergedMotoGPEvents
+            normalizeStoredParticipantIDsForLoadedDrivers()
             await refreshChampionshipLeaders()
             hasLoaded = true
         } catch {
@@ -551,6 +552,7 @@ final class AppViewModel: ObservableObject {
         if settings != state.settings {
             settings = state.settings
         }
+        normalizeStoredParticipantIDsForLoadedDrivers()
     }
 
     private func identityResolver(for series: RaceSeries) -> StoredIdentityResolver {
@@ -559,6 +561,56 @@ final class AppViewModel: ObservableObject {
             events: events(for: series),
             participants: drivers(for: series)
         )
+    }
+
+    private func normalizeStoredParticipantIDsForLoadedDrivers() {
+        let normalizedPicks = picks.map { pick in
+            var copy = pick
+            copy.podium = normalizedPodium(copy.podium, series: copy.series)
+            return copy
+        }
+        if normalizedPicks != picks {
+            picks = normalizedPicks
+        }
+
+        let normalizedResults = results.map { result in
+            var copy = result
+            copy.podium = normalizedPodium(copy.podium, series: copy.series)
+            return copy
+        }
+        if normalizedResults != results {
+            results = normalizedResults
+        }
+
+        let normalizedChampionPicks = championPicks.map { pick in
+            var copy = pick
+            copy.driverID = normalizedParticipantID(copy.driverID, series: copy.series)
+            return copy
+        }
+        if normalizedChampionPicks != championPicks {
+            championPicks = normalizedChampionPicks
+        }
+
+        let normalizedChampionResults = championResults.map { result in
+            var copy = result
+            copy.driverID = normalizedParticipantID(copy.driverID, series: copy.series)
+            return copy
+        }
+        if normalizedChampionResults != championResults {
+            championResults = normalizedChampionResults
+        }
+    }
+
+    private func normalizedPodium(_ podium: Podium, series: RaceSeries) -> Podium {
+        Podium(
+            p1: normalizedParticipantID(podium.p1, series: series),
+            p2: normalizedParticipantID(podium.p2, series: series),
+            p3: normalizedParticipantID(podium.p3, series: series)
+        )
+    }
+
+    private func normalizedParticipantID(_ participantID: String, series: RaceSeries) -> String {
+        identityResolver(for: series).resolvedParticipantID(for: participantID) ?? participantID
     }
 
     private var activeLeagueCode: String? {

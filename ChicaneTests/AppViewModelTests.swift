@@ -253,6 +253,120 @@ final class AppViewModelTests: XCTestCase {
         XCTAssertEqual(pick?.isLocked, true)
     }
 
+    func testReloadResolvesSavedChampionPickWhenF1AntonelliIDUsesShortName() async throws {
+        let event = TestFixtures.event(id: "f1-2026-antonelli-short", series: .formula1)
+        let currentAntonelli = TestFixtures.driver(
+            id: "f1-andrea-kimi-antonelli",
+            series: .formula1,
+            name: "Andrea Kimi Antonelli",
+            team: "Mercedes"
+        )
+        let player = Player(id: UUID(), name: "Son")
+        let localRepository = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        var localState = PersistedState.default
+        localState.players = [player]
+        localState.championPicks = [
+            SeasonChampionPick(
+                id: UUID(),
+                series: .formula1,
+                playerID: player.id,
+                driverID: "f1-kimi-antonelli",
+                updatedAt: Date()
+            )
+        ]
+        _ = try await localRepository.replaceState(localState)
+
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: [currentAntonelli],
+            podiumNames: [currentAntonelli.name],
+            seasonRepository: localRepository
+        )
+
+        await viewModel.reload()
+
+        XCTAssertEqual(
+            viewModel.championPick(for: .formula1, playerID: player.id)?.driverID,
+            currentAntonelli.id
+        )
+    }
+
+    func testReloadResolvesSavedChampionPickWhenF1AntonelliIDUsesFullName() async throws {
+        let event = TestFixtures.event(id: "f1-2026-antonelli-full", series: .formula1)
+        let currentAntonelli = TestFixtures.driver(
+            id: "f1-kimi-antonelli",
+            series: .formula1,
+            name: "Kimi Antonelli",
+            team: "Mercedes"
+        )
+        let player = Player(id: UUID(), name: "Son")
+        let localRepository = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        var localState = PersistedState.default
+        localState.players = [player]
+        localState.championPicks = [
+            SeasonChampionPick(
+                id: UUID(),
+                series: .formula1,
+                playerID: player.id,
+                driverID: "f1-andrea-kimi-antonelli",
+                updatedAt: Date()
+            )
+        ]
+        _ = try await localRepository.replaceState(localState)
+
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: [currentAntonelli],
+            podiumNames: [currentAntonelli.name],
+            seasonRepository: localRepository
+        )
+
+        await viewModel.reload()
+
+        XCTAssertEqual(
+            viewModel.championPick(for: .formula1, playerID: player.id)?.driverID,
+            currentAntonelli.id
+        )
+    }
+
+    func testReloadResolvesSavedChampionPickWhenF1AntonelliMiddleNameIsOmitted() async throws {
+        let event = TestFixtures.event(id: "f1-2026-antonelli-last-name", series: .formula1)
+        let currentAntonelli = TestFixtures.driver(
+            id: "f1-andrea-antonelli",
+            series: .formula1,
+            name: "Andrea Antonelli",
+            team: "Mercedes"
+        )
+        let player = Player(id: UUID(), name: "Son")
+        let localRepository = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        var localState = PersistedState.default
+        localState.players = [player]
+        localState.championPicks = [
+            SeasonChampionPick(
+                id: UUID(),
+                series: .formula1,
+                playerID: player.id,
+                driverID: "f1-kimi-antonelli",
+                updatedAt: Date()
+            )
+        ]
+        _ = try await localRepository.replaceState(localState)
+
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: [currentAntonelli],
+            podiumNames: [currentAntonelli.name],
+            seasonRepository: localRepository
+        )
+
+        await viewModel.reload()
+
+        XCTAssertEqual(
+            viewModel.championPick(for: .formula1, playerID: player.id)?.driverID,
+            currentAntonelli.id
+        )
+    }
+
     func testSavePlayersRejectsBlankNamesWithoutDeletingPlayerData() async throws {
         let event = TestFixtures.event(id: "f1-2026-blank-name", series: .formula1)
         let drivers = [
