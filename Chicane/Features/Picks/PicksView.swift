@@ -3,6 +3,7 @@ import SwiftUI
 struct PicksView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
+    @AppStorage(DevicePlayerSelection.storageKey) private var selectedDevicePlayerIDRawValue = ""
 
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
@@ -39,6 +40,8 @@ struct PicksView: View {
 
                     if viewModel.players.isEmpty {
                         noPlayersCard
+                    } else if editablePlayers.isEmpty {
+                        devicePlayerSelectionCard
                     } else {
                         playerCards
                     }
@@ -93,6 +96,10 @@ struct PicksView: View {
         }
         .onChange(of: viewModel.championPicks) {
             hydrateAvailableChampionPicks()
+        }
+        .onChange(of: selectedDevicePlayerIDRawValue) {
+            hydrateAvailablePicks()
+            hydrateChampionDrafts()
         }
         .alert("Lock champion pick?", isPresented: championLockConfirmationIsPresented) {
             Button("Cancel", role: .cancel) {}
@@ -155,9 +162,16 @@ struct PicksView: View {
         horizontalSizeClass != .regular
     }
 
+    private var editablePlayers: [Player] {
+        DevicePlayerSelection.editablePlayers(
+            in: viewModel.players,
+            rawValue: selectedDevicePlayerIDRawValue
+        )
+    }
+
     private var playerCards: some View {
         VStack(alignment: .leading, spacing: 16) {
-            ForEach(viewModel.players) { player in
+            ForEach(editablePlayers) { player in
                 playerCard(for: player)
             }
         }
@@ -176,6 +190,26 @@ struct PicksView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Open Settings")
         .accessibilityHint("Opens league, player, bet, and app settings")
+    }
+
+    private var devicePlayerSelectionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Choose this device's player", systemImage: "person.crop.circle.badge.questionmark")
+                .font(ChicaneTypography.cardTitle)
+
+            Text("Pick which player can edit picks on this \(isPhoneLayout ? "iPhone" : "iPad").")
+                .font(ChicaneTypography.body)
+                .foregroundStyle(.secondary)
+
+            NavigationLink {
+                SettingsView()
+            } label: {
+                Label("Open Settings", systemImage: "gearshape.fill")
+            }
+            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
+        }
+        .groupedCard(accent: ChicaneTheme.seriesColor(selectedSeries))
+        .accessibilityElement(children: .contain)
     }
 
     private var noPlayersCard: some View {
@@ -425,7 +459,7 @@ struct PicksView: View {
             get: { draftsByPlayer[playerID] ?? .empty },
             set: { newDraft in
                 draftsByPlayer[playerID] = newDraft
-                guard let player = viewModel.players.first(where: { $0.id == playerID }) else { return }
+                guard let player = editablePlayers.first(where: { $0.id == playerID }) else { return }
                 autosavePickIfNeeded(for: player, draft: newDraft)
             }
         )
@@ -436,7 +470,7 @@ struct PicksView: View {
             get: { championDraft(for: playerID) },
             set: { newValue in
                 setChampionDraft(newValue, for: playerID)
-                guard let player = viewModel.players.first(where: { $0.id == playerID }) else { return }
+                guard let player = editablePlayers.first(where: { $0.id == playerID }) else { return }
                 autosaveChampionPickIfNeeded(for: player, driverID: newValue)
             }
         )
@@ -490,7 +524,7 @@ struct PicksView: View {
         }
 
         var updated: [UUID: PodiumDraft] = [:]
-        for player in viewModel.players {
+        for player in editablePlayers {
             if let pick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
                 updated[player.id] = PodiumDraft(podium: pick.podium)
             } else {
@@ -502,7 +536,7 @@ struct PicksView: View {
     }
 
     private func hydrateChampionDrafts() {
-        let currentPlayerIDs = Set(viewModel.players.map(\.id))
+        let currentPlayerIDs = Set(editablePlayers.map(\.id))
         championDraftsBySeries = championDraftsBySeries.reduce(into: [RaceSeries: [UUID: String]]()) { output, entry in
             let filtered = entry.value.filter { currentPlayerIDs.contains($0.key) }
             if !filtered.isEmpty {
@@ -520,7 +554,7 @@ struct PicksView: View {
         let previousSavedDrafts = savedChampionDraftsBySeries[selectedSeries] ?? [:]
         var updatedDrafts: [UUID: String] = [:]
         var updatedSavedDrafts: [UUID: String] = [:]
-        for player in viewModel.players {
+        for player in editablePlayers {
             let savedSelection = viewModel.championPick(for: selectedSeries, playerID: player.id)?.driverID
             let currentSelection = currentDrafts[player.id]
             let previousSavedSelection = previousSavedDrafts[player.id]
@@ -552,7 +586,7 @@ struct PicksView: View {
         }
         var updatedDrafts: [UUID: PodiumDraft] = [:]
         var updatedSavedDrafts: [UUID: PodiumDraft] = [:]
-        for player in viewModel.players {
+        for player in editablePlayers {
             let savedDraft: PodiumDraft
             if let pick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
                 savedDraft = PodiumDraft(podium: pick.podium)

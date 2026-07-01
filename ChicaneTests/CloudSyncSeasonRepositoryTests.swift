@@ -290,7 +290,7 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         localState.settings.leagueCode = "ABC123"
         localState.players = [mom, son]
         localState.picks = [momPick, sonPick]
-        try await localRepo.replaceState(localState)
+        _ = try await localRepo.replaceState(localState)
 
         var remoteState = localState
         remoteState.picks = [momPick, sonPick]

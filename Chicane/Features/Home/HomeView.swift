@@ -16,6 +16,7 @@ struct HomeView: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
+    @AppStorage(DevicePlayerSelection.storageKey) private var selectedDevicePlayerIDRawValue = ""
     @State private var selectedEventID: String?
     @State private var selectedPlayerID: UUID?
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
@@ -76,6 +77,10 @@ struct HomeView: View {
             hydrateAvailablePicks()
             ensureSelectedPlayer()
         }
+        .onChange(of: selectedDevicePlayerIDRawValue) {
+            hydrateAvailablePicks()
+            ensureSelectedPlayer()
+        }
     }
 
     private var raceQueue: [RaceEvent] {
@@ -99,8 +104,9 @@ struct HomeView: View {
     }
 
     private var selectedPlayer: Player? {
-        guard let selectedPlayerID else { return viewModel.players.first }
-        return viewModel.players.first { $0.id == selectedPlayerID } ?? viewModel.players.first
+        let players = editablePlayers
+        guard let selectedPlayerID else { return players.first }
+        return players.first { $0.id == selectedPlayerID } ?? players.first
     }
 
     private var playerBetRows: [DisplayedPlayerBet] {
@@ -110,6 +116,13 @@ struct HomeView: View {
             guard !text.isEmpty else { return nil }
             return DisplayedPlayerBet(player: player, text: text)
         }
+    }
+
+    private var editablePlayers: [Player] {
+        DevicePlayerSelection.editablePlayers(
+            in: viewModel.players,
+            rawValue: selectedDevicePlayerIDRawValue
+        )
     }
 
     private var isPhoneLayout: Bool {
@@ -270,6 +283,8 @@ struct HomeView: View {
     private func pickFlow(for event: RaceEvent) -> some View {
         if viewModel.players.isEmpty {
             noPlayersCard
+        } else if editablePlayers.isEmpty {
+            devicePlayerSelectionCard
         } else if let player = selectedPlayer {
             VStack(alignment: .leading, spacing: 16) {
                 pickFlowHeader(for: event)
@@ -286,7 +301,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Make your picks")
                     .font(ChicaneTypography.screenTitle)
-                Text("\(readyPlayerCount(for: event)) of \(viewModel.players.count) players ready")
+                Text("\(readyPlayerCount(for: event)) of \(editablePlayers.count) ready")
                     .font(ChicaneTypography.subtitle)
                     .foregroundStyle(.secondary)
             }
@@ -300,7 +315,8 @@ struct HomeView: View {
     private func playerPickerStrip(for event: RaceEvent) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(viewModel.players) { player in
+                ForEach(editablePlayers) { player in
+                    let isSelected = selectedPlayer?.id == player.id
                     Button {
                         selectedPlayerID = player.id
                     } label: {
@@ -320,12 +336,12 @@ struct HomeView: View {
                                     .font(ChicaneTypography.caption)
                             }
                         }
-                        .foregroundStyle(selectedPlayerID == player.id ? .white : .primary)
+                        .foregroundStyle(isSelected ? .white : .primary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                         .background(
                             Capsule(style: .continuous)
-                                .fill(selectedPlayerID == player.id ? playerAccent(for: player, event: event) : Color.primary.opacity(0.08))
+                                .fill(isSelected ? playerAccent(for: player, event: event) : Color.primary.opacity(0.08))
                         )
                     }
                     .buttonStyle(.plain)
@@ -411,6 +427,25 @@ struct HomeView: View {
                     .foregroundStyle(ChicaneTheme.seriesColor(event.series))
             }
         }
+    }
+
+    private var devicePlayerSelectionCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Choose this device's player", systemImage: "person.crop.circle.badge.questionmark")
+                .font(ChicaneTypography.cardTitle)
+            Text("Choose the player for this iPhone or iPad before entering picks.")
+                .font(ChicaneTypography.body)
+                .foregroundStyle(.secondary)
+
+            NavigationLink {
+                SettingsView()
+            } label: {
+                Label("Open Settings", systemImage: "gearshape.fill")
+            }
+            .buttonStyle(SecondaryActionButtonStyle(tint: .accentColor))
+        }
+        .groupedCard()
+        .accessibilityElement(children: .contain)
     }
 
     private var noPlayersCard: some View {
@@ -529,7 +564,16 @@ struct HomeView: View {
     }
 
     private func pickProgressPill(for event: RaceEvent) -> some View {
-        Text(viewModel.players.isEmpty ? "Add players" : "\(readyPlayerCount(for: event))/\(viewModel.players.count) ready")
+        let progressText: String
+        if viewModel.players.isEmpty {
+            progressText = "Add players"
+        } else if editablePlayers.isEmpty {
+            progressText = "Choose player"
+        } else {
+            progressText = "\(readyPlayerCount(for: event))/\(editablePlayers.count) ready"
+        }
+
+        return Text(progressText)
             .font(ChicaneTypography.chip)
             .foregroundStyle(.white)
             .padding(.horizontal, 11)
@@ -563,11 +607,11 @@ struct HomeView: View {
     }
 
     private func readyPlayerCount(for event: RaceEvent) -> Int {
-        viewModel.players.filter { playerIsReady($0, for: event) }.count
+        editablePlayers.filter { playerIsReady($0, for: event) }.count
     }
 
     private func allPlayersReady(for event: RaceEvent) -> Bool {
-        !viewModel.players.isEmpty && readyPlayerCount(for: event) == viewModel.players.count
+        !editablePlayers.isEmpty && readyPlayerCount(for: event) == editablePlayers.count
     }
 
     private func playerIsReady(_ player: Player, for event: RaceEvent) -> Bool {
@@ -623,7 +667,7 @@ struct HomeView: View {
     }
 
     private func nextIncompletePlayer(after player: Player, event: RaceEvent) -> Player? {
-        let players = viewModel.players
+        let players = editablePlayers
         guard let currentIndex = players.firstIndex(where: { $0.id == player.id }) else {
             return players.first { !playerIsReady($0, for: event) }
         }
@@ -651,7 +695,7 @@ struct HomeView: View {
             get: { draftsByPlayer[playerID] ?? .empty },
             set: { newDraft in
                 draftsByPlayer[playerID] = newDraft
-                guard let player = viewModel.players.first(where: { $0.id == playerID }) else { return }
+                guard let player = editablePlayers.first(where: { $0.id == playerID }) else { return }
                 autosavePickIfNeeded(for: player, event: event, draft: newDraft)
             }
         )
@@ -671,11 +715,11 @@ struct HomeView: View {
 
     private func ensureSelectedPlayer() {
         guard let selectedEvent else {
-            selectedPlayerID = viewModel.players.first?.id
+            selectedPlayerID = editablePlayers.first?.id
             return
         }
 
-        if let selectedPlayerID, viewModel.players.contains(where: { $0.id == selectedPlayerID }) {
+        if let selectedPlayerID, editablePlayers.contains(where: { $0.id == selectedPlayerID }) {
             return
         }
 
@@ -683,8 +727,8 @@ struct HomeView: View {
     }
 
     private func selectFirstOpenPlayer(for event: RaceEvent) {
-        selectedPlayerID = viewModel.players.first(where: { !playerIsReady($0, for: event) })?.id
-            ?? viewModel.players.first?.id
+        selectedPlayerID = editablePlayers.first(where: { !playerIsReady($0, for: event) })?.id
+            ?? editablePlayers.first?.id
     }
 
     private func hydrateDrafts() {
@@ -698,7 +742,7 @@ struct HomeView: View {
 
     private func hydrateDrafts(for event: RaceEvent) {
         var updated: [UUID: PodiumDraft] = [:]
-        for player in viewModel.players {
+        for player in editablePlayers {
             if let pick = viewModel.pick(for: event.series, eventID: event.id, playerID: player.id) {
                 updated[player.id] = PodiumDraft(podium: pick.podium)
             } else {
@@ -718,7 +762,7 @@ struct HomeView: View {
 
         var updatedDrafts: [UUID: PodiumDraft] = [:]
         var updatedSavedDrafts: [UUID: PodiumDraft] = [:]
-        for player in viewModel.players {
+        for player in editablePlayers {
             let savedDraft: PodiumDraft
             if let pick = viewModel.pick(for: selectedEvent.series, eventID: selectedEvent.id, playerID: player.id) {
                 savedDraft = PodiumDraft(podium: pick.podium)

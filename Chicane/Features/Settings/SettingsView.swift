@@ -3,6 +3,7 @@ import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject private var viewModel: AppViewModel
+    @AppStorage(DevicePlayerSelection.storageKey) private var selectedDevicePlayerIDRawValue = ""
 
     @State private var playerNames: [UUID: String] = [:]
     @State private var playerBetTextByPlayerID: [UUID: String] = [:]
@@ -29,6 +30,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            devicePlayerSection
             playerSection
             playerBetSection
             syncSection
@@ -81,6 +83,45 @@ struct SettingsView: View {
             }
         } message: {
             Text("This device will stop syncing with the current shared league. Your local players, picks, and results stay on this device.")
+        }
+    }
+
+    private var devicePlayerSection: some View {
+        Section {
+            if viewModel.players.isEmpty {
+                Text("Add players first.")
+                    .font(ChicaneTypography.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 2)
+            } else {
+                ForEach(viewModel.players) { player in
+                    Button {
+                        selectedDevicePlayerIDRawValue = DevicePlayerSelection.rawValue(for: player)
+                        viewModel.showInfo("This device is set to \(player.name)")
+                    } label: {
+                        HStack(spacing: 10) {
+                            Text(player.name)
+                                .font(ChicaneTypography.body)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if DevicePlayerSelection.selectedPlayer(
+                                in: viewModel.players,
+                                rawValue: selectedDevicePlayerIDRawValue
+                            )?.id == player.id {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(Color.accentColor)
+                                    .accessibilityLabel("Selected")
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Use \(player.name) on this device")
+                }
+            }
+        } header: {
+            Text("This Device")
+        } footer: {
+            Text("Only this player can edit picks on this iPhone or iPad.")
         }
     }
 

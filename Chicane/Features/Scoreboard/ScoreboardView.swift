@@ -10,6 +10,7 @@ struct ScoreboardView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
+    @AppStorage(DevicePlayerSelection.storageKey) private var selectedDevicePlayerIDRawValue = ""
     @State private var selectedScope: ScoreboardScope = .combined
     @State private var championDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
     @State private var savedChampionDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
@@ -49,6 +50,9 @@ struct ScoreboardView: View {
             .onChange(of: viewModel.championPicks) {
                 hydrateChampionDrafts()
             }
+            .onChange(of: selectedDevicePlayerIDRawValue) {
+                hydrateChampionDrafts()
+            }
             .alert("Lock champion pick?", isPresented: championLockConfirmationIsPresented) {
                 Button("Cancel", role: .cancel) {}
                 Button("Lock Pick") { confirmPendingChampionLock() }
@@ -65,6 +69,13 @@ struct ScoreboardView: View {
                     pendingChampionLock = nil
                 }
             }
+        )
+    }
+
+    private var editablePlayers: [Player] {
+        DevicePlayerSelection.editablePlayers(
+            in: viewModel.players,
+            rawValue: selectedDevicePlayerIDRawValue
         )
     }
 
@@ -213,6 +224,8 @@ struct ScoreboardView: View {
                 Text("No players yet")
                     .font(ChicaneTypography.body)
                     .foregroundStyle(.secondary)
+            } else if editablePlayers.isEmpty {
+                devicePlayerSelectionPrompt
             } else {
                 ForEach(seriesToShow) { series in
                     VStack(alignment: .leading, spacing: 6) {
@@ -225,7 +238,7 @@ struct ScoreboardView: View {
                         let participants = viewModel.drivers(for: series)
                         let seriesIsLocked = viewModel.championResult(for: series)?.isLocked ?? false
 
-                        ForEach(viewModel.players) { player in
+                        ForEach(editablePlayers) { player in
                             let pick = viewModel.championPick(for: series, playerID: player.id)
                             let pickIsLocked = seriesIsLocked || pick?.isLocked == true
 
@@ -250,7 +263,7 @@ struct ScoreboardView: View {
                                 championStatusText(for: player, series: series)
                             }
 
-                            if player.id != viewModel.players.last?.id {
+                            if player.id != editablePlayers.last?.id {
                                 Divider().opacity(0.24)
                             }
                         }
@@ -263,6 +276,25 @@ struct ScoreboardView: View {
             }
         }
         .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
+    }
+
+    private var devicePlayerSelectionPrompt: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Choose this device's player", systemImage: "person.crop.circle.badge.questionmark")
+                .font(ChicaneTypography.bodySemibold)
+
+            Text("Champion picks are editable after this device has a player.")
+                .font(ChicaneTypography.body)
+                .foregroundStyle(.secondary)
+
+            NavigationLink {
+                SettingsView()
+            } label: {
+                Label("Open Settings", systemImage: "gearshape.fill")
+            }
+            .buttonStyle(SecondaryActionButtonStyle(tint: ChicaneTheme.scopeColor(selectedScope)))
+        }
+        .accessibilityElement(children: .contain)
     }
 
     private func championLockButton(for player: Player, series: RaceSeries) -> some View {
@@ -425,7 +457,7 @@ struct ScoreboardView: View {
             get: { championDraft(for: series, playerID: playerID) },
             set: { newValue in
                 setChampionDraft(newValue, for: series, playerID: playerID)
-                guard let player = viewModel.players.first(where: { $0.id == playerID }) else { return }
+                guard let player = editablePlayers.first(where: { $0.id == playerID }) else { return }
                 autosaveChampionPickIfNeeded(for: player, series: series, driverID: newValue)
             }
         )
@@ -446,7 +478,7 @@ struct ScoreboardView: View {
     }
 
     private func hydrateChampionDrafts() {
-        let currentPlayerIDs = Set(viewModel.players.map(\.id))
+        let currentPlayerIDs = Set(editablePlayers.map(\.id))
         championDraftsBySeries = championDraftsBySeries.reduce(into: [RaceSeries: [UUID: String]]()) { output, entry in
             let filtered = entry.value.filter { currentPlayerIDs.contains($0.key) }
             if !filtered.isEmpty {
@@ -465,7 +497,7 @@ struct ScoreboardView: View {
             let previousSavedDrafts = savedChampionDraftsBySeries[series] ?? [:]
             var updatedDrafts: [UUID: String] = [:]
             var updatedSavedDrafts: [UUID: String] = [:]
-            for player in viewModel.players {
+            for player in editablePlayers {
                 let savedSelection = viewModel.championPick(for: series, playerID: player.id)?.driverID
                 let currentSelection = currentDrafts[player.id]
                 let previousSavedSelection = previousSavedDrafts[player.id]
