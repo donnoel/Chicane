@@ -28,8 +28,8 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 18) {
                 if let selectedEvent {
                     hero(for: selectedEvent)
-                    pickFlow(for: selectedEvent)
                     weekendQueueCard
+                    pickFlow(for: selectedEvent)
                     standingsPreview
                     if !playerBetRows.isEmpty {
                         playerBetsPreview
@@ -215,9 +215,9 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(raceQueue.count > 1 ? "This weekend" : "Pick queue")
+                    Text(raceQueue.count > 1 ? "This weekend" : "Up next")
                         .font(ChicaneTypography.cardTitle)
-                    Text(raceQueue.count > 1 ? "Start with the earliest race, then move to the next." : "Chicane starts with the next race automatically.")
+                    Text(raceQueue.count > 1 ? "Choose a race, then make your picks." : "Chicane starts with this race automatically.")
                         .font(ChicaneTypography.subtitle)
                         .foregroundStyle(.secondary)
                 }
