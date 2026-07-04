@@ -14,6 +14,15 @@ struct HomeView: View {
         }
     }
 
+    private struct LeaguePicksContext: Identifiable {
+        let event: RaceEvent
+        let currentPlayerID: UUID?
+
+        var id: String {
+            "\(event.id)-\(currentPlayerID?.uuidString ?? "none")"
+        }
+    }
+
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var viewModel: AppViewModel
     @AppStorage(DevicePlayerSelection.storageKey) private var selectedDevicePlayerIDRawValue = ""
@@ -22,6 +31,7 @@ struct HomeView: View {
     @State private var draftsByPlayer: [UUID: PodiumDraft] = [:]
     @State private var savedDraftsByPlayer: [UUID: PodiumDraft] = [:]
     @State private var hasInitialized = false
+    @State private var leaguePicksContext: LeaguePicksContext?
 
     var body: some View {
         ScrollView {
@@ -83,6 +93,16 @@ struct HomeView: View {
             hydrateAvailablePicks()
             ensureSelectedPlayer()
         }
+        .sheet(item: $leaguePicksContext) { context in
+            LeaguePicksSheet(
+                event: context.event,
+                players: viewModel.players,
+                currentPlayerID: context.currentPlayerID,
+                picks: viewModel.picks,
+                championPicks: viewModel.championPicks,
+                drivers: viewModel.drivers(for: context.event.series)
+            )
+        }
     }
 
     private var raceQueue: [RaceEvent] {
@@ -129,6 +149,10 @@ struct HomeView: View {
 
     private var isPhoneLayout: Bool {
         horizontalSizeClass != .regular
+    }
+
+    private var canViewLeaguePicks: Bool {
+        viewModel.players.count > 1
     }
 
     private var allRacesLink: some View {
@@ -349,6 +373,10 @@ struct HomeView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(player.name) picks")
                 }
+
+                if canViewLeaguePicks {
+                    leaguePicksStripButton(event: event)
+                }
             }
             .padding(.vertical, 2)
         }
@@ -358,34 +386,7 @@ struct HomeView: View {
         let picksAreLocked = viewModel.pickIsLocked(for: event.series, eventID: event.id, playerID: player.id)
 
         return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 12) {
-                Text(initials(from: player.name))
-                    .font(ChicaneTypography.initialsLarge)
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(playerAccent(for: player, event: event), in: Circle())
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(player.name)
-                        .font(ChicaneTypography.cardTitleStrong)
-                    if picksAreLocked {
-                        Text("Locked after official result")
-                            .font(ChicaneTypography.subtitle)
-                            .foregroundStyle(.secondary)
-                    } else if playerIsReady(player, for: event) {
-                        Text("Saved automatically")
-                            .font(ChicaneTypography.subtitle)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                statusBadge(
-                    title: picksAreLocked ? "Locked" : (playerIsReady(player, for: event) ? "Ready" : "Open"),
-                    tint: picksAreLocked ? .green : playerAccent(for: player, event: event)
-                )
-            }
+            activePlayerHeader(player: player, event: event, picksAreLocked: picksAreLocked)
 
             PodiumPickerSection(
                 title: "Podium",
@@ -403,6 +404,87 @@ struct HomeView: View {
             }
         }
         .groupedCard(accent: playerAccent(for: player, event: event))
+    }
+
+    @ViewBuilder
+    private func activePlayerHeader(player: Player, event: RaceEvent, picksAreLocked: Bool) -> some View {
+        if isPhoneLayout {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center, spacing: 12) {
+                    activePlayerIdentity(player: player, event: event, picksAreLocked: picksAreLocked)
+
+                    Spacer()
+
+                    statusBadge(
+                        title: picksAreLocked ? "Locked" : (playerIsReady(player, for: event) ? "Ready" : "Open"),
+                        tint: picksAreLocked ? .green : playerAccent(for: player, event: event)
+                    )
+                }
+            }
+        } else {
+            HStack(alignment: .center, spacing: 12) {
+                activePlayerIdentity(player: player, event: event, picksAreLocked: picksAreLocked)
+
+                Spacer()
+
+                statusBadge(
+                    title: picksAreLocked ? "Locked" : (playerIsReady(player, for: event) ? "Ready" : "Open"),
+                    tint: picksAreLocked ? .green : playerAccent(for: player, event: event)
+                )
+            }
+        }
+    }
+
+    private func activePlayerIdentity(player: Player, event: RaceEvent, picksAreLocked: Bool) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(initials(from: player.name))
+                .font(ChicaneTypography.initialsLarge)
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(playerAccent(for: player, event: event), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(player.name)
+                    .font(ChicaneTypography.cardTitleStrong)
+                if picksAreLocked {
+                    Text("Locked after official result")
+                        .font(ChicaneTypography.subtitle)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                } else if playerIsReady(player, for: event) {
+                    Text("Saved automatically")
+                        .font(ChicaneTypography.subtitle)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+            }
+        }
+    }
+
+    private func leaguePicksStripButton(event: RaceEvent) -> some View {
+        Button {
+            leaguePicksContext = LeaguePicksContext(event: event, currentPlayerID: selectedPlayer?.id)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "person.2")
+                    .font(ChicaneTypography.captionSemibold)
+                    .frame(width: 25, height: 25)
+                    .accessibilityHidden(true)
+
+                Text("All picks")
+                    .font(ChicaneTypography.captionSemibold)
+                    .lineLimit(1)
+            }
+                .foregroundStyle(ChicaneTheme.seriesColor(event.series))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(ChicaneTheme.seriesColor(event.series).opacity(0.12), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("View league picks")
+        .accessibilityHint("Shows saved picks from every player for this race")
     }
 
     @ViewBuilder

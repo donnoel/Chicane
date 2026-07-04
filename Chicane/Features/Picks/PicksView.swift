@@ -13,6 +13,16 @@ struct PicksView: View {
     @State private var savedChampionDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
     @State private var pendingChampionLock: ChampionLockRequest?
     @State private var hasInitialized = false
+    @State private var leaguePicksContext: LeaguePicksContext?
+
+    private struct LeaguePicksContext: Identifiable {
+        let event: RaceEvent
+        let currentPlayerID: UUID?
+
+        var id: String {
+            "\(event.id)-\(currentPlayerID?.uuidString ?? "none")"
+        }
+    }
 
     private struct ChampionLockRequest: Identifiable {
         let player: Player
@@ -107,6 +117,17 @@ struct PicksView: View {
         } message: {
             Text(pendingChampionLock.map(championLockMessage) ?? "")
         }
+        .sheet(item: $leaguePicksContext) { context in
+            LeaguePicksSheet(
+                event: context.event,
+                players: viewModel.players,
+                currentPlayerID: context.currentPlayerID,
+                picks: viewModel.picks,
+                championPicks: viewModel.championPicks,
+                drivers: viewModel.drivers(for: context.event.series),
+                showsChampionPicks: true
+            )
+        }
     }
 
     private var championLockConfirmationIsPresented: Binding<Bool> {
@@ -167,6 +188,10 @@ struct PicksView: View {
             in: viewModel.players,
             rawValue: selectedDevicePlayerIDRawValue
         )
+    }
+
+    private var canViewLeaguePicks: Bool {
+        viewModel.players.count > editablePlayers.count
     }
 
     private var playerCards: some View {
@@ -257,6 +282,10 @@ struct PicksView: View {
 
             Spacer()
 
+            if canViewLeaguePicks, let selectedEvent {
+                leaguePicksButton(event: selectedEvent, currentPlayerID: player.id)
+            }
+
             if isPhoneLayout {
                 if summaryStatus != "Open" {
                     statusBadge(
@@ -271,6 +300,22 @@ struct PicksView: View {
                 )
             }
         }
+    }
+
+    private func leaguePicksButton(event: RaceEvent, currentPlayerID: UUID?) -> some View {
+        Button {
+            leaguePicksContext = LeaguePicksContext(event: event, currentPlayerID: currentPlayerID)
+        } label: {
+            Label("All picks", systemImage: "person.2")
+                .font(ChicaneTypography.badgeStrong)
+                .foregroundStyle(ChicaneTheme.seriesColor(event.series))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(ChicaneTheme.seriesColor(event.series).opacity(0.12), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("View league picks")
+        .accessibilityHint("Shows saved picks from every player for this race")
     }
 
     @ViewBuilder
