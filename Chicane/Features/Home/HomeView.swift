@@ -86,6 +86,7 @@ struct HomeView: View {
             ensureSelectedPlayer()
         }
         .onChange(of: viewModel.results) {
+            initializeIfNeeded()
             hydrateAvailablePicks()
             ensureSelectedPlayer()
         }
@@ -107,15 +108,14 @@ struct HomeView: View {
 
     private var raceQueue: [RaceEvent] {
         let events = viewModel.allEvents()
-        let startOfToday = Calendar.current.startOfDay(for: Date())
-        let visibleEvents = events.filter { $0.raceDate >= startOfToday }
-
-        guard let firstVisibleEvent = visibleEvents.first else {
-            return events.last.map { [$0] } ?? []
+        guard let firstVisibleEvent = RaceEvent.nextDisplayEvent(in: events, results: viewModel.results) else {
+            return []
         }
 
         let weekendEnd = firstVisibleEvent.raceDate.addingTimeInterval(Constants.weekendQueueWindow)
-        return visibleEvents.filter { $0.raceDate <= weekendEnd }
+        return events.filter { event in
+            event.raceDate >= firstVisibleEvent.raceDate && event.raceDate <= weekendEnd
+        }
     }
 
     private var selectedEvent: RaceEvent? {

@@ -537,6 +537,24 @@ extension DateFormatter {
 }
 
 extension RaceEvent {
+    static func nextDisplayEvent(
+        in events: [RaceEvent],
+        results: [RaceResult],
+        at date: Date = .now
+    ) -> RaceEvent? {
+        let sortedEvents = events.sorted { $0.raceDate < $1.raceDate }
+        let resultKeys = Set(results.map { EventResultKey(result: $0) })
+
+        if
+            let latestStartedEvent = sortedEvents.last(where: { $0.raceDate <= date }),
+            !resultKeys.contains(EventResultKey(event: latestStartedEvent))
+        {
+            return latestStartedEvent
+        }
+
+        return sortedEvents.first { $0.raceDate > date } ?? sortedEvents.last
+    }
+
     var trackTimeZone: TimeZone? {
         RaceTrackTimeZoneResolver.timeZone(for: self)
     }
@@ -606,6 +624,21 @@ extension RaceEvent {
         default:
             return "In \(dayDelta) days"
         }
+    }
+}
+
+private struct EventResultKey: Hashable {
+    let series: RaceSeries
+    let eventID: String
+
+    init(result: RaceResult) {
+        self.series = result.series
+        self.eventID = result.eventID
+    }
+
+    init(event: RaceEvent) {
+        self.series = event.series
+        self.eventID = event.id
     }
 }
 

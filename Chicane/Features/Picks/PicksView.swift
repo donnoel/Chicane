@@ -102,6 +102,7 @@ struct PicksView: View {
             hydrateAvailablePicks()
         }
         .onChange(of: viewModel.results) {
+            initializeSelectionForSeries()
             hydrateAvailablePicks()
         }
         .onChange(of: viewModel.championPicks) {
@@ -545,12 +546,7 @@ struct PicksView: View {
     }
 
     private func initializeSelectionForSeries() {
-        let now = Date()
-        if let next = events.filter({ $0.raceDate >= now }).min(by: { $0.raceDate < $1.raceDate }) {
-            selectedEventID = next.id
-        } else {
-            selectedEventID = events.max(by: { $0.raceDate < $1.raceDate })?.id
-        }
+        selectedEventID = RaceEvent.nextDisplayEvent(in: events, results: viewModel.results)?.id
     }
 
     private func ensureValidSelection() {

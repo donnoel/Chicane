@@ -169,8 +169,7 @@ final class AppViewModel: ObservableObject {
             eventsToSearch = allEvents()
         }
 
-        let now = Date()
-        return eventsToSearch.first(where: { $0.raceDate >= now }) ?? eventsToSearch.last
+        return RaceEvent.nextDisplayEvent(in: eventsToSearch, results: results)
     }
 
     func pick(for series: RaceSeries, eventID: String, playerID: UUID) -> RacePick? {
@@ -553,6 +552,7 @@ final class AppViewModel: ObservableObject {
             settings = state.settings
         }
         normalizeStoredParticipantIDsForLoadedDrivers()
+        RaceWeekendWidgetSnapshotStore.saveResults(results)
     }
 
     private func identityResolver(for series: RaceSeries) -> StoredIdentityResolver {
