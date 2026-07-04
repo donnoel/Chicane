@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
+		734731CDEAC91C450C223E4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5A63FFC12F44E19C00885BD6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6B7177468656B5BC89FE6314;
+			remoteInfo = ChicaneWidgetExtension;
+		};
 		5A63FFDB2F44E19C00885BD6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 5A63FFC12F44E19C00885BD6 /* Project object */;
@@ -23,13 +30,41 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXBuildFile section */
+		147F78292CF62220752D1B18 /* ChicaneWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 4356AF293F252FB1FEEC708E /* ChicaneWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		0814E58AE2A2162C25AA7C96 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C90D2F2C0A4EC266519CDBA5 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F795B769A32A49F70EE0FAF2 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				147F78292CF62220752D1B18 /* ChicaneWidgetExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		5A63FFC92F44E19C00885BD6 /* Chicane.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chicane.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A63FFDA2F44E19C00885BD6 /* ChicaneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChicaneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A63FFE42F44E19C00885BD6 /* ChicaneUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChicaneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4356AF293F252FB1FEEC708E /* ChicaneWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ChicaneWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C90D2F2C0A4EC266519CDBA5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Chicane/Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		22E8AED6A43D2FA430FD377A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 6B7177468656B5BC89FE6314 /* ChicaneWidgetExtension */;
+		};
 		5A63FFEC2F44E19C00885BD6 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -40,12 +75,21 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		C81EE3EE0AD225B71EF4F6B7 /* ChicaneWidgetExtension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (22E8AED6A43D2FA430FD377A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = ChicaneWidgetExtension; sourceTree = "<group>"; };
+		7C705D71E895B24DA8A9F951 /* Seed */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Chicane/Resources/Seed; sourceTree = "<group>"; };
 		5A63FFCB2F44E19C00885BD6 /* Chicane */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (5A63FFEC2F44E19C00885BD6 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Chicane; sourceTree = "<group>"; };
 		5A63FFDD2F44E19C00885BD6 /* ChicaneTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ChicaneTests; sourceTree = "<group>"; };
 		5A63FFE72F44E19C00885BD6 /* ChicaneUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ChicaneUITests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		D36DFF9C28501AF55A7EDCB7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5A63FFC62F44E19C00885BD6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -74,6 +118,9 @@
 			isa = PBXGroup;
 			children = (
 				5A63FFCB2F44E19C00885BD6 /* Chicane */,
+				C81EE3EE0AD225B71EF4F6B7 /* ChicaneWidgetExtension */,
+				7C705D71E895B24DA8A9F951 /* Seed */,
+				C90D2F2C0A4EC266519CDBA5 /* Assets.xcassets */,
 				5A63FFDD2F44E19C00885BD6 /* ChicaneTests */,
 				5A63FFE72F44E19C00885BD6 /* ChicaneUITests */,
 				5A63FFCA2F44E19C00885BD6 /* Products */,
@@ -84,6 +131,7 @@
 			isa = PBXGroup;
 			children = (
 				5A63FFC92F44E19C00885BD6 /* Chicane.app */,
+				4356AF293F252FB1FEEC708E /* ChicaneWidgetExtension.appex */,
 				5A63FFDA2F44E19C00885BD6 /* ChicaneTests.xctest */,
 				5A63FFE42F44E19C00885BD6 /* ChicaneUITests.xctest */,
 			);
@@ -100,10 +148,12 @@
 				5A63FFC52F44E19C00885BD6 /* Sources */,
 				5A63FFC62F44E19C00885BD6 /* Frameworks */,
 				5A63FFC72F44E19C00885BD6 /* Resources */,
+				F795B769A32A49F70EE0FAF2 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B84950E61F537562BCB1D9ED /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				5A63FFCB2F44E19C00885BD6 /* Chicane */,
@@ -114,6 +164,29 @@
 			productName = Chicane;
 			productReference = 5A63FFC92F44E19C00885BD6 /* Chicane.app */;
 			productType = "com.apple.product-type.application";
+		};
+		6B7177468656B5BC89FE6314 /* ChicaneWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DE032149C0AFDE0667F2BA6D /* Build configuration list for PBXNativeTarget "ChicaneWidgetExtension" */;
+			buildPhases = (
+				3848B360CA2328BCA474F9F2 /* Sources */,
+				D36DFF9C28501AF55A7EDCB7 /* Frameworks */,
+				D66A7D0552A6199C2CAEE379 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C81EE3EE0AD225B71EF4F6B7 /* ChicaneWidgetExtension */,
+				7C705D71E895B24DA8A9F951 /* Seed */,
+			);
+			name = ChicaneWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = ChicaneWidgetExtension;
+			productReference = 4356AF293F252FB1FEEC708E /* ChicaneWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		5A63FFD92F44E19C00885BD6 /* ChicaneTests */ = {
 			isa = PBXNativeTarget;
@@ -170,6 +243,10 @@
 				BuildIndependentTargetsInParallel = 1;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
+					6B7177468656B5BC89FE6314 = {
+						CreatedOnToolsVersion = 16.3;
+						DevelopmentTeam = H7LG8SK72M;
+					};
 					5A63FFC82F44E19C00885BD6 = {
 						CreatedOnToolsVersion = 16.3;
 						DevelopmentTeam = H7LG8SK72M;
@@ -198,6 +275,7 @@
 			projectRoot = "";
 			targets = (
 				5A63FFC82F44E19C00885BD6 /* Chicane */,
+				6B7177468656B5BC89FE6314 /* ChicaneWidgetExtension */,
 				5A63FFD92F44E19C00885BD6 /* ChicaneTests */,
 				5A63FFE32F44E19C00885BD6 /* ChicaneUITests */,
 			);
@@ -205,6 +283,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		D66A7D0552A6199C2CAEE379 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0814E58AE2A2162C25AA7C96 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5A63FFC72F44E19C00885BD6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -229,6 +315,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		3848B360CA2328BCA474F9F2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5A63FFC52F44E19C00885BD6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -253,6 +346,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		B84950E61F537562BCB1D9ED /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6B7177468656B5BC89FE6314 /* ChicaneWidgetExtension */;
+			targetProxy = 734731CDEAC91C450C223E4D /* PBXContainerItemProxy */;
+		};
 		5A63FFDC2F44E19C00885BD6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 5A63FFC82F44E19C00885BD6 /* Chicane */;
@@ -266,6 +364,87 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		5000FB524D68D1C2AEB95833 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = H7LG8SK72M;
+				ENABLE_APP_INTENTS_METADATA_GENERATION = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ChicaneWidgetExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dn.thepodium.ChicaneWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B3146B38F200CC4593DDF05B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = H7LG8SK72M;
+				ENABLE_APP_INTENTS_METADATA_GENERATION = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ChicaneWidgetExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dn.thepodium.ChicaneWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		5A63FFC22F44E19C00885BD6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -368,6 +547,7 @@
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_ENTITLEMENTS = Chicane/Chicane.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = H7LG8SK72M;
@@ -421,6 +601,7 @@
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_ENTITLEMENTS = Chicane/Chicane.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = H7LG8SK72M;
@@ -592,6 +773,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		DE032149C0AFDE0667F2BA6D /* Build configuration list for PBXNativeTarget "ChicaneWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5000FB524D68D1C2AEB95833 /* Debug */,
+				B3146B38F200CC4593DDF05B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		5A63FFC42F44E19C00885BD6 /* Build configuration list for PBXProject "Chicane" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
