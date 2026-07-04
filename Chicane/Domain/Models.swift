@@ -537,6 +537,8 @@ extension DateFormatter {
 }
 
 extension RaceEvent {
+    private static let currentRaceResultHoldWindow: TimeInterval = 5 * 24 * 60 * 60
+
     static func nextDisplayEvent(
         in events: [RaceEvent],
         results: [RaceResult],
@@ -547,6 +549,7 @@ extension RaceEvent {
 
         if
             let latestStartedEvent = sortedEvents.last(where: { $0.raceDate <= date }),
+            date.timeIntervalSince(latestStartedEvent.raceDate) <= currentRaceResultHoldWindow,
             !resultKeys.contains(EventResultKey(event: latestStartedEvent))
         {
             return latestStartedEvent

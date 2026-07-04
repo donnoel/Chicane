@@ -263,6 +263,7 @@ private enum WidgetStyle {
 private enum WidgetCalendarStore {
     private static let appGroupID = "group.dn.thepodium"
     private static let resultKeysKey = "race_weekend_widget_result_keys_v1"
+    private static let currentRaceResultHoldWindow: TimeInterval = 5 * 24 * 60 * 60
 
     static func nextEvent(at date: Date) -> WidgetRaceEvent {
         let events = loadEvents()
@@ -273,6 +274,7 @@ private enum WidgetCalendarStore {
 
         if
             let latestStartedEvent = sortedEvents.last(where: { $0.raceDate <= date }),
+            date.timeIntervalSince(latestStartedEvent.raceDate) <= currentRaceResultHoldWindow,
             !resultKeys.contains(resultKey(for: latestStartedEvent))
         {
             return latestStartedEvent

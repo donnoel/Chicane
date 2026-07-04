@@ -100,10 +100,41 @@ final class RaceEventDisplaySelectionTests: XCTestCase {
         XCTAssertEqual(selected?.id, silverstone.id)
     }
 
-    private func event(id: String, round: Int, title: String, raceDate: Date) -> RaceEvent {
+    func testNextDisplayEventUsesUpcomingRaceWhenPastRaceIsStaleWithoutResult() {
+        let dutchGP = event(
+            id: "mgp-2026-netherlands",
+            series: .motoGP,
+            round: 11,
+            title: "Dutch GP",
+            raceDate: date("2026-06-28T12:00:00Z")
+        )
+        let silverstone = event(
+            id: "f1-2026-great-britain",
+            series: .formula1,
+            round: 11,
+            title: "British Grand Prix",
+            raceDate: date("2026-07-05T12:00:00Z")
+        )
+
+        let selected = RaceEvent.nextDisplayEvent(
+            in: [dutchGP, silverstone],
+            results: [],
+            at: date("2026-07-04T21:48:00Z")
+        )
+
+        XCTAssertEqual(selected?.id, silverstone.id)
+    }
+
+    private func event(
+        id: String,
+        series: RaceSeries = .formula1,
+        round: Int,
+        title: String,
+        raceDate: Date
+    ) -> RaceEvent {
         RaceEvent(
             id: id,
-            series: .formula1,
+            series: series,
             season: 2026,
             round: round,
             title: title,
