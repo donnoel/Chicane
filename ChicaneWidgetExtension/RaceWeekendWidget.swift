@@ -401,7 +401,7 @@ struct WidgetRaceEvent: Decodable {
         id: "placeholder",
         series: .formula1,
         season: 2026,
-        round: 12,
+        round: 9,
         title: "Pirelli British Grand Prix",
         circuit: "Silverstone",
         raceDate: Date(timeIntervalSince1970: 1_783_253_600)

@@ -28,28 +28,10 @@
       "raceDate": "2026-03-29T12:00:00Z"
     },
     {
-      "id": "f1-2026-bahrain",
-      "series": "formula1",
-      "season": 2026,
-      "round": 4,
-      "title": "Bahrain Grand Prix",
-      "circuit": "Sakhir",
-      "raceDate": "2026-04-12T12:00:00Z"
-    },
-    {
-      "id": "f1-2026-saudi-arabia",
-      "series": "formula1",
-      "season": 2026,
-      "round": 5,
-      "title": "Saudi Arabian Grand Prix",
-      "circuit": "Jeddah",
-      "raceDate": "2026-04-19T12:00:00Z"
-    },
-    {
       "id": "f1-2026-miami",
       "series": "formula1",
       "season": 2026,
-      "round": 6,
+      "round": 4,
       "title": "Miami Grand Prix",
       "circuit": "Miami",
       "raceDate": "2026-05-03T12:00:00Z"
@@ -58,7 +40,7 @@
       "id": "f1-2026-canada",
       "series": "formula1",
       "season": 2026,
-      "round": 7,
+      "round": 5,
       "title": "Canadian Grand Prix",
       "circuit": "Montreal",
       "raceDate": "2026-05-24T12:00:00Z"
@@ -67,7 +49,7 @@
       "id": "f1-2026-monaco",
       "series": "formula1",
       "season": 2026,
-      "round": 8,
+      "round": 6,
       "title": "Monaco Grand Prix",
       "circuit": "Monte Carlo",
       "raceDate": "2026-06-07T12:00:00Z"
@@ -76,7 +58,7 @@
       "id": "f1-2026-barcelona-catalunya",
       "series": "formula1",
       "season": 2026,
-      "round": 9,
+      "round": 7,
       "title": "Barcelona-Catalunya Grand Prix",
       "circuit": "Circuit de Barcelona-Catalunya",
       "raceDate": "2026-06-14T12:00:00Z"
@@ -85,7 +67,7 @@
       "id": "f1-2026-austria",
       "series": "formula1",
       "season": 2026,
-      "round": 10,
+      "round": 8,
       "title": "Austrian Grand Prix",
       "circuit": "Spielberg",
       "raceDate": "2026-06-28T12:00:00Z"
@@ -94,7 +76,7 @@
       "id": "f1-2026-great-britain",
       "series": "formula1",
       "season": 2026,
-      "round": 11,
+      "round": 9,
       "title": "British Grand Prix",
       "circuit": "Silverstone",
       "raceDate": "2026-07-05T12:00:00Z"
@@ -103,7 +85,7 @@
       "id": "f1-2026-belgium",
       "series": "formula1",
       "season": 2026,
-      "round": 12,
+      "round": 10,
       "title": "Belgian Grand Prix",
       "circuit": "Spa-Francorchamps",
       "raceDate": "2026-07-19T12:00:00Z"
@@ -112,7 +94,7 @@
       "id": "f1-2026-hungary",
       "series": "formula1",
       "season": 2026,
-      "round": 13,
+      "round": 11,
       "title": "Hungarian Grand Prix",
       "circuit": "Hungaroring",
       "raceDate": "2026-07-26T12:00:00Z"
@@ -121,7 +103,7 @@
       "id": "f1-2026-netherlands",
       "series": "formula1",
       "season": 2026,
-      "round": 14,
+      "round": 12,
       "title": "Dutch Grand Prix",
       "circuit": "Zandvoort",
       "raceDate": "2026-08-23T12:00:00Z"
@@ -130,7 +112,7 @@
       "id": "f1-2026-italy",
       "series": "formula1",
       "season": 2026,
-      "round": 15,
+      "round": 13,
       "title": "Italian Grand Prix",
       "circuit": "Monza",
       "raceDate": "2026-09-06T12:00:00Z"
@@ -139,7 +121,7 @@
       "id": "f1-2026-spain",
       "series": "formula1",
       "season": 2026,
-      "round": 16,
+      "round": 14,
       "title": "Spanish Grand Prix",
       "circuit": "Madrid",
       "raceDate": "2026-09-13T12:00:00Z"
@@ -148,7 +130,7 @@
       "id": "f1-2026-azerbaijan",
       "series": "formula1",
       "season": 2026,
-      "round": 17,
+      "round": 15,
       "title": "Azerbaijan Grand Prix",
       "circuit": "Baku",
       "raceDate": "2026-09-27T12:00:00Z"
@@ -157,7 +139,7 @@
       "id": "f1-2026-singapore",
       "series": "formula1",
       "season": 2026,
-      "round": 18,
+      "round": 16,
       "title": "Singapore Grand Prix",
       "circuit": "Marina Bay",
       "raceDate": "2026-10-11T12:00:00Z"
@@ -166,7 +148,7 @@
       "id": "f1-2026-usa",
       "series": "formula1",
       "season": 2026,
-      "round": 19,
+      "round": 17,
       "title": "United States Grand Prix",
       "circuit": "Austin",
       "raceDate": "2026-10-25T12:00:00Z"
@@ -175,7 +157,7 @@
       "id": "f1-2026-mexico-city",
       "series": "formula1",
       "season": 2026,
-      "round": 20,
+      "round": 18,
       "title": "Mexico City Grand Prix",
       "circuit": "Mexico City",
       "raceDate": "2026-11-01T12:00:00Z"
@@ -184,7 +166,7 @@
       "id": "f1-2026-sao-paulo",
       "series": "formula1",
       "season": 2026,
-      "round": 21,
+      "round": 19,
       "title": "Sao Paulo Grand Prix",
       "circuit": "Interlagos",
       "raceDate": "2026-11-08T12:00:00Z"
@@ -193,7 +175,7 @@
       "id": "f1-2026-las-vegas",
       "series": "formula1",
       "season": 2026,
-      "round": 22,
+      "round": 20,
       "title": "Las Vegas Grand Prix",
       "circuit": "Las Vegas Strip",
       "raceDate": "2026-11-21T12:00:00Z"
@@ -202,7 +184,7 @@
       "id": "f1-2026-qatar",
       "series": "formula1",
       "season": 2026,
-      "round": 23,
+      "round": 21,
       "title": "Qatar Grand Prix",
       "circuit": "Lusail",
       "raceDate": "2026-11-29T12:00:00Z"
@@ -211,7 +193,7 @@
       "id": "f1-2026-abu-dhabi",
       "series": "formula1",
       "season": 2026,
-      "round": 24,
+      "round": 22,
       "title": "Abu Dhabi Grand Prix",
       "circuit": "Yas Marina",
       "raceDate": "2026-12-06T12:00:00Z"
@@ -245,19 +227,10 @@
       "raceDate": "2026-03-29T12:00:00Z"
     },
     {
-      "id": "mgp-2026-qatar",
-      "series": "motoGP",
-      "season": 2026,
-      "round": 4,
-      "title": "Qatar GP",
-      "circuit": "Lusail",
-      "raceDate": "2026-04-12T12:00:00Z"
-    },
-    {
       "id": "mgp-2026-spain",
       "series": "motoGP",
       "season": 2026,
-      "round": 5,
+      "round": 4,
       "title": "Spanish GP",
       "circuit": "Jerez",
       "raceDate": "2026-04-26T12:00:00Z"
@@ -266,7 +239,7 @@
       "id": "mgp-2026-france",
       "series": "motoGP",
       "season": 2026,
-      "round": 6,
+      "round": 5,
       "title": "French GP",
       "circuit": "Le Mans",
       "raceDate": "2026-05-10T12:00:00Z"
@@ -275,7 +248,7 @@
       "id": "mgp-2026-catalan",
       "series": "motoGP",
       "season": 2026,
-      "round": 7,
+      "round": 6,
       "title": "Catalan GP",
       "circuit": "Circuit de Barcelona-Catalunya",
       "raceDate": "2026-05-17T12:00:00Z"
@@ -284,7 +257,7 @@
       "id": "mgp-2026-italy",
       "series": "motoGP",
       "season": 2026,
-      "round": 8,
+      "round": 7,
       "title": "Italian GP",
       "circuit": "Mugello",
       "raceDate": "2026-05-31T12:00:00Z"
@@ -293,7 +266,7 @@
       "id": "mgp-2026-hungary",
       "series": "motoGP",
       "season": 2026,
-      "round": 9,
+      "round": 8,
       "title": "Hungary GP",
       "circuit": "Balaton Park",
       "raceDate": "2026-06-07T12:00:00Z"
@@ -302,7 +275,7 @@
       "id": "mgp-2026-czech",
       "series": "motoGP",
       "season": 2026,
-      "round": 10,
+      "round": 9,
       "title": "Czech GP",
       "circuit": "Brno",
       "raceDate": "2026-06-21T12:00:00Z"
@@ -311,7 +284,7 @@
       "id": "mgp-2026-netherlands",
       "series": "motoGP",
       "season": 2026,
-      "round": 11,
+      "round": 10,
       "title": "Dutch GP",
       "circuit": "Assen",
       "raceDate": "2026-06-28T12:00:00Z"
@@ -320,7 +293,7 @@
       "id": "mgp-2026-germany",
       "series": "motoGP",
       "season": 2026,
-      "round": 12,
+      "round": 11,
       "title": "German GP",
       "circuit": "Sachsenring",
       "raceDate": "2026-07-12T12:00:00Z"
@@ -329,7 +302,7 @@
       "id": "mgp-2026-great-britain",
       "series": "motoGP",
       "season": 2026,
-      "round": 13,
+      "round": 12,
       "title": "British GP",
       "circuit": "Silverstone",
       "raceDate": "2026-08-09T12:00:00Z"
@@ -338,7 +311,7 @@
       "id": "mgp-2026-aragon",
       "series": "motoGP",
       "season": 2026,
-      "round": 14,
+      "round": 13,
       "title": "Aragon GP",
       "circuit": "MotorLand Aragon",
       "raceDate": "2026-08-30T12:00:00Z"
@@ -347,7 +320,7 @@
       "id": "mgp-2026-san-marino",
       "series": "motoGP",
       "season": 2026,
-      "round": 15,
+      "round": 14,
       "title": "San Marino GP",
       "circuit": "Misano",
       "raceDate": "2026-09-13T12:00:00Z"
@@ -356,19 +329,73 @@
       "id": "mgp-2026-austria",
       "series": "motoGP",
       "season": 2026,
-      "round": 16,
+      "round": 15,
       "title": "Austrian GP",
       "circuit": "Spielberg",
       "raceDate": "2026-09-20T12:00:00Z"
     },
     {
-      "id": "mgp-2026-valencia",
+      "id": "mgp-2026-japan",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 16,
+      "title": "Japanese GP",
+      "circuit": "Motegi",
+      "raceDate": "2026-10-04T12:00:00Z"
+    },
+    {
+      "id": "mgp-2026-indonesia",
       "series": "motoGP",
       "season": 2026,
       "round": 17,
+      "title": "Indonesian GP",
+      "circuit": "Mandalika",
+      "raceDate": "2026-10-11T12:00:00Z"
+    },
+    {
+      "id": "mgp-2026-australia",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 18,
+      "title": "Australian GP",
+      "circuit": "Phillip Island",
+      "raceDate": "2026-10-25T12:00:00Z"
+    },
+    {
+      "id": "mgp-2026-malaysia",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 19,
+      "title": "Malaysian GP",
+      "circuit": "Sepang",
+      "raceDate": "2026-11-01T12:00:00Z"
+    },
+    {
+      "id": "mgp-2026-qatar",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 20,
+      "title": "Qatar GP",
+      "circuit": "Lusail",
+      "raceDate": "2026-11-08T12:00:00Z"
+    },
+    {
+      "id": "mgp-2026-portugal",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 21,
+      "title": "Portuguese GP",
+      "circuit": "Algarve",
+      "raceDate": "2026-11-22T12:00:00Z"
+    },
+    {
+      "id": "mgp-2026-valencia",
+      "series": "motoGP",
+      "season": 2026,
+      "round": 22,
       "title": "Valencian GP",
       "circuit": "Ricardo Tormo",
-      "raceDate": "2026-10-18T12:00:00Z"
+      "raceDate": "2026-11-29T12:00:00Z"
     }
   ]
 }

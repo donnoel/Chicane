@@ -5,15 +5,15 @@ final class RaceEventDisplaySelectionTests: XCTestCase {
     func testNextDisplayEventHoldsLatestStartedRaceUntilResultExists() {
         let silverstone = event(
             id: "f1-2026-great-britain",
-            round: 11,
+            round: 9,
             title: "British Grand Prix",
             raceDate: date("2026-07-05T12:00:00Z")
         )
         let spa = event(
             id: "f1-2026-belgium",
-            round: 12,
+            round: 10,
             title: "Belgian Grand Prix",
-            raceDate: date("2026-07-26T13:00:00Z")
+            raceDate: date("2026-07-19T13:00:00Z")
         )
 
         let selected = RaceEvent.nextDisplayEvent(
@@ -28,15 +28,15 @@ final class RaceEventDisplaySelectionTests: XCTestCase {
     func testNextDisplayEventAdvancesAfterLatestStartedRaceHasResult() {
         let silverstone = event(
             id: "f1-2026-great-britain",
-            round: 11,
+            round: 9,
             title: "British Grand Prix",
             raceDate: date("2026-07-05T12:00:00Z")
         )
         let spa = event(
             id: "f1-2026-belgium",
-            round: 12,
+            round: 10,
             title: "Belgian Grand Prix",
-            raceDate: date("2026-07-26T13:00:00Z")
+            raceDate: date("2026-07-19T13:00:00Z")
         )
 
         let selected = RaceEvent.nextDisplayEvent(
@@ -51,21 +51,21 @@ final class RaceEventDisplaySelectionTests: XCTestCase {
     func testNextDisplayEventDoesNotLetOlderMissingResultsBlockProgress() {
         let monaco = event(
             id: "f1-2026-monaco",
-            round: 8,
+            round: 6,
             title: "Monaco Grand Prix",
-            raceDate: date("2026-05-24T13:00:00Z")
+            raceDate: date("2026-06-07T13:00:00Z")
         )
         let silverstone = event(
             id: "f1-2026-great-britain",
-            round: 11,
+            round: 9,
             title: "British Grand Prix",
             raceDate: date("2026-07-05T12:00:00Z")
         )
         let spa = event(
             id: "f1-2026-belgium",
-            round: 12,
+            round: 10,
             title: "Belgian Grand Prix",
-            raceDate: date("2026-07-26T13:00:00Z")
+            raceDate: date("2026-07-19T13:00:00Z")
         )
 
         let selected = RaceEvent.nextDisplayEvent(
@@ -80,15 +80,15 @@ final class RaceEventDisplaySelectionTests: XCTestCase {
     func testNextDisplayEventUsesUpcomingRaceBeforeRaceStart() {
         let silverstone = event(
             id: "f1-2026-great-britain",
-            round: 11,
+            round: 9,
             title: "British Grand Prix",
             raceDate: date("2026-07-05T12:00:00Z")
         )
         let spa = event(
             id: "f1-2026-belgium",
-            round: 12,
+            round: 10,
             title: "Belgian Grand Prix",
-            raceDate: date("2026-07-26T13:00:00Z")
+            raceDate: date("2026-07-19T13:00:00Z")
         )
 
         let selected = RaceEvent.nextDisplayEvent(
@@ -104,14 +104,14 @@ final class RaceEventDisplaySelectionTests: XCTestCase {
         let dutchGP = event(
             id: "mgp-2026-netherlands",
             series: .motoGP,
-            round: 11,
+            round: 10,
             title: "Dutch GP",
             raceDate: date("2026-06-28T12:00:00Z")
         )
         let silverstone = event(
             id: "f1-2026-great-britain",
             series: .formula1,
-            round: 11,
+            round: 9,
             title: "British Grand Prix",
             raceDate: date("2026-07-05T12:00:00Z")
         )
