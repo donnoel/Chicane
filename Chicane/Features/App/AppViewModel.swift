@@ -111,6 +111,7 @@ final class AppViewModel: ObservableObject {
             eventsBySeries[.formula1]  = mergedF1Events
             eventsBySeries[.motoGP]    = mergedMotoGPEvents
             normalizeStoredParticipantIDsForLoadedDrivers()
+            RaceWeekendWidgetSnapshotStore.saveResults(results, events: allEvents())
             await refreshChampionshipLeaders()
             hasLoaded = true
         } catch {
@@ -552,7 +553,7 @@ final class AppViewModel: ObservableObject {
             settings = state.settings
         }
         normalizeStoredParticipantIDsForLoadedDrivers()
-        RaceWeekendWidgetSnapshotStore.saveResults(results)
+        RaceWeekendWidgetSnapshotStore.saveResults(results, events: allEvents())
     }
 
     private func identityResolver(for series: RaceSeries) -> StoredIdentityResolver {

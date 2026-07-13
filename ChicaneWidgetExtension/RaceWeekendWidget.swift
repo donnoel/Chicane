@@ -262,7 +262,7 @@ private enum WidgetStyle {
 
 private enum WidgetCalendarStore {
     private static let appGroupID = "group.dn.thepodium"
-    private static let resultKeysKey = "race_weekend_widget_result_keys_v1"
+    private static let completedEventKeysKey = "race_weekend_widget_completed_event_keys_v2"
     private static let currentRaceResultHoldWindow: TimeInterval = 5 * 24 * 60 * 60
 
     static func nextEvent(at date: Date) -> WidgetRaceEvent {
@@ -270,12 +270,12 @@ private enum WidgetCalendarStore {
         guard !events.isEmpty else { return .placeholder }
 
         let sortedEvents = events.sorted { $0.raceDate < $1.raceDate }
-        let resultKeys = loadResultKeys()
+        let completedEventKeys = loadCompletedEventKeys()
 
         if
             let latestStartedEvent = sortedEvents.last(where: { $0.raceDate <= date }),
             date.timeIntervalSince(latestStartedEvent.raceDate) <= currentRaceResultHoldWindow,
-            !resultKeys.contains(resultKey(for: latestStartedEvent))
+            !completedEventKeys.contains(completedEventKey(for: latestStartedEvent))
         {
             return latestStartedEvent
         }
@@ -306,16 +306,16 @@ private enum WidgetCalendarStore {
         }
     }
 
-    private static func loadResultKeys() -> Set<String> {
+    private static func loadCompletedEventKeys() -> Set<String> {
         guard let defaults = UserDefaults(suiteName: appGroupID) else {
             return []
         }
 
-        return Set(defaults.stringArray(forKey: resultKeysKey) ?? [])
+        return Set(defaults.stringArray(forKey: completedEventKeysKey) ?? [])
     }
 
-    private static func resultKey(for event: WidgetRaceEvent) -> String {
-        "\(event.series.rawValue)|\(event.id)"
+    private static func completedEventKey(for event: WidgetRaceEvent) -> String {
+        "\(event.series.rawValue)|\(event.season)|\(event.round)"
     }
 
     private static func calendarURL() -> URL? {

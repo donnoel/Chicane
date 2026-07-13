@@ -125,6 +125,24 @@ final class RaceEventDisplaySelectionTests: XCTestCase {
         XCTAssertEqual(selected?.id, silverstone.id)
     }
 
+    func testWidgetCompletedEventKeyUsesRaceIdentityInsteadOfLiveEventID() {
+        let germanGP = event(
+            id: "mgp-8b85bb3f-7f47-4e1f-8f6d-83b5d8f6ad73",
+            series: .motoGP,
+            round: 11,
+            title: "German GP",
+            raceDate: date("2026-07-12T12:00:00Z")
+        )
+
+        let keys = RaceWeekendWidgetSnapshotStore.completedEventKeys(
+            results: [result(for: germanGP)],
+            events: [germanGP]
+        )
+
+        XCTAssertEqual(keys, ["motoGP|2026|11"])
+        XCTAssertFalse(keys[0].contains(germanGP.id))
+    }
+
     private func event(
         id: String,
         series: RaceSeries = .formula1,
