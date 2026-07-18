@@ -139,13 +139,17 @@ actor LocalSeasonRepository: SeasonRepository {
 
     func savePlayers(_ players: [Player]) async throws -> PersistedState {
         try await mutateState(kind: .players) { state in
+            let incomingPlayerIDs = Set(players.map(\.id))
+            let removedPlayerIDs = Set(state.players.map(\.id)).subtracting(incomingPlayerIDs)
+            state.removedPlayerIDs.formUnion(removedPlayerIDs)
+            let allRemovedPlayerIDs = state.removedPlayerIDs
             state.players = players
                 .map { player in
                     var copy = player
                     copy.name = copy.name.trimmingCharacters(in: .whitespacesAndNewlines)
                     return copy
                 }
-                .filter { !$0.name.isEmpty }
+                .filter { !$0.name.isEmpty && !allRemovedPlayerIDs.contains($0.id) }
 
             let validPlayerIDs = Set(state.players.map(\.id))
             state.picks = state.picks.filter { validPlayerIDs.contains($0.playerID) }

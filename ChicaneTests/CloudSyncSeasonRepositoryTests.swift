@@ -51,6 +51,7 @@ final class PersistedStateMigrationTests: XCTestCase {
         XCTAssertEqual(normalized.playersUpdatedAt, normalized.updatedAt)
         XCTAssertEqual(normalized.settingsUpdatedAt, normalized.updatedAt)
         XCTAssertNil(normalized.seasonResetAt)
+        XCTAssertTrue(normalized.removedPlayerIDs.isEmpty)
         XCTAssertNil(normalized.settings.leagueCode)
     }
 }
@@ -110,6 +111,47 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
         let remote = await cloudStore.state(for: "ABC123")
         XCTAssertEqual(remote?.players.map(\.name), ["Mom"])
         XCTAssertEqual(remote?.settings.leagueCode, "ABC123")
+    }
+
+    func testRemovedPlayerStaysRemovedAfterStaleDeviceRefresh() async throws {
+        let cloudStore = MemoryLeagueSyncStore()
+        let device1Repo = CloudSyncSeasonRepository(
+            localRepository: LocalSeasonRepository(
+                store: FileStateStore(baseDirectoryURL: tempDir.appendingPathComponent("device1", isDirectory: true))
+            ),
+            cloudStore: cloudStore
+        )
+        let device2Repo = CloudSyncSeasonRepository(
+            localRepository: LocalSeasonRepository(
+                store: FileStateStore(baseDirectoryURL: tempDir.appendingPathComponent("device2", isDirectory: true))
+            ),
+            cloudStore: cloudStore
+        )
+
+        let son = Player(id: UUID(), name: "Son")
+        let bella = Player(id: UUID(), name: "Bella")
+        let mom = Player(id: UUID(), name: "Mom")
+
+        _ = try await device1Repo.savePlayers([son, bella, mom])
+        let createdLeague = try await device1Repo.createLeague()
+        guard let code = createdLeague.settings.leagueCode else {
+            XCTFail("Expected created league code")
+            return
+        }
+        _ = try await device2Repo.joinLeague(code: code)
+
+        let afterRemoval = try await device1Repo.savePlayers([son, mom])
+
+        XCTAssertEqual(Set(afterRemoval.players.map(\.id)), Set([son.id, mom.id]))
+        XCTAssertTrue(afterRemoval.removedPlayerIDs.contains(bella.id))
+
+        let staleDeviceRefresh = try await device2Repo.refreshState()
+        XCTAssertEqual(Set(staleDeviceRefresh.players.map(\.id)), Set([son.id, mom.id]))
+        XCTAssertTrue(staleDeviceRefresh.removedPlayerIDs.contains(bella.id))
+
+        let remote = await cloudStore.state(for: code)
+        XCTAssertEqual(Set(remote?.players.map(\.id) ?? []), Set([son.id, mom.id]))
+        XCTAssertTrue(remote?.removedPlayerIDs.contains(bella.id) ?? false)
     }
 
     func testSaveSettingsMergesPlayerBetsAcrossDevices() async throws {

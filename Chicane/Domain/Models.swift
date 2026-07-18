@@ -317,13 +317,14 @@ struct AppSettings: Codable, Hashable, Sendable {
 struct PersistedState: Codable, Hashable, Sendable {
     // Increment this when the stored data format changes and add a migration
     // case in migratedToCurrentVersion() below.
-    static let currentSchemaVersion = 4
+    static let currentSchemaVersion = 5
 
     var schemaVersion: Int
     var updatedAt: Date
     var playersUpdatedAt: Date
     var settingsUpdatedAt: Date
     var seasonResetAt: Date?
+    var removedPlayerIDs: Set<UUID>
     var players: [Player]
     var picks: [RacePick]
     var results: [RaceResult]
@@ -337,6 +338,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         case playersUpdatedAt
         case settingsUpdatedAt
         case seasonResetAt
+        case removedPlayerIDs
         case players
         case picks
         case results
@@ -351,6 +353,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         playersUpdatedAt: Date,
         settingsUpdatedAt: Date,
         seasonResetAt: Date?,
+        removedPlayerIDs: Set<UUID>,
         players: [Player],
         picks: [RacePick],
         results: [RaceResult],
@@ -363,6 +366,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         self.playersUpdatedAt = playersUpdatedAt
         self.settingsUpdatedAt = settingsUpdatedAt
         self.seasonResetAt = seasonResetAt
+        self.removedPlayerIDs = removedPlayerIDs
         self.players = players
         self.picks = picks
         self.results = results
@@ -379,6 +383,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         playersUpdatedAt: .distantPast,
         settingsUpdatedAt: .distantPast,
         seasonResetAt: nil,
+        removedPlayerIDs: [],
         players: [],
         picks: [],
         results: [],
@@ -394,6 +399,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         playersUpdatedAt = try container.decodeIfPresent(Date.self, forKey: .playersUpdatedAt) ?? .distantPast
         settingsUpdatedAt = try container.decodeIfPresent(Date.self, forKey: .settingsUpdatedAt) ?? .distantPast
         seasonResetAt = try container.decodeIfPresent(Date.self, forKey: .seasonResetAt)
+        removedPlayerIDs = try container.decodeIfPresent(Set<UUID>.self, forKey: .removedPlayerIDs) ?? []
         players = try container.decodeIfPresent([Player].self, forKey: .players) ?? []
         picks = try container.decodeIfPresent([RacePick].self, forKey: .picks) ?? []
         results = try container.decodeIfPresent([RaceResult].self, forKey: .results) ?? []
@@ -414,7 +420,7 @@ struct PersistedState: Codable, Hashable, Sendable {
             copy.name = copy.name.trimmingCharacters(in: .whitespacesAndNewlines)
             return copy
         }
-        .filter { !$0.name.isEmpty }
+        .filter { !$0.name.isEmpty && !state.removedPlayerIDs.contains($0.id) }
 
         let validPlayerIDs = Set(state.players.map(\.id))
         state.picks = state.picks.filter { validPlayerIDs.contains($0.playerID) }
@@ -455,6 +461,9 @@ struct PersistedState: Codable, Hashable, Sendable {
                 state.championPicks = []
                 state.championResults = []
                 state.schemaVersion = 4
+            case 4:
+                state.removedPlayerIDs = []
+                state.schemaVersion = 5
             default:
                 // Unrecognised old version: jump to current to avoid an infinite loop.
                 state.schemaVersion = PersistedState.currentSchemaVersion

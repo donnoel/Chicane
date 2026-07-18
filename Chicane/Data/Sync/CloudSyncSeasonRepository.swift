@@ -283,6 +283,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                 .compactMap { $0 }
                 .max()
         }
+        let removedPlayerIDs = local.removedPlayerIDs.union(remote.removedPlayerIDs)
 
         var merged = PersistedState(
             schemaVersion: PersistedState.currentSchemaVersion,
@@ -290,6 +291,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             playersUpdatedAt: max(local.playersUpdatedAt, remote.playersUpdatedAt),
             settingsUpdatedAt: max(local.settingsUpdatedAt, remote.settingsUpdatedAt),
             seasonResetAt: resetCutoff,
+            removedPlayerIDs: removedPlayerIDs,
             players: mergePlayers(
                 localPlayers: local.players,
                 localPlayersUpdatedAt: local.playersUpdatedAt,
@@ -298,7 +300,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                 localStateUpdatedAt: local.updatedAt,
                 remoteStateUpdatedAt: remote.updatedAt,
                 preferLocalOverride: preference.preferLocalPlayers
-            ),
+            ).filter { !removedPlayerIDs.contains($0.id) },
             picks: mergePicks(
                 local.picks,
                 remote.picks,

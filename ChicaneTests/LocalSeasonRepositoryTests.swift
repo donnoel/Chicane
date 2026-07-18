@@ -457,6 +457,7 @@ final class LocalSeasonRepositoryTests: XCTestCase {
         XCTAssertEqual(state.players.count, 1)
         XCTAssertEqual(state.picks.count, 1)
         XCTAssertEqual(state.picks.first?.playerID, keepPlayer.id)
+        XCTAssertTrue(state.removedPlayerIDs.contains(removePlayer.id))
     }
 
     func testSavePlayersRemovesOrphanedPlayerBets() async throws {
