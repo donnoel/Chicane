@@ -1,0 +1,21 @@
+title: Chicane
+description: Friendly Formula 1 and MotoGP podium picks for iPhone and iPad.
+tagline: Friendly picks. Exact scoring. One shared season.
+project_label: Don Noel / Projects
+status_label: MVP built
+github_url: https://github.com/donnoel/Chicane
+url: https://donnoel.github.io
+baseurl: /Chicane
+lang: en-US
+
+remote_theme: donnoel/projects-theme@v1.0.0
+plugins:
+  - jekyll-remote-theme
+
+exclude:
+  - AGENTS.md
+  - AGENTS.project.md
+  - Chicane.xcodeproj
+  - ChicaneTests
+  - ChicaneUITests
+
