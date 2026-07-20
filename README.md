@@ -199,4 +199,4 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 
 ---
 
-Built by Don Noel with AI collaboration.
+Built with care by Don Noel and Codex collaboration.
