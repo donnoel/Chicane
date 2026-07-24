@@ -74,6 +74,9 @@ struct ResultsView: View {
         .onChange(of: selectedEventID) {
             clearInlineStatus()
         }
+        .onChange(of: viewModel.results) {
+            ensureValidSelection()
+        }
         .onChange(of: inlineResultStatus?.text) { _, _ in
             announceInlineStatusIfNeeded()
         }
@@ -160,7 +163,7 @@ struct ResultsView: View {
                 .buttonStyle(LargeActionButtonStyle())
                 .disabled(isUpdatingResults)
                 .accessibilityLabel("Fetch official results")
-                .accessibilityHint("Fetches the official top three and locks this result")
+                .accessibilityHint("Requires every player's three podium picks, then fetches and locks the official result")
             }
         }
         .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
@@ -424,12 +427,20 @@ struct ResultsView: View {
     }
 
     private func defaultEventID() -> String? {
-        ResultsEventSelection.defaultEvent(in: events)?.id
+        ResultsEventSelection.defaultEvent(in: events, results: viewModel.results)?.id
     }
 
     private func updateResults() async {
         guard let selectedEventID else { return }
         guard !isUpdatingResults else { return }
+        if let message = viewModel.officialResultFetchBlockMessage(
+            series: selectedSeries,
+            eventID: selectedEventID
+        ) {
+            viewModel.showInfo(message)
+            inlineResultStatus = InlineStatus(text: message, style: .info)
+            return
+        }
         isUpdatingResults = true
         defer { isUpdatingResults = false }
 

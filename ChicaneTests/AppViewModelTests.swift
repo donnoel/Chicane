@@ -91,6 +91,61 @@ final class AppViewModelTests: XCTestCase {
         }
     }
 
+    func testUpdateResultFromOfficialSourceRequiresEveryPlayerToHaveSavedPicks() async throws {
+        let event = TestFixtures.event(id: "f1-2026-all-picks-required", series: .formula1)
+        let drivers = [
+            TestFixtures.driver(id: "f1-max", series: .formula1, name: "Max Verstappen", team: "Red Bull"),
+            TestFixtures.driver(id: "f1-lando", series: .formula1, name: "Lando Norris", team: "McLaren"),
+            TestFixtures.driver(id: "f1-charles", series: .formula1, name: "Charles Leclerc", team: "Ferrari")
+        ]
+        let don = Player(id: UUID(), name: "Don")
+        let mom = Player(id: UUID(), name: "Mom")
+        let viewModel = makeViewModel(
+            event: event,
+            drivers: drivers,
+            podiumNames: drivers.map(\.name)
+        )
+
+        await viewModel.reload()
+        try await viewModel.savePlayers([don, mom])
+        try await saveCompletePick(for: don, event: event, drivers: drivers, viewModel: viewModel)
+
+        let expectedMessage = "All players must complete all three podium picks before fetching official results."
+        XCTAssertEqual(
+            viewModel.officialResultFetchBlockMessage(series: .formula1, eventID: event.id),
+            expectedMessage
+        )
+
+        do {
+            try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+            XCTFail("Expected incomplete-player-picks error")
+        } catch let error as AppViewModelError {
+            guard case let .incompletePlayerPicks(message) = error else {
+                return XCTFail("Unexpected AppViewModelError: \(error)")
+            }
+            XCTAssertEqual(message, expectedMessage)
+        }
+        XCTAssertNil(viewModel.result(for: .formula1, eventID: event.id))
+
+        try await saveCompletePick(for: mom, event: event, drivers: drivers, viewModel: viewModel)
+        XCTAssertNil(viewModel.officialResultFetchBlockMessage(series: .formula1, eventID: event.id))
+
+        try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+        XCTAssertNotNil(viewModel.result(for: .formula1, eventID: event.id))
+    }
+
+    func testOfficialResultFetchRequiresAtLeastOnePlayer() async {
+        let event = TestFixtures.event(id: "f1-2026-player-required", series: .formula1)
+        let viewModel = makeViewModel(event: event, drivers: [], podiumNames: [])
+
+        await viewModel.reload()
+
+        XCTAssertEqual(
+            viewModel.officialResultFetchBlockMessage(series: .formula1, eventID: event.id),
+            "Add at least one player and complete their podium picks before fetching official results."
+        )
+    }
+
     func testUpdateResultFromOfficialSourceCanCorrectLockedOfficialResult() async throws {
         let event = TestFixtures.event(id: "f1-2026-correction", series: .formula1)
         let drivers = [
@@ -116,8 +171,12 @@ final class AppViewModelTests: XCTestCase {
         )
 
         await viewModel.reload()
+        let player = Player(id: UUID(), name: "Don")
+        try await viewModel.savePlayers([player])
+        try await saveCompletePick(for: player, event: event, drivers: drivers, viewModel: viewModel)
         try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
 
+        XCTAssertNil(viewModel.officialResultFetchBlockMessage(series: .formula1, eventID: event.id))
         resultRepository.stubbedPodiums[event.id] = [
             drivers[2].name,
             drivers[1].name,
@@ -146,6 +205,9 @@ final class AppViewModelTests: XCTestCase {
         )
 
         await viewModel.reload()
+        let player = Player(id: UUID(), name: "Don")
+        try await viewModel.savePlayers([player])
+        try await saveCompletePick(for: player, event: event, drivers: drivers, viewModel: viewModel)
 
         do {
             try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
@@ -523,6 +585,9 @@ final class AppViewModelTests: XCTestCase {
         )
 
         await viewModel.reload()
+        let player = Player(id: UUID(), name: "Don")
+        try await viewModel.savePlayers([player])
+        try await saveCompletePick(for: player, event: event, drivers: drivers, viewModel: viewModel)
         let initialRequests = await championshipRepository.requestedSeries.count
 
         _ = try await viewModel.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
@@ -847,6 +912,24 @@ final class AppViewModelTests: XCTestCase {
             resultRepository: resultRepository,
             championshipRepository: championshipRepository,
             seasonRepository: resolvedSeasonRepository
+        )
+    }
+
+    private func saveCompletePick(
+        for player: Player,
+        event: RaceEvent,
+        drivers: [Driver],
+        viewModel: AppViewModel
+    ) async throws {
+        try await viewModel.savePick(
+            series: event.series,
+            eventID: event.id,
+            playerID: player.id,
+            draft: PodiumDraft(
+                p1: drivers[0].id,
+                p2: drivers[1].id,
+                p3: drivers[2].id
+            )
         )
     }
 }

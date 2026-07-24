@@ -128,6 +128,19 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(leaderSummary.waitForExistence(timeout: Timeout.medium))
     }
 
+    func testOfficialResultFetchExplainsIncompletePlayerPicks() throws {
+        let app = makeApp()
+        app.launch()
+
+        fetchOfficialResult(in: app)
+
+        XCTAssertTrue(
+            app.staticTexts["All players must complete all three podium picks before fetching official results."]
+                .waitForExistence(timeout: Timeout.medium)
+        )
+        XCTAssertFalse(app.staticTexts["Official result is locked"].exists)
+    }
+
     func testPlayerPickAndResultPersistAfterRelaunch() throws {
         let runID = UUID().uuidString
         let playerName = "Persistent Player \(UUID().uuidString.prefix(8))"

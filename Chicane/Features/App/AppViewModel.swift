@@ -188,6 +188,24 @@ final class AppViewModel: ObservableObject {
         )
     }
 
+    func officialResultFetchBlockMessage(series: RaceSeries, eventID: String) -> String? {
+        guard result(for: series, eventID: eventID) == nil else {
+            return nil
+        }
+        guard !players.isEmpty else {
+            return "Add at least one player and complete their podium picks before fetching official results."
+        }
+
+        let hasMissingPick = players.contains { player in
+            pick(for: series, eventID: eventID, playerID: player.id) == nil
+        }
+        guard hasMissingPick else {
+            return nil
+        }
+
+        return "All players must complete all three podium picks before fetching official results."
+    }
+
     func resultIsLocked(for series: RaceSeries, eventID: String) -> Bool {
         result(for: series, eventID: eventID)?.isLocked ?? false
     }
@@ -283,6 +301,9 @@ final class AppViewModel: ObservableObject {
     ) async throws -> String? {
         guard let event = events(for: series).first(where: { $0.id == eventID }) else {
             throw AppViewModelError.eventNotFound
+        }
+        if let message = officialResultFetchBlockMessage(series: series, eventID: eventID) {
+            throw AppViewModelError.incompletePlayerPicks(message: message)
         }
 
         let officialNames = try await resultRepository.podium(for: event)
@@ -820,6 +841,7 @@ final class AppViewModel: ObservableObject {
 enum AppViewModelError: LocalizedError {
     case pickLocked
     case resultLocked
+    case incompletePlayerPicks(message: String)
     case championPickLocked
     case championResultLocked
     case playerNameEmpty
@@ -833,6 +855,8 @@ enum AppViewModelError: LocalizedError {
             return "Podium picks lock once official results are retrieved."
         case .resultLocked:
             return "Official results are final once retrieved."
+        case let .incompletePlayerPicks(message):
+            return message
         case .championPickLocked:
             return "Champion picks are locked and cannot be changed."
         case .championResultLocked:
