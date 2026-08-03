@@ -8,7 +8,7 @@ url: https://donnoel.github.io
 baseurl: /Chicane
 lang: en-US
 
-remote_theme: donnoel/projects-theme@v1.0.0
+remote_theme: donnoel/projects-theme@v1.0.1
 plugins:
   - jekyll-remote-theme
 
@@ -18,4 +18,3 @@ exclude:
   - Chicane.xcodeproj
   - ChicaneTests
   - ChicaneUITests
-
