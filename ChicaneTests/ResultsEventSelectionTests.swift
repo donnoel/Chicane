@@ -2,6 +2,37 @@ import XCTest
 @testable import Chicane
 
 final class ResultsEventSelectionTests: XCTestCase {
+    func testDefaultEventUsesNearestRaceAcrossSeries() {
+        let now = date("2026-08-09T13:42:00Z")
+        let events = [
+            event(id: "f1-netherlands", raceDate: date("2026-08-23T12:00:00Z")),
+            event(id: "mgp-great-britain", raceDate: date("2026-08-09T12:00:00Z"))
+        ]
+
+        let selected = ResultsEventSelection.defaultEvent(in: events, results: [], now: now)
+
+        XCTAssertEqual(selected?.id, "mgp-great-britain")
+        XCTAssertEqual(selected?.series, .motoGP)
+    }
+
+    func testDefaultEventHonorsAnExplicitSeriesSelection() {
+        let now = date("2026-08-09T13:42:00Z")
+        let events = [
+            event(id: "f1-netherlands", raceDate: date("2026-08-23T12:00:00Z")),
+            event(id: "mgp-great-britain", raceDate: date("2026-08-09T12:00:00Z"))
+        ]
+
+        let selected = ResultsEventSelection.defaultEvent(
+            in: events,
+            results: [],
+            series: .formula1,
+            now: now
+        )
+
+        XCTAssertEqual(selected?.id, "f1-netherlands")
+        XCTAssertEqual(selected?.series, .formula1)
+    }
+
     func testDefaultEventUsesUpcomingWeekendBeforeRaceDay() {
         let now = date("2026-07-24T21:58:00Z")
         let events = [

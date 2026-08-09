@@ -23,6 +23,7 @@ struct ResultsView: View {
     @State private var isUpdatingResults = false
     @State private var hasInitialized = false
     @State private var selectionFollowsDefault = true
+    @State private var defaultSelectionSeries: RaceSeries?
     @State private var inlineResultStatus: InlineStatus?
 
     var body: some View {
@@ -33,7 +34,7 @@ struct ResultsView: View {
                     subtitle: "Fetch locked podiums and event points.",
                     headerSystemImage: "flag.checkered",
                     headerTint: ChicaneTheme.seriesColor(selectedSeries),
-                    selectedSeries: $selectedSeries,
+                    selectedSeries: selectedSeriesBinding,
                     selectedEventID: selectedEventBinding,
                     events: events,
                     eventPickerLabel: "Event result"
@@ -63,12 +64,14 @@ struct ResultsView: View {
             hasInitialized = true
             initializeIfNeeded()
         }
-        .onChange(of: eventIDs) {
+        .onChange(of: allEvents) {
             ensureValidSelection()
+        }
+        .onChange(of: eventIDs) {
             clearInlineStatus()
         }
         .onChange(of: selectedSeries) {
-            initializeSelectionForSeries()
+            initializeDefaultSelection()
             clearInlineStatus()
         }
         .onChange(of: selectedEventID) {
@@ -86,8 +89,22 @@ struct ResultsView: View {
         viewModel.events(for: selectedSeries)
     }
 
+    private var allEvents: [RaceEvent] {
+        viewModel.allEvents()
+    }
+
     private var eventIDs: [String] {
         events.map(\.id)
+    }
+
+    private var selectedSeriesBinding: Binding<RaceSeries> {
+        Binding(
+            get: { selectedSeries },
+            set: { newValue in
+                defaultSelectionSeries = newValue
+                selectedSeries = newValue
+            }
+        )
     }
 
     private var selectedEventBinding: Binding<String?> {
@@ -95,6 +112,7 @@ struct ResultsView: View {
             get: { selectedEventID },
             set: { newValue in
                 selectionFollowsDefault = false
+                defaultSelectionSeries = selectedSeries
                 selectedEventID = newValue
             }
         )
@@ -404,30 +422,44 @@ struct ResultsView: View {
 
     private func initializeIfNeeded() {
         if selectedEventID == nil {
-            initializeSelectionForSeries()
+            initializeDefaultSelection()
         }
         ensureValidSelection()
     }
 
-    private func initializeSelectionForSeries() {
+    private func initializeDefaultSelection() {
         selectionFollowsDefault = true
-        selectedEventID = defaultEventID()
-    }
-
-    private func ensureValidSelection() {
-        guard !events.isEmpty else { return }
-        guard let selectedEventID, eventIDs.contains(selectedEventID) else {
-            initializeSelectionForSeries()
+        guard let defaultEvent = defaultEvent() else {
+            selectedEventID = nil
             return
         }
 
-        if selectionFollowsDefault, selectedEventID != defaultEventID() {
-            initializeSelectionForSeries()
+        selectedSeries = defaultEvent.series
+        selectedEventID = defaultEvent.id
+    }
+
+    private func ensureValidSelection() {
+        guard let defaultEvent = defaultEvent() else {
+            selectedEventID = nil
+            return
+        }
+        guard let selectedEventID, eventIDs.contains(selectedEventID) else {
+            initializeDefaultSelection()
+            return
+        }
+
+        if selectionFollowsDefault,
+           (selectedEventID != defaultEvent.id || selectedSeries != defaultEvent.series) {
+            initializeDefaultSelection()
         }
     }
 
-    private func defaultEventID() -> String? {
-        ResultsEventSelection.defaultEvent(in: events, results: viewModel.results)?.id
+    private func defaultEvent() -> RaceEvent? {
+        ResultsEventSelection.defaultEvent(
+            in: allEvents,
+            results: viewModel.results,
+            series: defaultSelectionSeries
+        )
     }
 
     private func updateResults() async {
