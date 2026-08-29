@@ -276,7 +276,7 @@ struct ScoreboardView: View {
                 }
             }
         }
-        .groupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
+        .tintedGroupedCard(accent: ChicaneTheme.scopeColor(selectedScope))
     }
 
     private var devicePlayerSelectionPrompt: some View {

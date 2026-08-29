@@ -305,10 +305,13 @@ struct GroupedCardModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     var accentColor: Color? = nil
+    var tintColor: Color? = nil
 
     func body(content: Content) -> some View {
         let strokeColor: Color = if differentiateWithoutColor {
             Color.primary.opacity(0.42)
+        } else if let tintColor {
+            tintColor.opacity(colorScheme == .dark ? 0.30 : 0.20)
         } else {
             ChicaneTheme.groupedStroke(for: colorScheme)
         }
@@ -321,6 +324,12 @@ struct GroupedCardModifier: ViewModifier {
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(ChicaneTheme.groupedFill(for: colorScheme, reduceTransparency: reduceTransparency))
+                    .overlay {
+                        if let tintColor {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(tintColor.opacity(colorScheme == .dark ? 0.14 : 0.09))
+                        }
+                    }
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -380,6 +389,10 @@ extension View {
 
     func groupedCard(accent: Color) -> some View {
         modifier(GroupedCardModifier(accentColor: accent))
+    }
+
+    func tintedGroupedCard(accent: Color) -> some View {
+        modifier(GroupedCardModifier(accentColor: accent, tintColor: accent))
     }
 
     func sectionCard() -> some View {
