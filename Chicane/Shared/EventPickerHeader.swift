@@ -19,7 +19,7 @@ struct EventPickerHeader: View {
     var eventPickerLabel: String = "Race event"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             PageHeader(
                 title: title,
                 subtitle: subtitle,
@@ -54,10 +54,9 @@ struct EventPickerHeader: View {
                             .strokeBorder(ChicaneTheme.fieldStroke(for: colorScheme), lineWidth: 0.8)
                     )
             )
-            .shadow(color: ChicaneTheme.fieldShadow(for: colorScheme), radius: 4, x: 0, y: 2)
             .accessibilityLabel(eventPickerLabel)
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, 4)
     }
 }
 

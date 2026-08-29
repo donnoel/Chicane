@@ -1,14 +1,14 @@
 import SwiftUI
 
 enum ChicaneTypography {
-    static let screenTitle = interface(.title2, weight: .bold)
+    static let screenTitle = interface(.title2, weight: .semibold)
     static let heroEyebrow = display(.caption, weight: .bold)
     static let heroKicker = display(.title3, weight: .bold)
-    static let heroSubtitle = interface(.headline, weight: .semibold)
+    static let heroSubtitle = interface(.headline, weight: .medium)
 
     static let cardTitle = interface(.headline, weight: .semibold)
-    static let cardTitleStrong = interface(.title3, weight: .bold)
-    static let sectionTitle = interface(.subheadline, weight: .semibold)
+    static let cardTitleStrong = interface(.title3, weight: .semibold)
+    static let sectionTitle = interface(.subheadline, weight: .medium)
 
     static let body = interface(.body)
     static let bodyMedium = interface(.body, weight: .medium)

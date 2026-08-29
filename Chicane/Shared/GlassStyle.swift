@@ -106,79 +106,79 @@ enum ChicaneTheme {
 
     static func groupedFill(for colorScheme: ColorScheme, reduceTransparency: Bool = false) -> Color {
         if reduceTransparency {
-            return Color(uiColor: colorScheme == .dark ? .secondarySystemBackground : .systemBackground)
+            return Color(uiColor: .secondarySystemBackground)
         }
         switch colorScheme {
         case .dark:
-            return Color.white.opacity(0.10)
+            return Color.white.opacity(0.065)
         default:
-            return Color.white.opacity(0.88)
+            return Color.black.opacity(0.035)
         }
     }
 
     static func groupedStroke(for colorScheme: ColorScheme) -> Color {
         switch colorScheme {
         case .dark:
-            return Color.white.opacity(0.10)
+            return Color.white.opacity(0.09)
         default:
-            return Color.black.opacity(0.06)
+            return Color.black.opacity(0.035)
         }
     }
 
     static func sectionFill(for colorScheme: ColorScheme, reduceTransparency: Bool = false) -> AnyShapeStyle {
         if reduceTransparency {
-            return AnyShapeStyle(Color(uiColor: colorScheme == .dark ? .secondarySystemBackground : .systemBackground))
+            return AnyShapeStyle(Color(uiColor: .secondarySystemBackground))
         }
         switch colorScheme {
         case .dark:
-            return AnyShapeStyle(.regularMaterial)
+            return AnyShapeStyle(Color.white.opacity(0.065))
         default:
-            return AnyShapeStyle(Color.white.opacity(0.78))
+            return AnyShapeStyle(Color.black.opacity(0.035))
         }
     }
 
     static func sectionStroke(for colorScheme: ColorScheme) -> Color {
         switch colorScheme {
         case .dark:
-            return Color.white.opacity(0.10)
+            return Color.white.opacity(0.09)
         default:
-            return Color.white.opacity(0.72)
+            return Color.black.opacity(0.035)
         }
     }
 
     static func fieldFill(for colorScheme: ColorScheme) -> AnyShapeStyle {
         switch colorScheme {
         case .dark:
-            return AnyShapeStyle(Color.white.opacity(0.12))
+            return AnyShapeStyle(Color.white.opacity(0.07))
         default:
-            return AnyShapeStyle(Color.white.opacity(0.94))
+            return AnyShapeStyle(Color.black.opacity(0.035))
         }
     }
 
     static func fieldStroke(for colorScheme: ColorScheme) -> Color {
         switch colorScheme {
         case .dark:
-            return Color.white.opacity(0.08)
+            return Color.white.opacity(0.09)
         default:
-            return Color.black.opacity(0.05)
+            return Color.black.opacity(0.04)
         }
     }
 
     static func fieldShadow(for colorScheme: ColorScheme) -> Color {
         switch colorScheme {
         case .dark:
-            return Color.black.opacity(0.10)
+            return Color.clear
         default:
-            return Color.black.opacity(0.06)
+            return Color.clear
         }
     }
 
     static func cardShadow(for colorScheme: ColorScheme) -> Color {
         switch colorScheme {
         case .dark:
-            return Color.black.opacity(0.24)
+            return Color.black.opacity(0.16)
         default:
-            return Color.black.opacity(0.09)
+            return Color.black.opacity(0.035)
         }
     }
 }
@@ -266,107 +266,37 @@ struct LiquidGlassBackground: View {
 }
 
 struct NeutralAppBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
-        ZStack {
-            Color(uiColor: .systemGroupedBackground)
-            Circle()
-                .fill(ChicaneTheme.motoBlue.opacity(colorScheme == .dark ? 0.10 : 0.08))
-                .frame(width: 360, height: 360)
-                .blur(radius: 90)
-                .offset(x: 180, y: -250)
-
-            Circle()
-                .fill(ChicaneTheme.f1Red.opacity(colorScheme == .dark ? 0.08 : 0.05))
-                .frame(width: 300, height: 300)
-                .blur(radius: 90)
-                .offset(x: -180, y: -320)
-
-            LinearGradient(
-                colors: [
-                    Color(uiColor: colorScheme == .dark ? .secondarySystemBackground : .systemBackground).opacity(0.55),
-                    Color.clear,
-                    Color(uiColor: .systemGroupedBackground).opacity(0.35)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .ignoresSafeArea()
+        Color(uiColor: .systemBackground)
+            .ignoresSafeArea()
     }
 }
 
 struct GlassCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
 
-    /// When non-nil the border stroke animates to reflect this colour —
-    /// e.g. the active series (F1 red / MotoGP blue) or scope (amber).
-    /// Pass `nil` (the default) to keep the neutral static border.
+    /// Accent is reserved for the stronger outline shown when the user asks to
+    /// differentiate without color. Content carries the normal series identity.
     var accentColor: Color? = nil
 
-    /// Stroke gradient colours derived from the current accent.
-    /// Expressed as a computed property so SwiftUI diffs them on every render
-    /// and the `.animation` on the overlay handles the interpolation.
-    private var strokeColors: [Color] {
-        if let accent = accentColor {
-            return [
-                accent.opacity(0.45),
-                accent.opacity(0.24),
-                colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.10)
-            ]
-        } else {
-            return [
-                Color.primary.opacity(0.15),
-                ChicaneTheme.motoBlue.opacity(0.10),
-                ChicaneTheme.f1Red.opacity(0.10)
-            ]
-        }
-    }
-
-    private var cardFill: AnyShapeStyle {
-        if reduceTransparency {
-            return AnyShapeStyle(Color(uiColor: colorScheme == .dark ? .secondarySystemBackground : .systemBackground))
-        }
-        return AnyShapeStyle(.thinMaterial)
-    }
-
     func body(content: Content) -> some View {
+        let strokeColor = differentiateWithoutColor
+            ? (accentColor ?? Color.primary).opacity(0.52)
+            : Color.primary.opacity(colorScheme == .dark ? 0.09 : 0.035)
+
         content
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(cardFill)
-                    .overlay {
-                        if !reduceTransparency {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: ChicaneTheme.cardSheen(for: colorScheme),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        }
-                    }
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemBackground))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: strokeColors,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: reduceTransparency ? 1.1 : 0.8
-                    )
-                    // Smooth spring transition whenever accentColor changes.
-                    .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.85), value: accentColor)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(strokeColor, lineWidth: differentiateWithoutColor ? 1.2 : 0.5)
             )
-            .shadow(color: ChicaneTheme.cardShadow(for: colorScheme), radius: 8, x: 0, y: 4)
+            .shadow(color: ChicaneTheme.cardShadow(for: colorScheme), radius: 8, x: 0, y: 3)
     }
 }
 
@@ -380,7 +310,7 @@ struct GroupedCardModifier: ViewModifier {
         let strokeColor: Color = if differentiateWithoutColor {
             Color.primary.opacity(0.42)
         } else {
-            (accentColor ?? ChicaneTheme.groupedStroke(for: colorScheme)).opacity(0.32)
+            ChicaneTheme.groupedStroke(for: colorScheme)
         }
 
         let dashPattern: [CGFloat] = (differentiateWithoutColor && accentColor != nil) ? [6, 3] : []
@@ -408,27 +338,28 @@ struct GroupedCardModifier: ViewModifier {
 struct SectionCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     var accentColor: Color? = nil
 
     func body(content: Content) -> some View {
-        let strokeColor = (accentColor ?? ChicaneTheme.sectionStroke(for: colorScheme))
-            .opacity(accentColor == nil ? 1.0 : 0.34)
+        let strokeColor = differentiateWithoutColor
+            ? (accentColor ?? Color.primary).opacity(0.46)
+            : ChicaneTheme.sectionStroke(for: colorScheme)
 
         content
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(ChicaneTheme.sectionFill(for: colorScheme, reduceTransparency: reduceTransparency))
             )
             .overlay(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .strokeBorder(
                         strokeColor,
-                        lineWidth: reduceTransparency ? 1.1 : 0.8
+                        lineWidth: differentiateWithoutColor || reduceTransparency ? 1.1 : 0.5
                     )
             }
-            .shadow(color: ChicaneTheme.cardShadow(for: colorScheme), radius: 10, x: 0, y: 6)
     }
 }
 
@@ -459,8 +390,7 @@ extension View {
         modifier(SectionCardModifier(accentColor: accent))
     }
 
-    /// Applies the shared light-blue gradient behind any view, hiding the
-    /// system navigation-bar tint so the gradient shows through edge-to-edge.
+    /// Applies the quiet adaptive canvas shared by the app's content screens.
     func chicaneBackground() -> some View {
         self
             .background(NeutralAppBackground())
@@ -473,11 +403,10 @@ extension View {
             .background(NeutralAppBackground())
     }
 
-    /// Premium branded backdrop for hero-forward screens.
+    /// Hero-forward screens keep their branded feature card on the quiet canvas.
     func chicanePremiumBackground(scrollOffset: CGFloat = 0) -> some View {
         self
-            .background(LiquidGlassBackground(scrollOffset: scrollOffset).ignoresSafeArea())
-            .toolbarBackground(.hidden, for: .navigationBar)
+            .background(NeutralAppBackground())
     }
 }
 
@@ -489,15 +418,8 @@ struct LargeActionButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let opacity = configuration.isPressed ? 0.90 : 1.0
-        let fill: AnyShapeStyle = if let tint {
-            AnyShapeStyle(tint.opacity(opacity))
-        } else {
-            AnyShapeStyle(LinearGradient(
-                colors: [ChicaneTheme.f1Red.opacity(0.90 * opacity), ChicaneTheme.motoBlue.opacity(0.90 * opacity)],
-                startPoint: .leading,
-                endPoint: .trailing
-            ))
-        }
+        let base = tint ?? .accentColor
+        let fill = base.opacity(opacity)
 
         return configuration.label
             .font(ChicaneTypography.button)
@@ -509,7 +431,6 @@ struct LargeActionButtonStyle: ButtonStyle {
             )
             .foregroundStyle(.white)
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.98 : 1))
-            .shadow(color: (tint ?? ChicaneTheme.motoBlue).opacity(0.18), radius: 4, x: 0, y: 2)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
@@ -521,7 +442,7 @@ struct SecondaryActionButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let base = tint ?? .accentColor
-        let backgroundOpacity = configuration.isPressed ? 0.16 : 0.12
+        let backgroundOpacity = configuration.isPressed ? 0.13 : 0.08
 
         return configuration.label
             .font(ChicaneTypography.button)
@@ -531,10 +452,6 @@ struct SecondaryActionButtonStyle: ButtonStyle {
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(base.opacity(backgroundOpacity))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(base.opacity(0.28), lineWidth: 1)
             )
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }

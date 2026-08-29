@@ -10,17 +10,10 @@ struct PageHeader: View {
         HStack(alignment: .top, spacing: 10) {
             if let systemImage {
                 Image(systemName: systemImage)
-                    .font(.headline.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(tint)
-                    .frame(width: 34, height: 34)
-                    .background(
-                        Circle()
-                            .fill(tint.opacity(0.16))
-                    )
-                    .overlay(
-                        Circle()
-                            .strokeBorder(tint.opacity(0.34), lineWidth: 1)
-                    )
+                    .frame(width: 24, height: 24)
+                    .padding(.top, 1)
                     .accessibilityHidden(true)
             }
 
@@ -37,6 +30,5 @@ struct PageHeader: View {
                 }
             }
         }
-        .padding(.leading, systemImage == nil ? 0 : 2)
     }
 }

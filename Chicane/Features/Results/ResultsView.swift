@@ -28,7 +28,7 @@ struct ResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 24) {
                 EventPickerHeader(
                     title: "Official Results",
                     subtitle: "Fetch locked podiums and event points.",
@@ -53,8 +53,9 @@ struct ResultsView: View {
                     .groupedCard()
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
+            .padding(.bottom, 32)
         }
         .navigationTitle("Results")
         .navigationBarTitleDisplayMode(.inline)
@@ -178,7 +179,7 @@ struct ResultsView: View {
                         Text("Fetch Official Results")
                     }
                 }
-                .buttonStyle(LargeActionButtonStyle())
+                .buttonStyle(LargeActionButtonStyle(tint: ChicaneTheme.seriesColor(selectedSeries)))
                 .disabled(isUpdatingResults)
                 .accessibilityLabel("Fetch official results")
                 .accessibilityHint("Requires every player's three podium picks, then fetches and locks the official result")
@@ -188,7 +189,7 @@ struct ResultsView: View {
     }
 
     private var resultsContent: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             resultFeatureCard
             pointsCard
         }

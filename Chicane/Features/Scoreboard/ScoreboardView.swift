@@ -83,9 +83,9 @@ struct ScoreboardView: View {
         let derived = makeDerivedData()
 
         return ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 26) {
                 PageHeader(
-                    title: "Standings",
+                    title: "Season Standings",
                     subtitle: "Season totals, champion picks, and event history.",
                     systemImage: "trophy.fill",
                     tint: ChicaneTheme.scopeColor(selectedScope)
@@ -98,8 +98,9 @@ struct ScoreboardView: View {
                 )
                 scoreboardDetailLayout(history: derived.history)
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 18)
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
+            .padding(.bottom, 32)
         }
     }
 
@@ -117,8 +118,8 @@ struct ScoreboardView: View {
     @ViewBuilder
     private func scoreboardDetailLayout(history: [EventScoreRow]) -> some View {
         if horizontalSizeClass == .regular {
-            HStack(alignment: .top, spacing: 20) {
-                VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 24) {
+                VStack(alignment: .leading, spacing: 22) {
                     seasonChampionPicksCard
                     officialChampionshipCard
                 }
@@ -127,7 +128,7 @@ struct ScoreboardView: View {
                 historyCard(history: history)
             }
         } else {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 22) {
                 seasonChampionPicksCard
                 officialChampionshipCard
                 historyCard(history: history)
