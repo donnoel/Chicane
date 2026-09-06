@@ -149,6 +149,8 @@ final class ChicaneUITests: XCTestCase {
 
         addPlayer(named: playerName, in: app)
         app.tabBars.buttons[Tab.weekend].tap()
+        // Official results require complete picks for every player, including the seeded player.
+        completeWeekendPick(in: app, playerName: "UITest Player")
         completeWeekendPick(in: app, playerName: playerName)
         fetchOfficialResult(in: app)
         XCTAssertTrue(app.staticTexts["Official result is locked"].waitForExistence(timeout: Timeout.medium))
@@ -168,7 +170,7 @@ final class ChicaneUITests: XCTestCase {
 
         app.tabBars.buttons[Tab.standings].tap()
         XCTAssertTrue(app.staticTexts[playerName].waitForExistence(timeout: Timeout.medium))
-        XCTAssertTrue(app.staticTexts["\(playerName) leads with 3"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["It's a tie at 3"].waitForExistence(timeout: Timeout.medium))
     }
 
     func testMainTabJourneyShowsCoreScreens() throws {
