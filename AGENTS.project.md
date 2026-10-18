@@ -73,9 +73,11 @@
 - Unit tests:
   - `xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS Simulator' -only-testing:ChicaneTests test`
 
-## Near-term priorities
-- Add focused UI tests for picks/results lock flow.
-- Add lightweight repository tests for online payload/HTML parsing edge cases.
+## Coverage status and remaining documentation
+
+- The generic lock-flow UI-test task is implemented in `ChicaneUITests/ChicaneUITests.swift`, including locked results, disabled Weekend picks, and champion lock behavior.
+- Parser and repository coverage exists in `ChicaneTests/F1HTMLParserTests.swift`, `OnlineChampionshipRepositoryTests.swift`, `FallbackRepositoryTests.swift`, and `LocalSeasonRepositoryTests.swift`. Cases include malformed/missing HTML fields, date/season parsing, MotoGP payload shapes, fallback behavior, and local persistence. Retire the generic missing-test tasks; add specific gaps only when identified.
+- This October 18, 2026 status correction is based on source inspection, not a new test run or a claim of exhaustive coverage.
 - Expand calendar/driver seed update documentation.
 
 ## Output expectations per patch
