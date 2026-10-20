@@ -10,7 +10,7 @@
 
 ---
 
-## ✨ Overview
+## 🧭 Overview
 
 <a id="what-is-chicane"></a>
 
