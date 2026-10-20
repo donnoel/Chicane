@@ -24,6 +24,7 @@ struct HomeView: View {
     }
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var viewModel: AppViewModel
     @AppStorage(DevicePlayerSelection.storageKey) private var selectedDevicePlayerIDRawValue = ""
     @State private var selectedEventID: String?
@@ -38,9 +39,6 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 18) {
                 if let selectedEvent {
                     hero(for: selectedEvent)
-                    if raceQueue.count > 1 {
-                        weekendQueueCard
-                    }
                     pickFlow(for: selectedEvent)
                     standingsPreview
                     if !playerBetRows.isEmpty {
@@ -177,25 +175,32 @@ struct HomeView: View {
     }
 
     private func hero(for event: RaceEvent) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .center, spacing: 10) {
-                Image(systemName: "flag.checkered.2.crossed")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 42, height: 42)
-                    .background(.white.opacity(0.18), in: Circle())
+        let headingLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+
+        return VStack(alignment: .leading, spacing: 18) {
+            headingLayout {
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: "flag.checkered.2.crossed")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 42, height: 42)
+                        .background(.white.opacity(0.18), in: Circle())
+                        .accessibilityHidden(true)
+                }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Race Weekend")
+                    Text("This weekend")
                         .font(ChicaneTypography.heroEyebrow)
                         .textCase(.uppercase)
                         .foregroundStyle(.white.opacity(0.82))
-                    Text("Next up")
+                    Text(raceQueue.count > 1 ? "Race \(currentQueueIndex + 1) of \(raceQueue.count)" : "Next up")
                         .font(ChicaneTypography.heroKicker)
                         .foregroundStyle(.white)
+                        .accessibilityIdentifier("WeekendRacePosition")
                 }
-
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text(event.series.shortTitle)
                     .font(ChicaneTypography.chip)
@@ -211,15 +216,22 @@ struct HomeView: View {
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.72)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("WeekendRaceTitle")
                 Text(event.circuit)
                     .font(ChicaneTypography.heroSubtitle)
                     .foregroundStyle(.white.opacity(0.84))
             }
 
-            HStack(alignment: .center, spacing: 12) {
-                startTimePill(for: event)
-                Spacer(minLength: 8)
-                pickProgressPill(for: event)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 12) {
+                    startTimePill(for: event).fixedSize()
+                    Spacer(minLength: 8)
+                    pickProgressPill(for: event).fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    startTimePill(for: event)
+                    pickProgressPill(for: event)
+                }
             }
         }
         .padding(22)
@@ -233,76 +245,7 @@ struct HomeView: View {
                 }
         )
         .shadow(color: ChicaneTheme.seriesColor(event.series).opacity(0.24), radius: 18, x: 0, y: 10)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Race weekend. Next up, \(event.accessibilitySummary)")
-    }
-
-    private var weekendQueueCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("This weekend")
-                        .font(ChicaneTypography.cardTitle)
-                    Text("Choose a race, then make your picks.")
-                        .font(ChicaneTypography.subtitle)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text("\(currentQueueIndex + 1) of \(max(raceQueue.count, 1))")
-                    .font(ChicaneTypography.captionBold)
-                    .foregroundStyle(.secondary)
-            }
-
-            VStack(spacing: 10) {
-                ForEach(Array(raceQueue.enumerated()), id: \.element.id) { index, event in
-                    queueRow(event: event, index: index)
-                }
-            }
-        }
-        .groupedCard(accent: selectedEvent.map { ChicaneTheme.seriesColor($0.series) } ?? .accentColor)
-    }
-
-    private func queueRow(event: RaceEvent, index: Int) -> some View {
-        Button {
-            selectedEventID = event.id
-        } label: {
-            HStack(spacing: 12) {
-                Text("\(index + 1)")
-                    .font(ChicaneTypography.captionHeavy)
-                    .foregroundStyle(.white)
-                    .frame(width: 28, height: 28)
-                    .background(ChicaneTheme.seriesColor(event.series), in: Circle())
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(event.title)
-                        .font(ChicaneTypography.subtitleSemibold)
-                        .foregroundStyle(.primary)
-                    Text(queueDateText(for: event))
-                        .font(ChicaneTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 8)
-
-                if allPlayersReady(for: event) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.headline)
-                        .foregroundStyle(ChicaneTheme.seriesColor(event.series))
-                        .accessibilityLabel("Ready")
-                } else if selectedEventID == event.id {
-                    Text("Now")
-                        .font(ChicaneTypography.badgeStrong)
-                        .foregroundStyle(ChicaneTheme.seriesColor(event.series))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(ChicaneTheme.seriesColor(event.series).opacity(0.14), in: Capsule())
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Race \(index + 1), \(event.title)")
-        .accessibilityHint("Selects this race for podium picks")
+        .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder
@@ -657,12 +600,38 @@ struct HomeView: View {
             progressText = "\(readyPlayerCount(for: event))/\(editablePlayers.count) ready"
         }
 
-        return Text(progressText)
-            .font(ChicaneTypography.chip)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 8)
-            .background(.white.opacity(0.16), in: Capsule())
+        return Group {
+            if raceQueue.count > 1 {
+                Button {
+                    selectedEventID = raceQueue[(currentQueueIndex + 1) % raceQueue.count].id
+                } label: {
+                    progressPillLabel(progressText, showsNextRace: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("WeekendRaceSwitcher")
+                .accessibilityLabel("Next race")
+                .accessibilityValue("\(progressText). Race \(currentQueueIndex + 1) of \(raceQueue.count). \(event.series.shortTitle)")
+                .accessibilityHint("Shows the next race this weekend and its podium picks. Returns to the first race after the last.")
+            } else {
+                progressPillLabel(progressText, showsNextRace: false)
+            }
+        }
+    }
+
+    private func progressPillLabel(_ text: String, showsNextRace: Bool) -> some View {
+        HStack(spacing: 6) {
+            Text(text)
+            if showsNextRace {
+                Image(systemName: "chevron.right")
+                    .accessibilityHidden(true)
+            }
+        }
+        .font(ChicaneTypography.chip)
+        .foregroundStyle(.white)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .frame(minHeight: 44)
+        .background(.white.opacity(0.16), in: Capsule())
     }
 
     private func heroGradient(for event: RaceEvent) -> LinearGradient {

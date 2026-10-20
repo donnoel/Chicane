@@ -11,6 +11,8 @@ final class ChicaneUITests: XCTestCase {
     private enum UITestScenario: String {
         case `default` = "default"
         case lockedGates = "locked_gates"
+        case multiRaceWeekend = "multi_race_weekend"
+        case singleRaceWeekend = "single_race_weekend"
     }
 
     private enum Tab {
@@ -65,6 +67,80 @@ final class ChicaneUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Saved automatically"].waitForExistence(timeout: Timeout.medium))
         XCTAssertTrue(app.staticTexts["Ready"].waitForExistence(timeout: Timeout.medium))
+    }
+
+    func testWeekendHeroCyclesRacesInStartOrderAndPreservesSavedPicks() throws {
+        let app = makeApp(scenario: .multiRaceWeekend)
+        app.launch()
+
+        let title = app.staticTexts["WeekendRaceTitle"]
+        let position = app.staticTexts["WeekendRacePosition"]
+        let switcher = app.buttons["WeekendRaceSwitcher"]
+        XCTAssertTrue(switcher.waitForExistence(timeout: Timeout.medium))
+        XCTAssertEqual(title.label, "UI Test MotoGP")
+        XCTAssertEqual(position.label, "Race 1 of 2")
+        XCTAssertTrue((switcher.value as? String)?.contains("0/1 ready") == true)
+        XCTAssertFalse(app.staticTexts["Choose a race, then make your picks."].exists)
+
+        switcher.tap()
+        XCTAssertEqual(title.label, "UI Test Grand Prix")
+        XCTAssertEqual(position.label, "Race 2 of 2")
+        completeWeekendPick(in: app, playerName: "UITest Player")
+        XCTAssertTrue(app.staticTexts["Saved automatically"].waitForExistence(timeout: Timeout.medium))
+
+        for _ in 0..<5 where !switcher.isHittable {
+            app.swipeDown()
+        }
+        XCTAssertTrue(switcher.isHittable)
+        XCTAssertTrue((switcher.value as? String)?.contains("1/1 ready") == true)
+        switcher.tap()
+        XCTAssertEqual(title.label, "UI Test MotoGP")
+        XCTAssertEqual(position.label, "Race 1 of 2")
+        XCTAssertTrue((switcher.value as? String)?.contains("0/1 ready") == true)
+
+        switcher.tap()
+        XCTAssertEqual(title.label, "UI Test Grand Prix")
+        XCTAssertTrue((switcher.value as? String)?.contains("1/1 ready") == true)
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Combined weekend hero"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    func testSingleRaceWeekendShowsReadinessWithoutRaceSwitcher() throws {
+        let app = makeApp(scenario: .singleRaceWeekend)
+        app.launch()
+
+        let title = app.staticTexts["WeekendRaceTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: Timeout.medium))
+        XCTAssertEqual(title.label, "UI Test Grand Prix")
+        XCTAssertEqual(app.staticTexts["WeekendRacePosition"].label, "Next up")
+        XCTAssertTrue(app.staticTexts["0/1 ready"].exists)
+        XCTAssertFalse(app.buttons["WeekendRaceSwitcher"].exists)
+        XCTAssertFalse(app.staticTexts["Choose a race, then make your picks."].exists)
+    }
+
+    func testWeekendHeroSwitcherWorksWithLargestAccessibilityText() throws {
+        let app = makeApp(scenario: .multiRaceWeekend)
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+
+        let title = app.staticTexts["WeekendRaceTitle"]
+        let switcher = app.buttons["WeekendRaceSwitcher"]
+        XCTAssertTrue(title.waitForExistence(timeout: Timeout.medium))
+        XCTAssertEqual(title.label, "UI Test MotoGP")
+        scrollToElementIfNeeded(switcher, in: app)
+        XCTAssertTrue(switcher.isHittable)
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Weekend hero with accessibility text"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+
+        switcher.tap()
+        XCTAssertEqual(title.label, "UI Test Grand Prix")
+        XCTAssertEqual(app.staticTexts["WeekendRacePosition"].label, "Race 2 of 2")
     }
 
     func testAllRacesChampionPickSavesAndShowsLockedState() throws {
@@ -350,8 +426,10 @@ final class ChicaneUITests: XCTestCase {
     }
 
     private func completeWeekendPick(in app: XCUIApplication, playerName: String) {
-        XCTAssertTrue(app.tabBars.buttons[Tab.weekend].waitForExistence(timeout: Timeout.medium))
-        app.tabBars.buttons[Tab.weekend].tap()
+        if !app.staticTexts["Make your picks"].exists {
+            XCTAssertTrue(app.tabBars.buttons[Tab.weekend].waitForExistence(timeout: Timeout.medium))
+            app.tabBars.buttons[Tab.weekend].tap()
+        }
 
         let playerPicker = app.descendants(matching: .any)["\(playerName) picks"]
         if playerPicker.waitForExistence(timeout: Timeout.short), playerPicker.isHittable {
@@ -484,6 +562,7 @@ final class ChicaneUITests: XCTestCase {
     }
 
     private func recoverWeekendTabIfNeeded(in app: XCUIApplication) {
+        guard !app.staticTexts["Make your picks"].exists else { return }
         let weekendTab = app.tabBars.buttons[Tab.weekend]
         guard weekendTab.waitForExistence(timeout: Timeout.short), !weekendTab.isSelected else {
             return

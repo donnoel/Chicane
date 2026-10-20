@@ -52,7 +52,7 @@ struct ChicaneApp: App {
             )
             return AppViewModel(
                 driverRepository: UITestDriverRepository(),
-                calendarRepository: UITestCalendarRepository(),
+                calendarRepository: UITestCalendarRepository(scenario: scenario),
                 resultRepository: UITestResultRepository(),
                 championshipRepository: UITestChampionshipRepository(),
                 seasonRepository: CloudSyncSeasonRepository(localRepository: localSeasonRepository)
@@ -116,7 +116,7 @@ struct ChicaneApp: App {
             var state = PersistedState.default
             state.players = [Player(id: UITestFixtures.playerID, name: "UITest Player")]
             switch scenario {
-            case .default:
+            case .default, .multiRaceWeekend, .singleRaceWeekend:
                 break
             case .lockedGates:
                 state.picks = [
@@ -172,6 +172,8 @@ struct ChicaneApp: App {
 private enum UITestScenario: String {
     case `default` = "default"
     case lockedGates = "locked_gates"
+    case multiRaceWeekend = "multi_race_weekend"
+    case singleRaceWeekend = "single_race_weekend"
 }
 
 private enum UITestFixtures {
@@ -202,6 +204,8 @@ private struct UITestDriverRepository: DriverRepository {
 }
 
 private struct UITestCalendarRepository: CalendarRepository {
+    let scenario: UITestScenario
+
     func events(for series: RaceSeries) async throws -> [RaceEvent] {
         let now = Date()
         switch series {
@@ -219,6 +223,15 @@ private struct UITestCalendarRepository: CalendarRepository {
                 )
             ]
         case .motoGP:
+            let daysUntilRace: Double
+            switch scenario {
+            case .multiRaceWeekend:
+                daysUntilRace = 6
+            case .singleRaceWeekend:
+                daysUntilRace = 14
+            case .default, .lockedGates:
+                daysUntilRace = 10
+            }
             return [
                 RaceEvent(
                     id: "ui-mgp-r1",
@@ -227,7 +240,7 @@ private struct UITestCalendarRepository: CalendarRepository {
                     round: 1,
                     title: "UI Test MotoGP",
                     circuit: "Moto Test Circuit",
-                    raceDate: now.addingTimeInterval(10 * 24 * 3600),
+                    raceDate: now.addingTimeInterval(daysUntilRace * 24 * 3600),
                     trackTimeZoneID: "Europe/Rome"
                 )
             ]
