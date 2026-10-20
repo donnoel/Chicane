@@ -1037,6 +1037,11 @@ private actor ManualSyncPermissionFailureSeasonRepository: SeasonRepository {
         state
     }
 
+    func updateSeasonArchives(events: [RaceEvent], participants: [Driver]) async throws -> PersistedState {
+        state.seasonArchives = SeasonArchiveService().updatedArchives(state: state, events: events, participants: participants)
+        return state
+    }
+
     func refreshState() async throws -> PersistedState {
         let nested = NSError(
             domain: CKError.errorDomain,

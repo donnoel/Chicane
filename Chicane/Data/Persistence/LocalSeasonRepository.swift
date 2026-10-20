@@ -104,6 +104,7 @@ actor LocalSeasonRepository: SeasonRepository {
         case results
         case championPicks
         case championResults
+        case archives
         case reset
     }
 
@@ -252,6 +253,13 @@ actor LocalSeasonRepository: SeasonRepository {
         }
     }
 
+    func updateSeasonArchives(events: [RaceEvent], participants: [Driver]) async throws -> PersistedState {
+        let state = try await loadState()
+        let archives = SeasonArchiveService().updatedArchives(state: state, events: events, participants: participants)
+        guard archives != state.seasonArchives else { return state }
+        return try await mutateState(kind: .archives) { $0.seasonArchives = archives }
+    }
+
     func resetSeason() async throws -> PersistedState {
         try await mutateState(kind: .reset) { state in
             state.picks = []
@@ -270,7 +278,10 @@ actor LocalSeasonRepository: SeasonRepository {
     }
 
     func replaceState(_ state: PersistedState) async throws -> PersistedState {
-        let normalized = state.normalized()
+        var replacement = state
+        let previous = try await loadState()
+        replacement.seasonArchives = ArchivedSeason.merged(previous.seasonArchives + state.seasonArchives)
+        let normalized = replacement.normalized()
         try await store.save(normalized)
         cachedState = normalized
         return normalized
@@ -288,7 +299,7 @@ actor LocalSeasonRepository: SeasonRepository {
             state.playersUpdatedAt = mutationDate
         case .settings:
             state.settingsUpdatedAt = mutationDate
-        case .picks, .results, .championPicks, .championResults:
+        case .picks, .results, .championPicks, .championResults, .archives:
             break
         case .reset:
             state.seasonResetAt = mutationDate

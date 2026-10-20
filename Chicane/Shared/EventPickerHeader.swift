@@ -17,6 +17,17 @@ struct EventPickerHeader: View {
     let events: [RaceEvent]
     /// Accessibility label applied to the event picker (e.g. "Race event" or "Event result").
     var eventPickerLabel: String = "Race event"
+    var showsSeasons: Binding<Bool>? = nil
+
+    private var sectionSelection: Binding<String> {
+        Binding(
+            get: { showsSeasons?.wrappedValue == true ? "seasons" : selectedSeries.rawValue },
+            set: { value in
+                showsSeasons?.wrappedValue = value == "seasons"
+                if let series = RaceSeries(rawValue: value) { selectedSeries = series }
+            }
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -27,15 +38,19 @@ struct EventPickerHeader: View {
                 tint: headerTint
             )
 
-            Picker("Series", selection: $selectedSeries) {
+            Picker(showsSeasons == nil ? "Series" : "Results view", selection: sectionSelection) {
                 ForEach(RaceSeries.allCases) { series in
-                    Text(series.title).tag(series)
+                    Text(series.title).tag(series.rawValue)
+                }
+                if showsSeasons != nil {
+                    Text("Seasons").tag("seasons")
                 }
             }
             .pickerStyle(.segmented)
             .tint(ChicaneTheme.motoBlue)
 
-            Picker("Event", selection: $selectedEventID) {
+            if showsSeasons?.wrappedValue != true {
+                Picker("Event", selection: $selectedEventID) {
                 Text("Choose event")
                     .tag(Optional<String>.none)
                 ForEach(events) { event in
@@ -55,6 +70,7 @@ struct EventPickerHeader: View {
                     )
             )
             .accessibilityLabel(eventPickerLabel)
+            }
         }
         .padding(.bottom, 4)
     }

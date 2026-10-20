@@ -13,6 +13,8 @@ final class ChicaneUITests: XCTestCase {
         case lockedGates = "locked_gates"
         case multiRaceWeekend = "multi_race_weekend"
         case singleRaceWeekend = "single_race_weekend"
+        case seasonArchive = "season_archive"
+        case pendingSeasonArchive = "pending_season_archive"
     }
 
     private enum Tab {
@@ -32,6 +34,77 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertFalse(app.tabBars.buttons["Settings"].exists)
         openAllRacesAndManualPicks(in: app)
         XCTAssertTrue(app.buttons["Open Settings"].waitForExistence(timeout: Timeout.medium))
+    }
+
+    func testSeasonsEmptyStateKeepsLiveResultsAvailable() throws {
+        let app = makeApp()
+        app.launch()
+        openSeasons(in: app)
+        XCTAssertTrue(app.otherElements["SeasonArchiveEmptyState"].waitForExistence(timeout: Timeout.medium)
+            || app.staticTexts["Your story starts this season"].exists)
+        app.buttons["MotoGP"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Official Results"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.descendants(matching: .any)["Fetch official results"].exists)
+    }
+
+    func testSeasonReviewShowsWinnerAndPersistsAfterRelaunch() throws {
+        let runID = UUID().uuidString
+        var app = makeApp(scenario: .seasonArchive, runID: runID)
+        app.launch()
+        openSeasonReview(in: app)
+        let recap = app.staticTexts["SeasonReviewRecap"]
+        XCTAssertTrue(recap.waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(recap.label.contains("UITest Player won"))
+        XCTAssertTrue(recap.label.contains("16 points"))
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Season review"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.terminate()
+
+        app = makeApp(scenario: .seasonArchive, runID: runID, preserveState: true)
+        app.launch()
+        openSeasonReview(in: app)
+        XCTAssertTrue(app.staticTexts["SeasonReviewRecap"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.staticTexts["SeasonReviewRecap"].label.contains("16 points"))
+    }
+
+    func testSeasonChampionConfirmationsFinalizePendingReport() throws {
+        let app = makeApp(scenario: .pendingSeasonArchive)
+        app.launch()
+        openSeasonReview(in: app)
+        XCTAssertTrue(app.staticTexts["SeasonReviewRecap"].label.contains("being preserved"))
+        for (series, champion) in [("F1", "Max Verstappen"), ("MotoGP", "Francesco Bagnaia")] {
+            let confirm = app.buttons["Confirm \(series) champion"]
+            scrollToElementIfNeeded(confirm, in: app)
+            XCTAssertTrue(confirm.isHittable)
+            confirm.tap()
+            let selection = app.descendants(matching: .any)["ArchiveChampionSelection"]
+            XCTAssertTrue(selection.waitForExistence(timeout: Timeout.medium))
+            selection.tap()
+            app.descendants(matching: .any)[champion].firstMatch.tap()
+            app.buttons["Confirm champion"].tap()
+            XCTAssertTrue(app.alerts["Confirm season champion?"].waitForExistence(timeout: Timeout.medium))
+            app.alerts["Confirm season champion?"].buttons["Confirm"].tap()
+            XCTAssertTrue(waitUntilGone(app.navigationBars["\(series) champion"]))
+        }
+        XCTAssertTrue(app.staticTexts["SeasonReviewRecap"].label.contains("UITest Player won"))
+    }
+
+    private func openSeasons(in app: XCUIApplication) {
+        let results = app.buttons[Tab.results].firstMatch
+        XCTAssertTrue(results.waitForExistence(timeout: Timeout.medium))
+        results.tap()
+        let seasons = app.buttons["Seasons"].firstMatch
+        XCTAssertTrue(seasons.waitForExistence(timeout: Timeout.medium))
+        seasons.tap()
+    }
+
+    private func openSeasonReview(in app: XCUIApplication) {
+        openSeasons(in: app)
+        let review = app.buttons["SeasonReview-2026"]
+        XCTAssertTrue(review.waitForExistence(timeout: Timeout.medium))
+        review.tap()
     }
 
     func testAddPlayerInSettingsThenWeekendPicksArePlayable() throws {

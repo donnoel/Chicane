@@ -21,6 +21,7 @@
 - Core view models/services:
   - `AppViewModel` (main-actor UI state orchestration)
   - `ScoringService` and `ScoreboardCalculator` (pure logic)
+  - `SeasonArchiveService` (versioned historical scoring and year-end review assembly)
   - `LocalSeasonRepository` + `FileStateStore` (actor-based persistence)
   - `CloudSyncSeasonRepository` + `PublicCloudLeagueStore` (optional iCloud-backed shared league sync)
   - `OnlineDriverRepository` / `OnlineCalendarRepository` (official source fetchers)
@@ -42,6 +43,8 @@
   - Official championship leaders (F1 + MotoGP top 3) refresh from official sources on app reload and after each successful "Fetch Results".
   - Seed data from bundled JSON in `Chicane/Resources/Seed` when online fetch fails.
   - User state persisted to application-support JSON file with atomic writes.
+- Schema 6 adds self-contained season archives and explicit official-result provenance. A fetched official finale creates that series' archive; missing race results or a missing confirmed champion keep it pending. Combined reviews are final only when both series are complete.
+- Archives preserve names, bets, participants, calendars, predictions and results. Active-season resets/player removals must never delete archived identities. Sync unions archive years/series independently of the active reset cutoff and shares only the current league's archives; prior groups/private archives remain local.
 
 ## Concurrency rules (important)
 - Keep SwiftUI/view model state on `@MainActor`.
@@ -54,7 +57,7 @@
 - Scoring is position-exact only (P1/P2/P3 exact matches only, 0-3 points per event).
 - Locked official results must not be manually editable once retrieved; an official-source refresh may correct the same event and keep it locked.
 - Locked season champions must not be editable once entered, and player champion picks must freeze for that series at the same moment.
-- Season reset clears picks/results but preserves players/settings.
+- Season reset clears active picks/results but preserves players/settings and saved season reviews, including incomplete reviews.
 
 ## UX rules
 - Large controls and readable typography by default.

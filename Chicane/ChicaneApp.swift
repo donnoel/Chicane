@@ -118,6 +118,25 @@ struct ChicaneApp: App {
             switch scenario {
             case .default, .multiRaceWeekend, .singleRaceWeekend:
                 break
+            case .seasonArchive, .pendingSeasonArchive:
+                state.players.append(Player(id: UITestFixtures.rivalID, name: "UITest Rival"))
+                state.settings.playerBetTextByPlayerID[UITestFixtures.playerID] = "Winner chooses dinner"
+                for series in RaceSeries.allCases {
+                    let eventID = series == .formula1 ? UITestFixtures.eventID : "ui-mgp-r1"
+                    let ids = series == .formula1
+                        ? [UITestFixtures.driver1ID, UITestFixtures.driver2ID, UITestFixtures.driver3ID]
+                        : ["ui-mgp-bagnaia", "ui-mgp-martin", "ui-mgp-marquez"]
+                    let podium = Podium(p1: ids[0], p2: ids[1], p3: ids[2])
+                    state.results.append(RaceResult(series: series, eventID: eventID, podium: podium, isLocked: true, updatedAt: Date(), isOfficial: true))
+                    for player in state.players {
+                        let pick = player.id == UITestFixtures.playerID ? podium : Podium(p1: ids[0], p2: ids[2], p3: ids[1])
+                        state.picks.append(RacePick(id: UUID(), series: series, eventID: eventID, playerID: player.id, podium: pick, updatedAt: Date()))
+                        state.championPicks.append(SeasonChampionPick(id: UUID(), series: series, playerID: player.id, driverID: ids[player.id == UITestFixtures.playerID ? 0 : 1], updatedAt: Date(), season: 2026))
+                    }
+                    if scenario == .seasonArchive {
+                        state.championResults.append(SeasonChampionResult(series: series, driverID: ids[0], updatedAt: Date(), season: 2026))
+                    }
+                }
             case .lockedGates:
                 state.picks = [
                     RacePick(
@@ -174,10 +193,13 @@ private enum UITestScenario: String {
     case lockedGates = "locked_gates"
     case multiRaceWeekend = "multi_race_weekend"
     case singleRaceWeekend = "single_race_weekend"
+    case seasonArchive = "season_archive"
+    case pendingSeasonArchive = "pending_season_archive"
 }
 
 private enum UITestFixtures {
     static let playerID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+    static let rivalID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
     static let eventID = "ui-f1-r1"
     static let driver1ID = "ui-f1-max"
     static let driver2ID = "ui-f1-lando"
@@ -225,7 +247,7 @@ private struct UITestCalendarRepository: CalendarRepository {
         case .motoGP:
             let daysUntilRace: Double
             switch scenario {
-            case .multiRaceWeekend:
+            case .multiRaceWeekend, .seasonArchive, .pendingSeasonArchive:
                 daysUntilRace = 6
             case .singleRaceWeekend:
                 daysUntilRace = 14

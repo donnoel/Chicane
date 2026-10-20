@@ -10,6 +10,8 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var results: [RaceResult] = []
     @Published private(set) var championPicks: [SeasonChampionPick] = []
     @Published private(set) var championResults: [SeasonChampionResult] = []
+    @Published private(set) var seasonReviews: [SeasonReview] = []
+    private var seasonArchives: [ArchivedSeason] = []
     @Published private(set) var driversBySeries: [RaceSeries: [Driver]] = [:]
     @Published private(set) var eventsBySeries: [RaceSeries: [RaceEvent]] = [:]
     @Published private(set) var championshipLeadersBySeries: [RaceSeries: [ChampionshipLeader]] = [:]
@@ -114,6 +116,7 @@ final class AppViewModel: ObservableObject {
             RaceWeekendWidgetSnapshotStore.saveResults(results, events: allEvents())
             await refreshChampionshipLeaders()
             hasLoaded = true
+            if let warning = try await refreshSeasonArchives() { showError(warning) }
         } catch {
             logger.error("Failed loading app data: \(error.localizedDescription, privacy: .public)")
             showError(error.localizedDescription)
@@ -137,7 +140,10 @@ final class AppViewModel: ObservableObject {
                 ? seasonRepository.refreshState()
                 : seasonRepository.loadState())
             apply(state: state)
-            if showBannerOnSuccess {
+            let archiveWarning = try await refreshSeasonArchives()
+            if let archiveWarning {
+                showError(archiveWarning)
+            } else if showBannerOnSuccess {
                 showInfo("League Synced")
             }
         } catch {
@@ -344,7 +350,8 @@ final class AppViewModel: ObservableObject {
             eventID: eventID,
             podium: podium,
             isLocked: lockResult,
-            updatedAt: Date()
+            updatedAt: Date(),
+            isOfficial: true
         )
         return try await persistResultAndLockPicks(result)
     }
@@ -432,7 +439,8 @@ final class AppViewModel: ObservableObject {
             playerID: playerID,
             driverID: driverID,
             isLocked: isLocked,
-            updatedAt: Date()
+            updatedAt: Date(),
+            season: events(for: series).map(\.season).max()
         )
 
         return try await persistState {
@@ -450,7 +458,8 @@ final class AppViewModel: ObservableObject {
             series: series,
             driverID: driverID,
             isLocked: true,
-            updatedAt: Date()
+            updatedAt: Date(),
+            season: events(for: series).map(\.season).max()
         )
 
         return try await persistState {
@@ -507,9 +516,12 @@ final class AppViewModel: ObservableObject {
 
     @discardableResult
     func resetSeason() async throws -> String? {
-        try await persistState {
+        // Preserve any eligible finale before clearing its active-season data.
+        let archiveWarning = try await refreshSeasonArchives()
+        let resetWarning = try await persistState {
             try await seasonRepository.resetSeason()
         }
+        return resetWarning ?? archiveWarning
     }
 
     @discardableResult
@@ -569,6 +581,10 @@ final class AppViewModel: ObservableObject {
         }
         if championResults != state.championResults {
             championResults = state.championResults
+        }
+        if seasonArchives != state.seasonArchives {
+            seasonArchives = state.seasonArchives
+            seasonReviews = SeasonArchiveService().reviews(from: seasonArchives)
         }
         if settings != state.settings {
             settings = state.settings
@@ -642,20 +658,42 @@ final class AppViewModel: ObservableObject {
     private func persistState(
         _ operation: () async throws -> PersistedState
     ) async throws -> String? {
+        var warnings: [String] = []
         do {
-            let state = try await operation()
-            apply(state: state)
+            apply(state: try await operation())
+        } catch let warning as DeferredCloudSyncWarning {
+            warnings.append(applySyncWarning(warning))
+        }
+        // A report failure must never undo or misreport a saved race result.
+        do {
+            if let warning = try await refreshSeasonArchives(), !warnings.contains(warning) {
+                warnings.append(warning)
+            }
+        } catch {
+            warnings.append("Saved, but the season archive could not be updated. Pull to refresh to retry. \(error.localizedDescription)")
+        }
+        return warnings.isEmpty ? nil : warnings.joined(separator: " ")
+    }
+
+    private func refreshSeasonArchives() async throws -> String? {
+        guard !eventsBySeries.isEmpty else { return nil }
+        do {
+            apply(state: try await seasonRepository.updateSeasonArchives(
+                events: allEvents(),
+                participants: RaceSeries.allCases.flatMap { drivers(for: $0) }
+            ))
             return nil
         } catch let warning as DeferredCloudSyncWarning {
-            apply(state: warning.state)
-            let prefix = warning.errorDescription ?? "Saved locally, but shared league sync failed."
-            let detail = CloudSyncErrorFormatter.describe(warning.underlyingError)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !detail.isEmpty else {
-                return prefix
-            }
-            return "\(prefix) \(detail)"
+            return applySyncWarning(warning)
         }
+    }
+
+    private func applySyncWarning(_ warning: DeferredCloudSyncWarning) -> String {
+        apply(state: warning.state)
+        let prefix = warning.errorDescription ?? "Saved locally, but shared league sync failed."
+        let detail = CloudSyncErrorFormatter.describe(warning.underlyingError)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return detail.isEmpty ? prefix : "\(prefix) \(detail)"
     }
 
     private func refreshChampionshipLeaders() async {

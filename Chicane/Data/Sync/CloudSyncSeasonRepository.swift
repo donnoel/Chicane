@@ -120,6 +120,13 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         )
     }
 
+    func updateSeasonArchives(events: [RaceEvent], participants: [Driver]) async throws -> PersistedState {
+        let before = try await localRepository.loadState()
+        let state = try await localRepository.updateSeasonArchives(events: events, participants: participants)
+        guard state.seasonArchives != before.seasonArchives else { return state }
+        return try await pushIfNeeded(state, preference: .none)
+    }
+
     func resetSeason() async throws -> PersistedState {
         let state = try await localRepository.resetSeason()
         return try await pushIfNeeded(state, preference: MergePreference(preferLocalReset: true))
@@ -135,7 +142,10 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             )
         }
 
-        let sharedState = try await cloudStore.createLeague(from: localState)
+        var seed = localState
+        // Previous groups' and private archives remain on this device.
+        seed.seasonArchives = []
+        let sharedState = try await cloudStore.createLeague(from: seed)
         return try await localRepository.replaceState(sharedState)
     }
 
@@ -146,6 +156,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         }
         var sharedState = try await fetchSharedStateForJoin(code: requestedCode)
         sharedState.settings.leagueCode = requestedCode
+        sharedState.seasonArchives = sharedState.seasonArchives.filter { $0.leagueCode == requestedCode }
         return try await localRepository.replaceState(sharedState)
     }
 
@@ -162,7 +173,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         for attempt in 1 ... Constants.synchronizeAttempts {
             do {
                 guard let remoteState = try await cloudStore.fetchState(for: code) else {
-                    try await cloudStore.pushState(localState, for: code)
+                    try await cloudStore.pushState(sharedArchiveState(localState, for: code), for: code)
                     return localState
                 }
 
@@ -173,8 +184,9 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                     preference: preference
                 )
 
-                if mergedState != remoteState {
-                    try await cloudStore.pushState(mergedState, for: code)
+                let sharedState = sharedArchiveState(mergedState, for: code)
+                if sharedState != sharedArchiveState(remoteState, for: code) {
+                    try await cloudStore.pushState(sharedState, for: code)
                 }
 
                 if mergedState != localState {
@@ -217,8 +229,9 @@ actor CloudSyncSeasonRepository: SeasonRepository {
                     preference: preference
                 )
 
-                if remoteState != .some(mergedState) {
-                    try await cloudStore.pushState(mergedState, for: code)
+                let sharedState = sharedArchiveState(mergedState, for: code)
+                if remoteState.map({ sharedArchiveState($0, for: code) }) != .some(sharedState) {
+                    try await cloudStore.pushState(sharedState, for: code)
                 }
 
                 if mergedState != state {
@@ -243,6 +256,12 @@ actor CloudSyncSeasonRepository: SeasonRepository {
 
     private func normalizedLeagueCode(from state: PersistedState) -> String? {
         normalizedLeagueCode(state.settings.leagueCode)
+    }
+
+    private func sharedArchiveState(_ state: PersistedState, for code: String) -> PersistedState {
+        var shared = state
+        shared.seasonArchives = state.seasonArchives.filter { $0.leagueCode == code }
+        return shared
     }
 
     private func normalizedLeagueCode(_ code: String?) -> String? {
@@ -337,6 +356,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             )
         )
 
+        merged.seasonArchives = ArchivedSeason.merged(local.seasonArchives + remote.seasonArchives.filter { $0.leagueCode == leagueCode })
         merged.settings.leagueCode = leagueCode
 
         let validPlayerIDs = Set(merged.players.map(\.id))

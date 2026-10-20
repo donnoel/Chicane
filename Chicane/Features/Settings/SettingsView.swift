@@ -62,7 +62,7 @@ struct SettingsView: View {
                 }
             }
         } message: {
-            Text("This clears all race picks, race results, world champion picks, and season champion results for the season.")
+            Text("This clears all race picks, race results, world champion picks, and season champion results for the season. Saved season reviews are kept, including any marked incomplete.")
         }
         .alert("Join shared league?", isPresented: $showJoinConfirmation) {
             Button("Cancel", role: .cancel) {}
@@ -341,7 +341,7 @@ struct SettingsView: View {
         } header: {
             Text("Season")
         } footer: {
-            Text("This clears race picks, race results, and champion selections, but keeps players and settings.")
+            Text("This clears race picks, race results, and champion selections, but keeps players, settings, and saved season reviews.")
         }
     }
 

@@ -45,6 +45,7 @@ Chicane tracks standings across:
 | **Season predictions** | Track season champion picks alongside race weekends. |
 | **Scoring** | Apply deterministic scoring and pick-lock rules. |
 | **Persistence** | Keep local records with optional iCloud league synchronization. |
+| **Season Archive** | Preserve yearly standings, highlights, predictions, champions, and original stakes through season resets. |
 
 <details>
 <summary>Feature details and controls</summary>
@@ -59,6 +60,7 @@ Chicane tracks standings across:
 | Season Champion Locking | Once the season champion is entered for a series, it locks and immediately applies the bonus to standings. |
 | Exact Scoring | Position-only scoring (no points for correct driver/rider in wrong position). |
 | Scoreboard | Series and combined standings, plus per-event score history. |
+| Season Archive | Results → Seasons opens yearly reviews. An official finale fetch starts each series record; all race results and confirmed champions finalize the combined winner. Saved reviews survive resets. |
 | Track-Local Time | Hero cards show each circuit's current local clock time with a day cue (`Yesterday`, `Today`, `Tomorrow`). |
 | Bet Ledger | Home shows each player's current bet in a premium card. |
 | Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. Joining prompts before replacing existing local season data. |
@@ -75,7 +77,7 @@ Chicane tracks standings across:
   - MotoGP countdown uses the official MotoGP race (`RAC`) session start time when available, not the GP weekend end timestamp.
 - **All races and manual picks** — Opened from Weekend to enter each player's season champion and P1/P2/P3 predictions for any event
 - **Standings** — Season standings and per-event history (F1, MotoGP, Combined)
-- **Results** — Enter official results and lock events, plus lock the season champion
+- **Results** — Fetch official results and lock events; open Seasons for permanent year-end reviews and season champion confirmation. See [Season Archive](docs/SEASON_ARCHIVE.md) for completion and persistence rules.
 - **Settings** — Manage players, shared league sync, per-player bets, and season reset
   - Player names cannot be blank when saving; use `Remove` to delete a player.
   - Shows the installed app version/build in an `About` section.

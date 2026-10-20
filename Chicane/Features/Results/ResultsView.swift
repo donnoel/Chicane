@@ -25,22 +25,26 @@ struct ResultsView: View {
     @State private var selectionFollowsDefault = true
     @State private var defaultSelectionSeries: RaceSeries?
     @State private var inlineResultStatus: InlineStatus?
+    @State private var showsSeasons = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 EventPickerHeader(
-                    title: "Official Results",
-                    subtitle: "Fetch locked podiums and event points.",
-                    headerSystemImage: "flag.checkered",
+                    title: showsSeasons ? "Season Archive" : "Official Results",
+                    subtitle: showsSeasons ? "Your league, year by year." : "Fetch locked podiums and event points.",
+                    headerSystemImage: showsSeasons ? "books.vertical" : "flag.checkered",
                     headerTint: ChicaneTheme.seriesColor(selectedSeries),
                     selectedSeries: selectedSeriesBinding,
                     selectedEventID: selectedEventBinding,
                     events: events,
-                    eventPickerLabel: "Event result"
+                    eventPickerLabel: "Event result",
+                    showsSeasons: $showsSeasons
                 )
 
-                if selectedEvent != nil {
+                if showsSeasons {
+                    SeasonArchiveListView(reviews: viewModel.seasonReviews)
+                } else if selectedEvent != nil {
                     resultsContent
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
@@ -60,6 +64,7 @@ struct ResultsView: View {
         .navigationTitle("Results")
         .navigationBarTitleDisplayMode(.inline)
         .chicaneBackground()
+        .refreshable { await viewModel.reload() }
         .task {
             guard !hasInitialized else { return }
             hasInitialized = true

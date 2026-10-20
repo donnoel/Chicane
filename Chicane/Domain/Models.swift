@@ -152,10 +152,33 @@ struct RaceResult: Codable, Hashable, Sendable {
     var podium: Podium
     var isLocked: Bool
     var updatedAt: Date
+    var isOfficial: Bool
 
-    var id: String {
-        "\(series.rawValue)-\(eventID)"
+    private enum CodingKeys: String, CodingKey {
+        case series, eventID, podium, isLocked, updatedAt, isOfficial
     }
+
+    init(series: RaceSeries, eventID: String, podium: Podium, isLocked: Bool, updatedAt: Date, isOfficial: Bool = false) {
+        self.series = series
+        self.eventID = eventID
+        self.podium = podium
+        self.isLocked = isLocked
+        self.updatedAt = updatedAt
+        self.isOfficial = isOfficial
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        series = try container.decode(RaceSeries.self, forKey: .series)
+        eventID = try container.decode(String.self, forKey: .eventID)
+        podium = try container.decode(Podium.self, forKey: .podium)
+        isLocked = try container.decode(Bool.self, forKey: .isLocked)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        // Legacy locked/manual results must not imply an official finale fetch.
+        isOfficial = try container.decodeIfPresent(Bool.self, forKey: .isOfficial) ?? false
+    }
+
+    var id: String { "\(series.rawValue)-\(eventID)" }
 }
 
 struct SeasonChampionPick: Identifiable, Codable, Hashable, Sendable {
@@ -165,6 +188,7 @@ struct SeasonChampionPick: Identifiable, Codable, Hashable, Sendable {
     var driverID: String
     var isLocked: Bool
     var updatedAt: Date
+    var season: Int?
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -173,6 +197,7 @@ struct SeasonChampionPick: Identifiable, Codable, Hashable, Sendable {
         case driverID
         case isLocked
         case updatedAt
+        case season
     }
 
     init(
@@ -181,7 +206,8 @@ struct SeasonChampionPick: Identifiable, Codable, Hashable, Sendable {
         playerID: UUID,
         driverID: String,
         isLocked: Bool = false,
-        updatedAt: Date
+        updatedAt: Date,
+        season: Int? = nil
     ) {
         self.id = id
         self.series = series
@@ -189,6 +215,7 @@ struct SeasonChampionPick: Identifiable, Codable, Hashable, Sendable {
         self.driverID = driverID
         self.isLocked = isLocked
         self.updatedAt = updatedAt
+        self.season = season
     }
 
     init(from decoder: Decoder) throws {
@@ -199,6 +226,7 @@ struct SeasonChampionPick: Identifiable, Codable, Hashable, Sendable {
         driverID = try container.decode(String.self, forKey: .driverID)
         isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        season = try container.decodeIfPresent(Int.self, forKey: .season)
     }
 }
 
@@ -207,24 +235,28 @@ struct SeasonChampionResult: Identifiable, Codable, Hashable, Sendable {
     var driverID: String
     var isLocked: Bool
     var updatedAt: Date
+    var season: Int?
 
     private enum CodingKeys: String, CodingKey {
         case series
         case driverID
         case isLocked
         case updatedAt
+        case season
     }
 
     init(
         series: RaceSeries,
         driverID: String,
         isLocked: Bool = true,
-        updatedAt: Date
+        updatedAt: Date,
+        season: Int? = nil
     ) {
         self.series = series
         self.driverID = driverID
         self.isLocked = isLocked
         self.updatedAt = updatedAt
+        self.season = season
     }
 
     init(from decoder: Decoder) throws {
@@ -233,6 +265,7 @@ struct SeasonChampionResult: Identifiable, Codable, Hashable, Sendable {
         driverID = try container.decode(String.self, forKey: .driverID)
         isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? true
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        season = try container.decodeIfPresent(Int.self, forKey: .season)
     }
 
     var id: String {
@@ -317,7 +350,7 @@ struct AppSettings: Codable, Hashable, Sendable {
 struct PersistedState: Codable, Hashable, Sendable {
     // Increment this when the stored data format changes and add a migration
     // case in migratedToCurrentVersion() below.
-    static let currentSchemaVersion = 5
+    static let currentSchemaVersion = 6
 
     var schemaVersion: Int
     var updatedAt: Date
@@ -331,6 +364,7 @@ struct PersistedState: Codable, Hashable, Sendable {
     var championPicks: [SeasonChampionPick]
     var championResults: [SeasonChampionResult]
     var settings: AppSettings
+    var seasonArchives: [ArchivedSeason]
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion
@@ -345,6 +379,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         case championPicks
         case championResults
         case settings
+        case seasonArchives
     }
 
     init(
@@ -359,7 +394,8 @@ struct PersistedState: Codable, Hashable, Sendable {
         results: [RaceResult],
         championPicks: [SeasonChampionPick],
         championResults: [SeasonChampionResult],
-        settings: AppSettings
+        settings: AppSettings,
+        seasonArchives: [ArchivedSeason] = []
     ) {
         self.schemaVersion = schemaVersion
         self.updatedAt = updatedAt
@@ -373,6 +409,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         self.championPicks = championPicks
         self.championResults = championResults
         self.settings = settings
+        self.seasonArchives = seasonArchives
     }
 
     /// Fresh-install default: no hardcoded players so Settings is the canonical
@@ -406,6 +443,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         championPicks = try container.decodeIfPresent([SeasonChampionPick].self, forKey: .championPicks) ?? []
         championResults = try container.decodeIfPresent([SeasonChampionResult].self, forKey: .championResults) ?? []
         settings = try container.decodeIfPresent(AppSettings.self, forKey: .settings) ?? .default
+        seasonArchives = try container.decodeIfPresent([ArchivedSeason].self, forKey: .seasonArchives) ?? []
     }
 
     // MARK: - Normalisation & Migration
@@ -433,6 +471,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         }
         state.settings.leagueCode = state.settings.normalizedLeagueCode
 
+        state.seasonArchives = ArchivedSeason.merged(state.seasonArchives)
         return state
     }
 
@@ -464,6 +503,8 @@ struct PersistedState: Codable, Hashable, Sendable {
             case 4:
                 state.removedPlayerIDs = []
                 state.schemaVersion = 5
+            case 5:
+                state.schemaVersion = 6
             default:
                 // Unrecognised old version: jump to current to avoid an infinite loop.
                 state.schemaVersion = PersistedState.currentSchemaVersion
