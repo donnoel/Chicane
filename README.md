@@ -1,5 +1,6 @@
-# Chicane
-### A premium iOS/iPadOS podium-picks app for friendly Formula 1 and MotoGP weekend betting.
+# **The Podium**
+
+### *A premium iOS/iPadOS podium-picks app for friendly Formula 1 and MotoGP weekend betting.*
 
 <p align="center">
   <img src="https://img.shields.io/badge/SwiftUI-MVVM-orange?logo=swift" alt="SwiftUI MVVM">
@@ -9,9 +10,11 @@
 
 ---
 
-## What is Chicane?
+## ✨ Overview
 
-Chicane is a SwiftUI app for simple, weekend podium-pick betting between family and friends.
+<a id="what-is-chicane"></a>
+
+**The Podium** (repository: `Chicane`) is a SwiftUI app for simple, weekend podium-pick betting between family and friends.
 
 For each race event, each player picks:
 - P1
@@ -34,9 +37,19 @@ Chicane tracks standings across:
 - MotoGP season totals
 - Combined totals
 
----
+## 💎 Core Features
 
-## Core Features
+| Feature | What it does |
+| --- | --- |
+| **Podium picks** | Record friendly Formula 1 and MotoGP weekend predictions. |
+| **Season predictions** | Track season champion picks alongside race weekends. |
+| **Scoring** | Apply deterministic scoring and pick-lock rules. |
+| **Persistence** | Keep local records with optional iCloud league synchronization. |
+
+<details>
+<summary>Feature details and controls</summary>
+
+<a id="core-features"></a>
 
 | Feature | Description |
 |--------|-------------|
@@ -53,9 +66,9 @@ Chicane tracks standings across:
 | Accessibility | Large tap targets, Dynamic Type, VoiceOver labels, and contrast-safe light/dark mode surfaces. |
 | Premium UI | Apple-material based "Liquid Glass" visual design with themed motorsport color accents. |
 
----
+<a id="main-screens"></a>
 
-## Main Screens
+### Main Screens
 
 - **Weekend** — Next race countdown, race-track local time with relative day context, season standings snapshot, current-weekend picks, and player bet ledger
   - Formula 1 countdown uses the official race-session start time from the event page when available, not a date-only noon placeholder.
@@ -68,9 +81,37 @@ Chicane tracks standings across:
   - Shows the installed app version/build in an `About` section.
   - Reset clears race picks/results and season champion picks/results.
 
+</details>
+
 ---
 
-## How it works
+## 🚀 Getting Started
+
+<a id="build-and-run"></a>
+
+### Build and Run
+
+#### Requirements
+- macOS with Xcode 26 or newer and the iOS 26 SDK
+- An iOS 26-compatible Simulator runtime
+
+#### Xcode
+1. Open `Chicane.xcodeproj`
+2. Select scheme `Chicane`
+3. Run on iPhone or iPad simulator
+
+#### CLI
+```bash
+xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'generic/platform=iOS Simulator' build
+xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS Simulator' -only-testing:ChicaneTests test
+```
+
+## 🧠 How It Works
+
+<details>
+<summary>Architecture and component reference</summary>
+
+<a id="how-it-works"></a>
 
 1. App launches and loads local season state.
 2. If a shared league code is configured, it syncs the latest shared state from iCloud.
@@ -84,20 +125,20 @@ Chicane tracks standings across:
 10. When the season champion is entered for a series, it locks, freezes all player champion picks for that series, and awards the 5-point bonus to matching players.
 11. Standings are computed deterministically from stored picks and results.
 
----
+<a id="architecture-overview"></a>
 
-## Architecture Overview
+### Architecture Overview
 
 Chicane follows SwiftUI + MVVM with focused repositories and services.
 
-### App Layer
+#### App Layer
 - `ChicaneApp` — entry point; injects all repositories into `AppViewModel`.
 - `RootTabView` — tab navigation with banner and loading overlays.
 
-### View Model
+#### View Model
 - `AppViewModel` — single source of truth; orchestrates UI state, load/save operations, scoring, and screen-level interactions.
 
-### Repositories
+#### Repositories
 - `OnlineDriverRepository` — fetches current F1 drivers and MotoGP riders from official sources
 - `OnlineCalendarRepository` — fetches F1 and MotoGP event calendars
 - `OnlineResultRepository` — fetches official top-3 podium results
@@ -105,7 +146,7 @@ Chicane follows SwiftUI + MVVM with focused repositories and services.
 - `LocalSeasonRepository` — actor-isolated persistence for picks, results, players, and settings
 - `CloudSyncSeasonRepository` — local-first repository wrapper that syncs shared league state through CloudKit
 
-### Services
+#### Services
 - `ScoringService` — per-event points calculation
 - `ScoreboardCalculator` — season standings and event history aggregation
 - `FileStateStore` — actor-based atomic JSON file I/O
@@ -114,9 +155,9 @@ Chicane follows SwiftUI + MVVM with focused repositories and services.
 - `RemoteDataClient` — shared URLSession HTTP client with encoding fallback
 - `BundleJSONLoader` — loads bundled seed JSON resources
 
----
+<a id="data-sources"></a>
 
-## Data Sources
+### Data Sources
 
 Online-first with offline fallback:
 
@@ -126,9 +167,9 @@ Online-first with offline fallback:
   - `Chicane/Resources/Seed/drivers.json`
   - `Chicane/Resources/Seed/calendar.json`
 
----
+<a id="project-structure"></a>
 
-## Project Structure
+### Project Structure
 
 ```text
 Chicane/
@@ -153,28 +194,13 @@ Chicane/
 └── ChicaneUITests/
 ```
 
----
+</details>
 
-## Build and Run
+## 🔒 Data and Privacy
 
-### Requirements
-- macOS with Xcode 16+
-- An iOS 26-compatible Simulator runtime
+<a id="persistence-and-privacy"></a>
 
-### Xcode
-1. Open `Chicane.xcodeproj`
-2. Select scheme `Chicane`
-3. Run on iPhone or iPad simulator
-
-### CLI
-```bash
-xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'generic/platform=iOS Simulator' build
-xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS Simulator' -only-testing:ChicaneTests test
-```
-
----
-
-## Persistence and Privacy
+### Persistence and Privacy
 
 - Local use still works without a shared league code.
 - All picks, results, season champion choices, players, and settings are stored on-device first.
@@ -190,15 +216,22 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 - Schema versioning is in place for future migrations.
 - Legacy stored driver/rider IDs are normalized against current rosters so older saved picks continue to score after feed ID changes.
 
----
+<a id="notes"></a>
 
-## Notes
+### Notes
 
 - MotoGP participants are labeled as Riders throughout the app.
 - Season reset clears picks, results, and season champion choices while preserving players and settings.
 
+## 📚 Documentation
+
+- [Repository guidance](AGENTS.md)
+- [Project guide](AGENTS.project.md)
+
 ---
 
-## Credits
+## 🤝 Credits
+
+<a id="credits"></a>
 
 Built with care by **Don Noel** and Codex collaboration.
