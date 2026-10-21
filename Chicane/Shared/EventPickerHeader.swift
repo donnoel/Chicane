@@ -68,7 +68,7 @@ struct EventPickerHeader: View {
             }
             .tint(.primary)
             .padding(.horizontal, 12)
-            .frame(minHeight: 48)
+            .frame(maxWidth: .infinity, minHeight: 48, alignment: .center)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(ChicaneTheme.fieldFill(for: colorScheme))
