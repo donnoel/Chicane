@@ -235,7 +235,7 @@ struct SettingsView: View {
         } header: {
             Text("Player Bets")
         } footer: {
-            Text("These notes appear at the bottom of Results under Player bets.")
+            Text("These notes appear in Results under the Bets pill.")
         }
     }
 

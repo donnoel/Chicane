@@ -6,6 +6,10 @@ import SwiftUI
 /// picker in a consistent layout. Callers bind `selectedSeries` and
 /// `selectedEventID` and pass the appropriate event list.
 struct EventPickerHeader: View {
+    enum ResultsSection: String {
+        case races, seasons, bets
+    }
+
     @Environment(\.colorScheme) private var colorScheme
 
     let title: String
@@ -17,13 +21,16 @@ struct EventPickerHeader: View {
     let events: [RaceEvent]
     /// Accessibility label applied to the event picker (e.g. "Race event" or "Event result").
     var eventPickerLabel: String = "Race event"
-    var showsSeasons: Binding<Bool>? = nil
+    var resultsSection: Binding<ResultsSection>? = nil
 
     private var sectionSelection: Binding<String> {
         Binding(
-            get: { showsSeasons?.wrappedValue == true ? "seasons" : selectedSeries.rawValue },
+            get: {
+                guard let section = resultsSection?.wrappedValue, section != .races else { return selectedSeries.rawValue }
+                return section.rawValue
+            },
             set: { value in
-                showsSeasons?.wrappedValue = value == "seasons"
+                resultsSection?.wrappedValue = ResultsSection(rawValue: value) ?? .races
                 if let series = RaceSeries(rawValue: value) { selectedSeries = series }
             }
         )
@@ -38,18 +45,19 @@ struct EventPickerHeader: View {
                 tint: headerTint
             )
 
-            Picker(showsSeasons == nil ? "Series" : "Results view", selection: sectionSelection) {
+            Picker(resultsSection == nil ? "Series" : "Results view", selection: sectionSelection) {
                 ForEach(RaceSeries.allCases) { series in
                     Text(series.title).tag(series.rawValue)
                 }
-                if showsSeasons != nil {
+                if resultsSection != nil {
                     Text("Seasons").tag("seasons")
+                    Text("Bets").tag("bets")
                 }
             }
             .pickerStyle(.segmented)
             .tint(ChicaneTheme.motoBlue)
 
-            if showsSeasons?.wrappedValue != true {
+            if resultsSection?.wrappedValue == nil || resultsSection?.wrappedValue == .races {
                 Picker("Event", selection: $selectedEventID) {
                 Text("Choose event")
                     .tag(Optional<String>.none)

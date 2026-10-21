@@ -1,8 +1,9 @@
 # Season Archive
 
-Results has three choices: Formula 1, MotoGP, and Seasons. Seasons lists saved
+Results has four choices: Formula 1, MotoGP, Seasons, and Bets. Seasons lists saved
 year/group reviews newest first. The live race picker remains unchanged for
-the first two choices.
+the first two choices. Bets shows current season stakes; original historical
+stakes stay inside each saved season review.
 
 ## Completion
 

@@ -62,7 +62,7 @@ Chicane tracks standings across:
 | Scoreboard | Series and combined standings, plus per-event score history. |
 | Season Archive | Results → Seasons opens yearly reviews. An official finale fetch starts each series record; all race results and confirmed champions finalize the combined winner. Saved reviews survive resets. |
 | Track-Local Time | Hero cards show each circuit's current local clock time with a day cue (`Yesterday`, `Today`, `Tomorrow`). |
-| Bet Ledger | Results shows each player's current bet below the event points. |
+| Bet Ledger | Results → Bets shows each player's current season stake. Edit bets in Settings. |
 | Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. Joining prompts before replacing existing local season data. |
 | Offline Fallback | Works with bundled seed data if network sources are unavailable. |
 | Accessibility | Large tap targets, Dynamic Type, VoiceOver labels, and contrast-safe light/dark mode surfaces. |

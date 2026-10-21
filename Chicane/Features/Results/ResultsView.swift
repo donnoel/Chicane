@@ -34,25 +34,62 @@ struct ResultsView: View {
     @State private var selectionFollowsDefault = true
     @State private var defaultSelectionSeries: RaceSeries?
     @State private var inlineResultStatus: InlineStatus?
-    @State private var showsSeasons = false
+    @State private var selectedSection: EventPickerHeader.ResultsSection = .races
+
+    private var headerTitle: String {
+        switch selectedSection {
+        case .races: "Official Results"
+        case .seasons: "Season Archive"
+        case .bets: "Bets"
+        }
+    }
+
+    private var headerSubtitle: String {
+        switch selectedSection {
+        case .races: "Fetch locked podiums and event points."
+        case .seasons: "Your league, year by year."
+        case .bets: "Your season stakes, all in one place."
+        }
+    }
+
+    private var headerImage: String {
+        switch selectedSection {
+        case .races: "flag.checkered"
+        case .seasons: "books.vertical"
+        case .bets: "person.2"
+        }
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 EventPickerHeader(
-                    title: showsSeasons ? "Season Archive" : "Official Results",
-                    subtitle: showsSeasons ? "Your league, year by year." : "Fetch locked podiums and event points.",
-                    headerSystemImage: showsSeasons ? "books.vertical" : "flag.checkered",
+                    title: headerTitle,
+                    subtitle: headerSubtitle,
+                    headerSystemImage: headerImage,
                     headerTint: ChicaneTheme.seriesColor(selectedSeries),
                     selectedSeries: selectedSeriesBinding,
                     selectedEventID: selectedEventBinding,
                     events: events,
                     eventPickerLabel: "Event result",
-                    showsSeasons: $showsSeasons
+                    resultsSection: $selectedSection
                 )
 
-                if showsSeasons {
+                if selectedSection == .seasons {
                     SeasonArchiveListView(reviews: viewModel.seasonReviews)
+                } else if selectedSection == .bets {
+                    if playerBetRows.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("No bets yet")
+                                .font(ChicaneTypography.cardTitle)
+                            Text("Add each player’s season bet in Settings. Their stakes will appear here.")
+                                .font(ChicaneTypography.body)
+                                .foregroundStyle(.secondary)
+                        }
+                        .groupedCard()
+                    } else {
+                        playerBetsCard
+                    }
                 } else if selectedEvent != nil {
                     resultsContent
                 } else {
@@ -64,10 +101,6 @@ struct ResultsView: View {
                             .foregroundStyle(.secondary)
                     }
                     .groupedCard()
-                }
-
-                if !showsSeasons && !playerBetRows.isEmpty {
-                    playerBetsCard
                 }
             }
             .padding(.horizontal, 20)
