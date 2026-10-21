@@ -5,15 +5,6 @@ struct HomeView: View {
         static let weekendQueueWindow: TimeInterval = 3 * 24 * 3600
     }
 
-    private struct DisplayedPlayerBet: Identifiable {
-        let player: Player
-        let text: String
-
-        var id: UUID {
-            player.id
-        }
-    }
-
     private struct LeaguePicksContext: Identifiable {
         let event: RaceEvent
         let currentPlayerID: UUID?
@@ -41,9 +32,6 @@ struct HomeView: View {
                     hero(for: selectedEvent)
                     pickFlow(for: selectedEvent)
                     standingsPreview
-                    if !playerBetRows.isEmpty {
-                        playerBetsPreview
-                    }
                     allRacesLink
                 } else {
                     emptyCalendarCard
@@ -127,15 +115,6 @@ struct HomeView: View {
         let players = editablePlayers
         guard let selectedPlayerID else { return players.first }
         return players.first { $0.id == selectedPlayerID } ?? players.first
-    }
-
-    private var playerBetRows: [DisplayedPlayerBet] {
-        viewModel.players.compactMap { player in
-            let text = viewModel.settings.playerBetTextByPlayerID[player.id]?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            guard !text.isEmpty else { return nil }
-            return DisplayedPlayerBet(player: player, text: text)
-        }
     }
 
     private var editablePlayers: [Player] {
@@ -542,38 +521,6 @@ struct HomeView: View {
             }
         }
         .groupedCard(accent: ChicaneTheme.glowAmber)
-    }
-
-    private var playerBetsPreview: some View {
-        let bets = playerBetRows
-
-        return VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Player bets")
-                    .font(ChicaneTypography.cardTitle)
-                Text("Settled after the final season points are tallied")
-                    .font(ChicaneTypography.subtitle)
-                    .foregroundStyle(.secondary)
-            }
-
-            ForEach(Array(bets.enumerated()), id: \.element.id) { index, bet in
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(bet.player.name)
-                        .font(ChicaneTypography.bodySemibold)
-                    Text(bet.text)
-                        .font(ChicaneTypography.body)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                if index < bets.count - 1 {
-                    Divider().opacity(0.28)
-                }
-            }
-        }
-        .groupedCard(accent: .accentColor)
-        .accessibilityElement(children: .contain)
     }
 
     private var currentQueueIndex: Int {

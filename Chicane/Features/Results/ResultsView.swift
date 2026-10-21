@@ -2,6 +2,15 @@ import SwiftUI
 import UIKit
 
 struct ResultsView: View {
+    private struct DisplayedPlayerBet: Identifiable {
+        let player: Player
+        let text: String
+
+        var id: UUID {
+            player.id
+        }
+    }
+
     private enum InlineStatusStyle {
         case info
         case error
@@ -56,6 +65,10 @@ struct ResultsView: View {
                     }
                     .groupedCard()
                 }
+
+                if !showsSeasons && !playerBetRows.isEmpty {
+                    playerBetsCard
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 18)
@@ -89,6 +102,47 @@ struct ResultsView: View {
         .onChange(of: inlineResultStatus?.text) { _, _ in
             announceInlineStatusIfNeeded()
         }
+    }
+
+    private var playerBetRows: [DisplayedPlayerBet] {
+        viewModel.players.compactMap { player in
+            let text = viewModel.settings.playerBetTextByPlayerID[player.id]?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !text.isEmpty else { return nil }
+            return DisplayedPlayerBet(player: player, text: text)
+        }
+    }
+
+    private var playerBetsCard: some View {
+        let bets = playerBetRows
+
+        return VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Player bets")
+                    .font(ChicaneTypography.cardTitle)
+                Text("Settled after the final season points are tallied")
+                    .font(ChicaneTypography.subtitle)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(Array(bets.enumerated()), id: \.element.id) { index, bet in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(bet.player.name)
+                        .font(ChicaneTypography.bodySemibold)
+                    Text(bet.text)
+                        .font(ChicaneTypography.body)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if index < bets.count - 1 {
+                    Divider().opacity(0.28)
+                }
+            }
+        }
+        .groupedCard(accent: .accentColor)
+        .accessibilityElement(children: .contain)
     }
 
     private var events: [RaceEvent] {
