@@ -8,6 +8,8 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var settings: AppSettings = .default
     @Published private(set) var picks: [RacePick] = []
     @Published private(set) var results: [RaceResult] = []
+    @Published private(set) var eventStatuses: [RaceEventStatus] = []
+    private var pickSaveTasks: [String: (id: UUID, task: Task<String?, Error>)] = [:]
     @Published private(set) var championPicks: [SeasonChampionPick] = []
     @Published private(set) var championResults: [SeasonChampionResult] = []
     @Published private(set) var seasonReviews: [SeasonReview] = []
@@ -113,7 +115,7 @@ final class AppViewModel: ObservableObject {
             eventsBySeries[.formula1]  = mergedF1Events
             eventsBySeries[.motoGP]    = mergedMotoGPEvents
             normalizeStoredParticipantIDsForLoadedDrivers()
-            RaceWeekendWidgetSnapshotStore.saveResults(results, events: allEvents())
+            RaceWeekendWidgetSnapshotStore.saveResults(results, events: allEvents(), canceledEvents: canceledEvents)
             await refreshChampionshipLeaders()
             hasLoaded = true
             if let warning = try await refreshSeasonArchives() { showError(warning) }
@@ -176,10 +178,41 @@ final class AppViewModel: ObservableObject {
             eventsToSearch = allEvents()
         }
 
-        return RaceEvent.nextDisplayEvent(in: eventsToSearch, results: results)
+        return RaceEvent.nextDisplayEvent(in: eventsToSearch.filter { !eventIsCanceled($0) }, results: results)
+    }
+
+    func eventIsCanceled(_ event: RaceEvent) -> Bool {
+        eventStatuses.first { $0.matches(event) }?.isCanceled == true
+    }
+
+    private func eventIsCanceled(series: RaceSeries, eventID: String) -> Bool {
+        guard let event = identityResolver(for: series).resolvedEvent(for: eventID) else { return false }
+        return eventIsCanceled(event)
+    }
+
+    var canceledEvents: [RaceEvent] { allEvents().filter { eventIsCanceled($0) } }
+
+    private var scoringResults: [RaceResult] {
+        results.filter { !eventIsCanceled(series: $0.series, eventID: $0.eventID) }
+    }
+
+    @discardableResult
+    func setRaceCanceled(_ event: RaceEvent, isCanceled: Bool) async throws -> String? {
+        try await persistState {
+            try await seasonRepository.upsertEventStatus(RaceEventStatus(event: event, isCanceled: isCanceled))
+        }
+    }
+
+    func podiumDraft(for series: RaceSeries, eventID: String, playerID: UUID) -> PodiumDraft {
+        storedPick(for: series, eventID: eventID, playerID: playerID)?.podiumDraft ?? .empty
     }
 
     func pick(for series: RaceSeries, eventID: String, playerID: UUID) -> RacePick? {
+        guard let pick = storedPick(for: series, eventID: eventID, playerID: playerID), pick.isComplete else { return nil }
+        return pick
+    }
+
+    private func storedPick(for series: RaceSeries, eventID: String, playerID: UUID) -> RacePick? {
         identityResolver(for: series).matchingPick(
             for: playerID,
             targetEventID: eventID,
@@ -195,6 +228,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func officialResultFetchBlockMessage(series: RaceSeries, eventID: String) -> String? {
+        if eventIsCanceled(series: series, eventID: eventID) { return "This race is canceled. Undo its cancellation before fetching results." }
         guard result(for: series, eventID: eventID) == nil else {
             return nil
         }
@@ -237,41 +271,31 @@ final class AppViewModel: ObservableObject {
     }
 
     @discardableResult
-    func savePick(
-        series: RaceSeries,
-        eventID: String,
-        playerID: UUID,
-        draft: PodiumDraft
-    ) async throws -> String? {
-        if pickIsLocked(for: series, eventID: eventID, playerID: playerID) {
-            throw AppViewModelError.pickLocked
+    func savePick(series: RaceSeries, eventID: String, playerID: UUID, draft: PodiumDraft) async throws -> String? {
+        let key = "\(series.rawValue)|\(eventID)|\(playerID)"
+        let previous = pickSaveTasks[key]?.task
+        let id = UUID()
+        let task = Task { [self] in
+            if let previous { _ = try? await previous.value }
+            return try await persistPick(series: series, eventID: eventID, playerID: playerID, draft: draft)
         }
+        pickSaveTasks[key] = (id, task)
+        defer { if pickSaveTasks[key]?.id == id { pickSaveTasks.removeValue(forKey: key) } }
+        return try await task.value
+    }
 
-        if draft == .empty {
-            return try await persistState {
-                try await seasonRepository.deletePick(series: series, eventID: eventID, playerID: playerID)
-            }
-        }
-
-        guard let podium = draft.toPodium() else {
-            throw RepositoryError.invalidPodium
-        }
-
-        let existingPick = pick(for: series, eventID: eventID, playerID: playerID)
-        let existingID = existingPick?.id ?? UUID()
-        let newPick = RacePick(
-            id: existingID,
-            series: series,
-            eventID: existingPick?.eventID ?? eventID,
+    private func persistPick(series: RaceSeries, eventID: String, playerID: UUID, draft: PodiumDraft) async throws -> String? {
+        if eventIsCanceled(series: series, eventID: eventID) { throw AppViewModelError.raceCanceled }
+        if pickIsLocked(for: series, eventID: eventID, playerID: playerID) { throw AppViewModelError.pickLocked }
+        guard !draft.hasDuplicates else { throw RepositoryError.invalidPodium }
+        let existing = storedPick(for: series, eventID: eventID, playerID: playerID)
+        let pick = RacePick(
+            id: existing?.id ?? UUID(), series: series, eventID: existing?.eventID ?? eventID,
             playerID: playerID,
-            podium: podium,
-            isLocked: existingPick?.isLocked ?? false,
-            updatedAt: Date()
+            podium: draft.toPodium() ?? existing?.podium ?? Podium(p1: "", p2: "", p3: ""),
+            updatedAt: Date(), draft: draft.toPodium() == nil ? draft : nil
         )
-
-        return try await persistState {
-            try await seasonRepository.upsertPick(newPick)
-        }
+        return try await persistState { try await seasonRepository.upsertPick(pick) }
     }
 
     @discardableResult
@@ -281,6 +305,7 @@ final class AppViewModel: ObservableObject {
         draft: PodiumDraft,
         lockResult: Bool = true
     ) async throws -> String? {
+        if eventIsCanceled(series: series, eventID: eventID) { throw AppViewModelError.raceCanceled }
         guard let podium = draft.toPodium() else {
             throw RepositoryError.invalidPodium
         }
@@ -341,6 +366,7 @@ final class AppViewModel: ObservableObject {
         draft: PodiumDraft,
         lockResult: Bool
     ) async throws -> String? {
+        if eventIsCanceled(series: series, eventID: eventID) { throw AppViewModelError.raceCanceled }
         guard let podium = draft.toPodium() else {
             throw RepositoryError.invalidPodium
         }
@@ -370,7 +396,7 @@ final class AppViewModel: ObservableObject {
         scoreboardCalculator.standings(
             players: players,
             picks: picks,
-            results: results,
+            results: scoringResults,
             championPicks: championPicks,
             championResults: championResults,
             events: allEvents(),
@@ -383,7 +409,7 @@ final class AppViewModel: ObservableObject {
         scoreboardCalculator.eventHistory(
             players: players,
             picks: picks,
-            results: results,
+            results: scoringResults,
             events: allEvents(),
             scope: scope,
             driversBySeries: driversBySeries
@@ -391,7 +417,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func eventPoints(series: RaceSeries, eventID: String) -> [UUID: Int] {
-        guard let result = result(for: series, eventID: eventID) else {
+        guard !eventIsCanceled(series: series, eventID: eventID), let result = result(for: series, eventID: eventID) else {
             return [:]
         }
         return scoringService.pointsByPlayer(
@@ -573,6 +599,7 @@ final class AppViewModel: ObservableObject {
         if picks != state.picks {
             picks = state.picks
         }
+        if eventStatuses != state.eventStatuses { eventStatuses = state.eventStatuses }
         if results != state.results {
             results = state.results
         }
@@ -590,7 +617,7 @@ final class AppViewModel: ObservableObject {
             settings = state.settings
         }
         normalizeStoredParticipantIDsForLoadedDrivers()
-        RaceWeekendWidgetSnapshotStore.saveResults(results, events: allEvents())
+        RaceWeekendWidgetSnapshotStore.saveResults(results, events: allEvents(), canceledEvents: canceledEvents)
     }
 
     private func identityResolver(for series: RaceSeries) -> StoredIdentityResolver {
@@ -605,6 +632,9 @@ final class AppViewModel: ObservableObject {
         let normalizedPicks = picks.map { pick in
             var copy = pick
             copy.podium = normalizedPodium(copy.podium, series: copy.series)
+            if let draft = copy.draft {
+                copy.draft = PodiumDraft(p1: draft.p1.map { normalizedParticipantID($0, series: copy.series) }, p2: draft.p2.map { normalizedParticipantID($0, series: copy.series) }, p3: draft.p3.map { normalizedParticipantID($0, series: copy.series) })
+            }
             return copy
         }
         if normalizedPicks != picks {
@@ -878,6 +908,7 @@ final class AppViewModel: ObservableObject {
 
 enum AppViewModelError: LocalizedError {
     case pickLocked
+    case raceCanceled
     case resultLocked
     case incompletePlayerPicks(message: String)
     case championPickLocked
@@ -889,6 +920,8 @@ enum AppViewModelError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .raceCanceled:
+            return "This race is canceled. Its predictions are void and no points are awarded."
         case .pickLocked:
             return "Podium picks lock once official results are retrieved."
         case .resultLocked:

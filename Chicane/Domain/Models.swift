@@ -105,6 +105,12 @@ struct RacePick: Identifiable, Codable, Hashable, Sendable {
     var podium: Podium
     var isLocked: Bool
     var updatedAt: Date
+    /// Non-nil for an incomplete/cleared pick. The record remains as a durable
+    /// edit so stale league devices cannot resurrect the old complete podium.
+    var draft: PodiumDraft?
+
+    var podiumDraft: PodiumDraft { draft ?? PodiumDraft(podium: podium) }
+    var isComplete: Bool { podiumDraft.toPodium() != nil }
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -114,6 +120,7 @@ struct RacePick: Identifiable, Codable, Hashable, Sendable {
         case podium
         case isLocked
         case updatedAt
+        case draft
     }
 
     init(
@@ -123,7 +130,8 @@ struct RacePick: Identifiable, Codable, Hashable, Sendable {
         playerID: UUID,
         podium: Podium,
         isLocked: Bool = false,
-        updatedAt: Date
+        updatedAt: Date,
+        draft: PodiumDraft? = nil
     ) {
         self.id = id
         self.series = series
@@ -132,6 +140,7 @@ struct RacePick: Identifiable, Codable, Hashable, Sendable {
         self.podium = podium
         self.isLocked = isLocked
         self.updatedAt = updatedAt
+        self.draft = draft
     }
 
     init(from decoder: Decoder) throws {
@@ -143,6 +152,40 @@ struct RacePick: Identifiable, Codable, Hashable, Sendable {
         podium = try container.decode(Podium.self, forKey: .podium)
         isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        draft = try container.decodeIfPresent(PodiumDraft.self, forKey: .draft)
+    }
+}
+
+struct RaceEventStatus: Codable, Hashable, Identifiable, Sendable {
+    let series: RaceSeries
+    let season: Int
+    let round: Int
+    let eventID: String
+    var isCanceled: Bool
+    var updatedAt: Date
+
+    var id: String { "\(series.rawValue)|\(season)|\(round)" }
+
+    init(event: RaceEvent, isCanceled: Bool, updatedAt: Date = .now) {
+        series = event.series
+        season = event.season
+        round = event.round
+        eventID = event.id
+        self.isCanceled = isCanceled
+        self.updatedAt = updatedAt
+    }
+
+    func matches(_ event: RaceEvent) -> Bool {
+        series == event.series && season == event.season && round == event.round
+    }
+
+    static func merged(_ values: [RaceEventStatus]) -> [RaceEventStatus] {
+        var records: [String: RaceEventStatus] = [:]
+        for value in values {
+            if let old = records[value.id], old.updatedAt > value.updatedAt { continue }
+            records[value.id] = value
+        }
+        return records.values.sorted { $0.id < $1.id }
     }
 }
 
@@ -350,7 +393,7 @@ struct AppSettings: Codable, Hashable, Sendable {
 struct PersistedState: Codable, Hashable, Sendable {
     // Increment this when the stored data format changes and add a migration
     // case in migratedToCurrentVersion() below.
-    static let currentSchemaVersion = 6
+    static let currentSchemaVersion = 7
 
     var schemaVersion: Int
     var updatedAt: Date
@@ -365,6 +408,7 @@ struct PersistedState: Codable, Hashable, Sendable {
     var championResults: [SeasonChampionResult]
     var settings: AppSettings
     var seasonArchives: [ArchivedSeason]
+    var eventStatuses: [RaceEventStatus]
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion
@@ -380,6 +424,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         case championResults
         case settings
         case seasonArchives
+        case eventStatuses
     }
 
     init(
@@ -395,7 +440,8 @@ struct PersistedState: Codable, Hashable, Sendable {
         championPicks: [SeasonChampionPick],
         championResults: [SeasonChampionResult],
         settings: AppSettings,
-        seasonArchives: [ArchivedSeason] = []
+        seasonArchives: [ArchivedSeason] = [],
+        eventStatuses: [RaceEventStatus] = []
     ) {
         self.schemaVersion = schemaVersion
         self.updatedAt = updatedAt
@@ -410,6 +456,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         self.championResults = championResults
         self.settings = settings
         self.seasonArchives = seasonArchives
+        self.eventStatuses = eventStatuses
     }
 
     /// Fresh-install default: no hardcoded players so Settings is the canonical
@@ -444,6 +491,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         championResults = try container.decodeIfPresent([SeasonChampionResult].self, forKey: .championResults) ?? []
         settings = try container.decodeIfPresent(AppSettings.self, forKey: .settings) ?? .default
         seasonArchives = try container.decodeIfPresent([ArchivedSeason].self, forKey: .seasonArchives) ?? []
+        eventStatuses = try container.decodeIfPresent([RaceEventStatus].self, forKey: .eventStatuses) ?? []
     }
 
     // MARK: - Normalisation & Migration
@@ -472,6 +520,7 @@ struct PersistedState: Codable, Hashable, Sendable {
         state.settings.leagueCode = state.settings.normalizedLeagueCode
 
         state.seasonArchives = ArchivedSeason.merged(state.seasonArchives)
+        state.eventStatuses = RaceEventStatus.merged(state.eventStatuses)
         return state
     }
 
@@ -505,6 +554,8 @@ struct PersistedState: Codable, Hashable, Sendable {
                 state.schemaVersion = 5
             case 5:
                 state.schemaVersion = 6
+            case 6:
+                state.schemaVersion = 7
             default:
                 // Unrecognised old version: jump to current to avoid an infinite loop.
                 state.schemaVersion = PersistedState.currentSchemaVersion

@@ -43,6 +43,7 @@
   - Official championship leaders (F1 + MotoGP top 3) refresh from official sources on app reload and after each successful "Fetch Results".
   - Seed data from bundled JSON in `Chicane/Resources/Seed` when online fetch fails.
   - User state persisted to application-support JSON file with atomic writes.
+- Schema 7 adds durable partial/cleared race-pick drafts and timestamped, reversible race cancellations. Incomplete drafts never score or count as ready. Canceled races keep their predictions as void, award no points, are skipped by Weekend/widgets, and count as settled in archives. Undo is a persisted status update, so stale devices cannot resurrect cancellation.
 - Schema 6 adds self-contained season archives and explicit official-result provenance. A fetched official finale creates that series' archive; missing race results or a missing confirmed champion keep it pending. Combined reviews are final only when both series are complete.
 - Archives preserve names, bets, participants, calendars, predictions and results. Active-season resets/player removals must never delete archived identities. Sync unions archive years/series independently of the active reset cutoff and shares only the current league's archives; prior groups/private archives remain local.
 

@@ -31,6 +31,7 @@ protocol SeasonRepository: Sendable {
     func saveSettings(_ settings: AppSettings) async throws -> PersistedState
     func upsertPick(_ pick: RacePick) async throws -> PersistedState
     func deletePick(series: RaceSeries, eventID: String, playerID: UUID) async throws -> PersistedState
+    func upsertEventStatus(_ status: RaceEventStatus) async throws -> PersistedState
     func upsertResult(_ result: RaceResult) async throws -> PersistedState
     func upsertResult(_ result: RaceResult, lockingPicks picks: [RacePick]) async throws -> PersistedState
     func upsertChampionPick(_ pick: SeasonChampionPick) async throws -> PersistedState

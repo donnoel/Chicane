@@ -54,13 +54,14 @@ Chicane tracks standings across:
 
 | Feature | Description |
 |--------|-------------|
-| Podium Picks | Create/edit picks per series, round, and player. Supports multiple concurrent players with independent drafts. |
+| Podium Picks | Create/edit picks per series, round, and player. Supports multiple concurrent players with independent drafts. Partial selections and clearing a position save automatically and remain open until all three positions are filled. |
 | Season Champion Picks | Each player can pick the F1 and MotoGP world champion for an end-of-season 5-point bonus, and those picks lock once the official season champion is entered. |
 | Results Update + Locking | Tap `Fetch Official Results` to fetch official top-3 podium, then lock to prevent accidental edits. |
+| Canceled Races | Results → Race options → `Mark race canceled` preserves predictions as void, awards no points, and skips the race on Weekend. Cancellation syncs with the league and can be undone from the same menu. |
 | Season Champion Locking | Once the season champion is entered for a series, it locks and immediately applies the bonus to standings. |
 | Exact Scoring | Position-only scoring (no points for correct driver/rider in wrong position). |
 | Scoreboard | Series and combined standings, plus per-event score history. |
-| Season Archive | Results → Seasons opens yearly reviews. An official finale fetch starts each series record; all race results and confirmed champions finalize the combined winner. Saved reviews survive resets. |
+| Season Archive | Results → Seasons opens yearly reviews. An official finale fetch starts each series record; all races settled by a result or cancellation, plus confirmed champions, finalize the combined winner. A canceled finale can also start its series record. Saved reviews survive resets. |
 | Track-Local Time | Hero cards show each circuit's current local clock time with a day cue (`Yesterday`, `Today`, `Tomorrow`). |
 | Bet Ledger | Results → Bets shows each player's current season stake. Edit bets in Settings. |
 | Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. Joining prompts before replacing existing local season data. |

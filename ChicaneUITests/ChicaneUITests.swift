@@ -142,6 +142,72 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Ready"].waitForExistence(timeout: Timeout.medium))
     }
 
+    func testClearingOnePositionPersistsAndImmediatelyRemovesReadyState() throws {
+        let runID = UUID().uuidString
+        var app = makeApp(runID: runID)
+        app.launch()
+        completeWeekendPick(in: app, playerName: "UITest Player")
+        XCTAssertTrue(app.staticTexts["Ready"].waitForExistence(timeout: Timeout.medium))
+        selectPodiumPosition(1, option: "Choose driver", in: app)
+        XCTAssertTrue(app.staticTexts["Open"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertEqual(app.buttons["Position 1 selection"].value as? String, "Choose driver")
+        app.terminate()
+        app = makeApp(runID: runID, preserveState: true)
+        app.launch()
+        let picker = app.descendants(matching: .any)["Position 1 selection"]
+        XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(picker.label.contains("Choose driver") || (picker.value as? String)?.contains("Choose driver") == true || app.staticTexts["Choose driver"].exists)
+        XCTAssertTrue(app.staticTexts["Open"].exists)
+        selectPodiumPosition(1, option: "Max Verstappen (Red Bull)", in: app)
+        XCTAssertTrue(app.staticTexts["Ready"].waitForExistence(timeout: Timeout.medium))
+    }
+
+    func testCancelRaceSkipsWeekendPersistsAndUndoRestoresIt() throws {
+        let runID = UUID().uuidString
+        var app = makeApp(scenario: .multiRaceWeekend, runID: runID)
+        app.launch()
+        XCTAssertTrue(app.staticTexts["WeekendRaceTitle"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertEqual(app.staticTexts["WeekendRaceTitle"].label, "UI Test MotoGP")
+        app.tabBars.buttons[Tab.results].tap()
+        app.buttons["MotoGP"].firstMatch.tap()
+        let options = app.buttons["Race options"]
+        XCTAssertTrue(options.waitForExistence(timeout: Timeout.medium))
+        options.tap()
+        app.buttons["Mark race canceled"].tap()
+        let alert = app.alerts["Cancel this race?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: Timeout.medium))
+        alert.buttons["Mark race canceled"].tap()
+        XCTAssertTrue(app.staticTexts["Race canceled"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertFalse(app.buttons["Fetch official results"].exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Canceled race"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.tabBars.buttons[Tab.weekend].tap()
+        XCTAssertEqual(app.staticTexts["WeekendRaceTitle"].label, "UI Test Grand Prix")
+        app.terminate()
+        app = makeApp(scenario: .multiRaceWeekend, runID: runID, preserveState: true)
+        app.launch()
+        XCTAssertTrue(app.staticTexts["WeekendRaceTitle"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertEqual(app.staticTexts["WeekendRaceTitle"].label, "UI Test Grand Prix")
+        app.tabBars.buttons[Tab.results].tap()
+        app.buttons["MotoGP"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Race canceled"].waitForExistence(timeout: Timeout.medium))
+        app.buttons["Race options"].tap()
+        app.buttons["Undo cancellation"].tap()
+        let undo = app.alerts["Undo cancellation?"]
+        XCTAssertTrue(undo.waitForExistence(timeout: Timeout.medium))
+        undo.buttons["Undo cancellation"].tap()
+        XCTAssertTrue(app.buttons["Fetch official results"].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.weekend].tap()
+        // Undo restores the race without changing the user's current selection.
+        XCTAssertEqual(app.staticTexts["WeekendRaceTitle"].label, "UI Test Grand Prix")
+        XCTAssertEqual(app.staticTexts["WeekendRacePosition"].label, "Race 2 of 2")
+        app.buttons["WeekendRaceSwitcher"].tap()
+        XCTAssertEqual(app.staticTexts["WeekendRaceTitle"].label, "UI Test MotoGP")
+        XCTAssertEqual(app.staticTexts["WeekendRacePosition"].label, "Race 1 of 2")
+    }
+
     func testWeekendHeroCyclesRacesInStartOrderAndPreservesSavedPicks() throws {
         let app = makeApp(scenario: .multiRaceWeekend)
         app.launch()

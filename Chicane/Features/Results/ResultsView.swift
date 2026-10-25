@@ -30,6 +30,9 @@ struct ResultsView: View {
     @State private var selectedSeries: RaceSeries = .formula1
     @State private var selectedEventID: String?
     @State private var isUpdatingResults = false
+    @State private var pendingStatusEvent: RaceEvent?
+    @State private var pendingCancellation = false
+    @State private var isUpdatingStatus = false
     @State private var hasInitialized = false
     @State private var selectionFollowsDefault = true
     @State private var defaultSelectionSeries: RaceSeries?
@@ -115,6 +118,29 @@ struct ResultsView: View {
             guard !hasInitialized else { return }
             hasInitialized = true
             initializeIfNeeded()
+        }
+        .alert(pendingCancellation ? "Cancel this race?" : "Undo cancellation?", isPresented: Binding(
+            get: { pendingStatusEvent != nil },
+            set: { if !$0 { pendingStatusEvent = nil } }
+        )) {
+            Button(pendingCancellation ? "Mark race canceled" : "Undo cancellation") {
+                guard let event = pendingStatusEvent else { return }
+                let canceled = pendingCancellation
+                pendingStatusEvent = nil
+                isUpdatingStatus = true
+                Task {
+                    defer { isUpdatingStatus = false }
+                    do {
+                        let warning = try await viewModel.setRaceCanceled(event, isCanceled: canceled)
+                        viewModel.showSaveOutcome(warning: warning, successMessage: canceled ? "Race canceled. Picks are preserved as void." : "Race restored.")
+                    } catch { viewModel.showError(error.localizedDescription) }
+                }
+            }
+            Button("Keep current status", role: .cancel) { pendingStatusEvent = nil }
+        } message: {
+            Text(pendingCancellation
+                 ? "The race will be skipped on Weekend. Everyone’s predictions will be preserved as void with no points awarded. This status is shared with your league and can be undone."
+                 : "The race returns to Weekend and any recorded results count again. Your original predictions are preserved.")
         }
         .onChange(of: allEvents) {
             ensureValidSelection()
@@ -235,7 +261,9 @@ struct ResultsView: View {
                 resultHeroHeader(for: selectedEvent)
             }
 
-            if let currentResult {
+            if let selectedEvent, viewModel.eventIsCanceled(selectedEvent) {
+                canceledRaceContent(for: selectedEvent)
+            } else if let currentResult {
                 resultStatusLabel
                 if let inlineResultStatus {
                     inlineStatusCard(inlineResultStatus)
@@ -280,10 +308,36 @@ struct ResultsView: View {
         .glassCard(accent: ChicaneTheme.seriesColor(selectedSeries))
     }
 
+    private func canceledRaceContent(for event: RaceEvent) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Race canceled", systemImage: "flag.slash")
+                .font(ChicaneTypography.cardTitle)
+            Text("Predictions void · No points awarded")
+                .font(ChicaneTypography.body)
+                .foregroundStyle(.secondary)
+            ForEach(viewModel.players) { player in
+                let draft = viewModel.podiumDraft(for: event.series, eventID: event.id, playerID: player.id)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(player.name).font(ChicaneTypography.bodySemibold)
+                    if draft == .empty {
+                        Text("No picks recorded").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(Array([draft.p1, draft.p2, draft.p3].enumerated()), id: \.offset) { index, id in
+                            Text("\(index + 1). \(id.map { participantDisplayLabel(for: $0) } ?? "No selection")")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .font(ChicaneTypography.body)
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
     private var resultsContent: some View {
         VStack(alignment: .leading, spacing: 20) {
             resultFeatureCard
-            pointsCard
+            if selectedEvent.map({ viewModel.eventIsCanceled($0) }) != true { pointsCard }
         }
     }
 
@@ -392,9 +446,25 @@ struct ResultsView: View {
                     .background(ChicaneTheme.seriesColor(event.series), in: Capsule())
             }
 
-            Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
-                .font(ChicaneTypography.subtitleSemibold)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text(DateFormatter.dayMonthYear.string(from: event.raceDate))
+                    .font(ChicaneTypography.subtitleSemibold)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Menu {
+                    Button(viewModel.eventIsCanceled(event) ? "Undo cancellation" : "Mark race canceled", systemImage: viewModel.eventIsCanceled(event) ? "arrow.uturn.backward" : "flag.slash") {
+                        pendingCancellation = !viewModel.eventIsCanceled(event)
+                        pendingStatusEvent = event
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Race options")
+                .disabled(isUpdatingStatus || isUpdatingResults)
+            }
         }
     }
 

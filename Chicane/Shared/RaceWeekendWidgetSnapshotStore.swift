@@ -6,12 +6,12 @@ enum RaceWeekendWidgetSnapshotStore {
     static let completedEventKeysKey = "race_weekend_widget_completed_event_keys_v2"
     private static let widgetKind = "RaceWeekendWidget"
 
-    static func saveResults(_ results: [RaceResult], events: [RaceEvent]) {
+    static func saveResults(_ results: [RaceResult], events: [RaceEvent], canceledEvents: [RaceEvent] = []) {
         guard results.isEmpty || !events.isEmpty else {
             return
         }
 
-        let completedEventKeys = completedEventKeys(results: results, events: events)
+        let completedEventKeys = Array(Set(completedEventKeys(results: results, events: events) + canceledEvents.map { completedEventKey(for: $0) })).sorted()
 
         guard let defaults = UserDefaults(suiteName: appGroupID) else {
             return

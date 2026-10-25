@@ -43,6 +43,25 @@ final class SeasonArchiveTests: XCTestCase {
         return state
     }
 
+    func testCanceledFinaleCompletesArchivePreservesPredictionsAndUndoReopensIt() throws {
+        var state = state()
+        let finale = events().first { $0.series == .motoGP && $0.round == 2 }!
+        state.results.removeAll { $0.eventID == finale.id }
+        state.eventStatuses = [RaceEventStatus(event: finale, isCanceled: true, updatedAt: date)]
+        state.seasonArchives = service.updatedArchives(state: state, events: events(), participants: drivers, at: date)
+        let archive = try XCTUnwrap(state.seasonArchives.first { $0.series == .motoGP })
+        XCTAssertTrue(archive.isComplete)
+        XCTAssertTrue(archive.isCanceled(finale))
+        XCTAssertEqual(archive.picks.filter { $0.eventID == finale.id }.count, 2)
+        XCTAssertEqual(service.standings(for: [archive]).first?.racePoints, 3)
+        XCTAssertEqual(service.standings(for: [archive]).first?.picksMade, 1)
+        state.eventStatuses = [RaceEventStatus(event: finale, isCanceled: false, updatedAt: date.addingTimeInterval(60))]
+        let restored = service.updatedArchives(state: state, events: events(), participants: drivers, at: date.addingTimeInterval(60))
+        let reopened = try XCTUnwrap(restored.first { $0.series == .motoGP })
+        XCTAssertFalse(reopened.isComplete)
+        XCTAssertTrue(reopened.pendingDescription.contains("1 race result"))
+    }
+
     func testOfficialFinalesProduceCompleteCombinedReportWithExistingScoring() throws {
         let archives = service.updatedArchives(state: state(), events: events(), participants: drivers, at: date)
         let review = try XCTUnwrap(service.reviews(from: archives).first)
@@ -146,7 +165,7 @@ final class SeasonArchiveTests: XCTestCase {
         payload["schemaVersion"] = 5
         payload.removeValue(forKey: "seasonArchives")
         let decoded = try JSONDecoder().decode(PersistedState.self, from: JSONSerialization.data(withJSONObject: payload)).normalized()
-        XCTAssertEqual(decoded.schemaVersion, 6)
+        XCTAssertEqual(decoded.schemaVersion, PersistedState.currentSchemaVersion)
         XCTAssertEqual(decoded.picks, original.picks)
         XCTAssertTrue(decoded.seasonArchives.isEmpty)
     }

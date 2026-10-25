@@ -240,10 +240,22 @@ struct SeasonReviewDetailView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(event.raceDate.formatted(date: .abbreviated, time: .omitted))
                                 .foregroundStyle(.secondary)
-                            if let result = archive.results.first(where: { $0.eventID == event.id }) {
-                                Text("Result: \(podiumText(result.podium, in: archive))")
+                            if archive.isCanceled(event) {
+                                Text("Canceled · Predictions void · No points awarded")
+                                    .fontWeight(.semibold)
                                 ForEach(archive.players) { player in
                                     if let pick = archive.picks.first(where: { $0.playerID == player.id && $0.eventID == event.id }) {
+                                        let draft = pick.podiumDraft
+                                        let names = [draft.p1, draft.p2, draft.p3].map { id in
+                                            id.map { value in archive.participants.first { $0.id == value }?.name ?? value } ?? "No selection"
+                                        }.joined(separator: " · ")
+                                        Text("\(player.name): \(names) — Void")
+                                    }
+                                }
+                            } else if let result = archive.results.first(where: { $0.eventID == event.id }) {
+                                Text("Result: \(podiumText(result.podium, in: archive))")
+                                ForEach(archive.players) { player in
+                                    if let pick = archive.picks.first(where: { $0.isComplete && $0.playerID == player.id && $0.eventID == event.id }) {
                                         Text("\(player.name): \(podiumText(pick.podium, in: archive)) — \(SeasonArchiveService().points(pick.podium, result.podium)) points")
                                     } else {
                                         Text("\(player.name): No pick recorded")

@@ -18,16 +18,21 @@ struct ArchivedSeason: Codable, Hashable, Identifiable, Sendable {
     var results: [RaceResult]
     var championPicks: [SeasonChampionPick]
     var championResult: SeasonChampionResult?
+    var eventStatuses: [RaceEventStatus]? = nil
+
+    func isCanceled(_ event: RaceEvent) -> Bool {
+        eventStatuses?.first(where: { $0.matches(event) })?.isCanceled == true
+    }
 
     var groupYearID: String { "\(leagueCode ?? "device")|\(season)" }
     var id: String { "\(groupYearID)|\(series.rawValue)" }
     var isComplete: Bool {
         !players.isEmpty && !events.isEmpty &&
-            events.allSatisfy { event in results.contains { $0.eventID == event.id && $0.isLocked } } &&
+            events.allSatisfy { event in isCanceled(event) || results.contains { $0.eventID == event.id && $0.isLocked } } &&
             championResult?.isLocked == true
     }
     var pendingDescription: String {
-        let missing = events.filter { event in !results.contains { $0.eventID == event.id && $0.isLocked } }.count
+        let missing = events.filter { event in !isCanceled(event) && !results.contains { $0.eventID == event.id && $0.isLocked } }.count
         var reasons: [String] = []
         if missing > 0 { reasons.append("\(missing) race result\(missing == 1 ? "" : "s")") }
         if championResult?.isLocked != true { reasons.append("confirmed season champion") }
@@ -61,6 +66,7 @@ struct ArchivedSeason: Codable, Hashable, Identifiable, Sendable {
             merged.picks = newest(left.picks + right.picks, key: { "\($0.eventID)|\($0.playerID)" }, date: { $0.updatedAt })
             merged.championPicks = newest(left.championPicks + right.championPicks, key: { $0.playerID.uuidString }, date: { $0.updatedAt })
             merged.championResult = [left.championResult, right.championResult].compactMap { $0 }.max { $0.updatedAt < $1.updatedAt }
+            merged.eventStatuses = RaceEventStatus.merged((left.eventStatuses ?? []) + (right.eventStatuses ?? []))
             merged.updatedAt = max(old.updatedAt, incoming.updatedAt)
             merged.createdAt = min(old.createdAt, incoming.createdAt)
             merged.revision = max(old.revision, incoming.revision)
@@ -86,7 +92,7 @@ struct ArchivedSeason: Codable, Hashable, Identifiable, Sendable {
             RaceResult(series: $0.series, eventID: eventID($0.eventID), podium: podium($0.podium), isLocked: $0.isLocked, updatedAt: $0.updatedAt, isOfficial: $0.isOfficial)
         }
         copy.picks = snapshot.picks.map {
-            RacePick(id: $0.id, series: $0.series, eventID: eventID($0.eventID), playerID: $0.playerID, podium: podium($0.podium), isLocked: $0.isLocked, updatedAt: $0.updatedAt)
+            RacePick(id: $0.id, series: $0.series, eventID: eventID($0.eventID), playerID: $0.playerID, podium: podium($0.podium), isLocked: $0.isLocked, updatedAt: $0.updatedAt, draft: $0.draft.map { PodiumDraft(p1: $0.p1.map(participantID), p2: $0.p2.map(participantID), p3: $0.p3.map(participantID)) })
         }
         copy.championPicks = snapshot.championPicks.map {
             var value = $0

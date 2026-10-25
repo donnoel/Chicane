@@ -886,6 +886,55 @@ final class AppViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.banner?.text.isEmpty ?? true)
     }
 
+    func testPartialAndEmptyPicksPersistAcrossReloadWithoutScoringOldPodium() async throws {
+        let event = TestFixtures.event(id: "f1-2026-clear", series: .formula1)
+        let drivers = ["a", "b", "c"].map { TestFixtures.driver(id: $0, series: .formula1, name: $0, team: "Team") }
+        let player = Player(id: UUID(), name: "Don")
+        let model = makeViewModel(event: event, drivers: drivers, podiumNames: drivers.map(\.name))
+        await model.reload()
+        try await model.savePlayers([player])
+        try await model.savePick(series: .formula1, eventID: event.id, playerID: player.id, draft: PodiumDraft(p1: "a", p2: "b", p3: "c"))
+        let partial = PodiumDraft(p1: nil, p2: "b", p3: "c")
+        try await model.savePick(series: .formula1, eventID: event.id, playerID: player.id, draft: partial)
+        await model.reload()
+        XCTAssertEqual(model.podiumDraft(for: .formula1, eventID: event.id, playerID: player.id), partial)
+        XCTAssertNil(model.pick(for: .formula1, eventID: event.id, playerID: player.id))
+        XCTAssertNotNil(model.officialResultFetchBlockMessage(series: .formula1, eventID: event.id))
+        try await model.savePick(series: .formula1, eventID: event.id, playerID: player.id, draft: .empty)
+        await model.reload()
+        XCTAssertEqual(model.podiumDraft(for: .formula1, eventID: event.id, playerID: player.id), .empty)
+        XCTAssertNil(model.pick(for: .formula1, eventID: event.id, playerID: player.id))
+        try await model.saveResult(series: .formula1, eventID: event.id, draft: PodiumDraft(p1: "a", p2: "b", p3: "c"), lockResult: false)
+        XCTAssertEqual(model.eventPoints(series: .formula1, eventID: event.id)[player.id], 0)
+    }
+
+    func testCanceledRacePreservesPicksSkipsWeekendVoidsPointsAndCanUndo() async throws {
+        let event = TestFixtures.event(id: "f1-2026-cancel", series: .formula1)
+        let drivers = ["a", "b", "c"].map { TestFixtures.driver(id: $0, series: .formula1, name: $0, team: "Team") }
+        let player = Player(id: UUID(), name: "Don")
+        let draft = PodiumDraft(p1: "a", p2: "b", p3: "c")
+        let model = makeViewModel(event: event, drivers: drivers, podiumNames: drivers.map(\.name))
+        await model.reload()
+        try await model.savePlayers([player])
+        try await model.savePick(series: .formula1, eventID: event.id, playerID: player.id, draft: draft)
+        try await model.saveResult(series: .formula1, eventID: event.id, draft: draft)
+        try await model.setRaceCanceled(event, isCanceled: true)
+        await model.reload()
+        XCTAssertTrue(model.eventIsCanceled(event))
+        XCTAssertNil(model.nextEvent(for: .formula1))
+        XCTAssertEqual(model.podiumDraft(for: .formula1, eventID: event.id, playerID: player.id), draft)
+        XCTAssertTrue(model.eventPoints(series: .formula1, eventID: event.id).isEmpty)
+        XCTAssertEqual(model.standings(for: .combined).first?.points, 0)
+        do {
+            try await model.updateResultFromOfficialSource(series: .formula1, eventID: event.id)
+            XCTFail("Canceled races cannot fetch results")
+        } catch { XCTAssertTrue(error.localizedDescription.contains("canceled")) }
+        try await model.setRaceCanceled(event, isCanceled: false)
+        await model.reload()
+        XCTAssertFalse(model.eventIsCanceled(event))
+        XCTAssertEqual(model.eventPoints(series: .formula1, eventID: event.id)[player.id], 3)
+    }
+
     private func makeViewModel(
         event: RaceEvent,
         drivers: [Driver],
@@ -1067,6 +1116,11 @@ private actor ManualSyncPermissionFailureSeasonRepository: SeasonRepository {
 
     func saveSettings(_ settings: AppSettings) async throws -> PersistedState {
         state.settings = settings
+        return state
+    }
+
+    func upsertEventStatus(_ status: RaceEventStatus) async throws -> PersistedState {
+        state.eventStatuses = RaceEventStatus.merged(state.eventStatuses + [status])
         return state
     }
 

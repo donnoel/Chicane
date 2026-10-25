@@ -71,6 +71,7 @@ struct HomeView: View {
             hydrateAvailablePicks()
             ensureSelectedPlayer()
         }
+        .onChange(of: viewModel.eventStatuses) { initializeIfNeeded() }
         .onChange(of: viewModel.results) {
             initializeIfNeeded()
             hydrateAvailablePicks()
@@ -93,7 +94,7 @@ struct HomeView: View {
     }
 
     private var raceQueue: [RaceEvent] {
-        let events = viewModel.allEvents()
+        let events = viewModel.allEvents().filter { !viewModel.eventIsCanceled($0) }
         guard let firstVisibleEvent = RaceEvent.nextDisplayEvent(in: events, results: viewModel.results) else {
             return []
         }
@@ -144,9 +145,9 @@ struct HomeView: View {
 
     private var emptyCalendarCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("No race calendar", systemImage: "calendar.badge.exclamationmark")
+            Label(viewModel.allEvents().isEmpty ? "No race calendar" : "No upcoming races", systemImage: "calendar.badge.exclamationmark")
                 .font(ChicaneTypography.cardTitle)
-            Text("Pull to refresh, or check Settings if the calendar still does not load.")
+            Text(viewModel.allEvents().isEmpty ? "Pull to refresh, or check Settings if the calendar still does not load." : "Canceled races are preserved in Results. Pull to refresh for calendar updates.")
                 .font(ChicaneTypography.body)
                 .foregroundStyle(.secondary)
         }
@@ -615,10 +616,8 @@ struct HomeView: View {
     }
 
     private func playerIsReady(_ player: Player, for event: RaceEvent) -> Bool {
-        if viewModel.pick(for: event.series, eventID: event.id, playerID: player.id) != nil {
-            return true
-        }
-        return draftsByPlayer[player.id]?.toPodium() != nil
+        let draft = draftsByPlayer[player.id] ?? viewModel.podiumDraft(for: event.series, eventID: event.id, playerID: player.id)
+        return draft.toPodium() != nil
     }
 
     private func playerAccent(for player: Player, event: RaceEvent) -> Color {
@@ -703,7 +702,7 @@ struct HomeView: View {
 
     private func initializeIfNeeded() {
         guard selectedEventID == nil || !raceQueue.contains(where: { $0.id == selectedEventID }) else {
-            hydrateDrafts()
+            hydrateAvailablePicks()
             ensureSelectedPlayer()
             return
         }
@@ -743,11 +742,7 @@ struct HomeView: View {
     private func hydrateDrafts(for event: RaceEvent) {
         var updated: [UUID: PodiumDraft] = [:]
         for player in editablePlayers {
-            if let pick = viewModel.pick(for: event.series, eventID: event.id, playerID: player.id) {
-                updated[player.id] = PodiumDraft(podium: pick.podium)
-            } else {
-                updated[player.id] = .empty
-            }
+            updated[player.id] = viewModel.podiumDraft(for: event.series, eventID: event.id, playerID: player.id)
         }
         draftsByPlayer = updated
         savedDraftsByPlayer = updated
@@ -763,12 +758,7 @@ struct HomeView: View {
         var updatedDrafts: [UUID: PodiumDraft] = [:]
         var updatedSavedDrafts: [UUID: PodiumDraft] = [:]
         for player in editablePlayers {
-            let savedDraft: PodiumDraft
-            if let pick = viewModel.pick(for: selectedEvent.series, eventID: selectedEvent.id, playerID: player.id) {
-                savedDraft = PodiumDraft(podium: pick.podium)
-            } else {
-                savedDraft = .empty
-            }
+            let savedDraft = viewModel.podiumDraft(for: selectedEvent.series, eventID: selectedEvent.id, playerID: player.id)
 
             let currentDraft = draftsByPlayer[player.id] ?? .empty
             let previousSavedDraft = savedDraftsByPlayer[player.id] ?? .empty
@@ -791,12 +781,7 @@ struct HomeView: View {
     private func autosavePickIfNeeded(for player: Player, event: RaceEvent, draft: PodiumDraft) {
         guard !viewModel.pickIsLocked(for: event.series, eventID: event.id, playerID: player.id) else { return }
 
-        let savedDraft: PodiumDraft
-        if let savedPick = viewModel.pick(for: event.series, eventID: event.id, playerID: player.id) {
-            savedDraft = PodiumDraft(podium: savedPick.podium)
-        } else {
-            savedDraft = .empty
-        }
+        let savedDraft = viewModel.podiumDraft(for: event.series, eventID: event.id, playerID: player.id)
 
         guard AutosaveDecision.shouldAutosavePodiumPick(draft: draft, savedDraft: savedDraft) else { return }
 
@@ -818,14 +803,10 @@ struct HomeView: View {
                 successMessage: "Saved \(player.name)'s picks for \(event.title)."
             )
             guard selectedEvent?.id == event.id else { return }
-            if let savedPick = viewModel.pick(for: event.series, eventID: event.id, playerID: player.id) {
-                let savedDraft = PodiumDraft(podium: savedPick.podium)
-                draftsByPlayer[player.id] = savedDraft
-                savedDraftsByPlayer[player.id] = savedDraft
-            } else {
-                draftsByPlayer[player.id] = .empty
-                savedDraftsByPlayer[player.id] = .empty
-            }
+            guard draftsByPlayer[player.id] == draft else { return }
+            let savedDraft = viewModel.podiumDraft(for: event.series, eventID: event.id, playerID: player.id)
+            draftsByPlayer[player.id] = savedDraft
+            savedDraftsByPlayer[player.id] = savedDraft
         } catch {
             viewModel.showError(error.localizedDescription)
         }

@@ -191,7 +191,7 @@ struct LeaguePicksSheet: View {
 
     private func podiumPick(for player: Player) -> RacePick? {
         picks.first {
-            $0.series == event.series &&
+            $0.isComplete && $0.series == event.series &&
             $0.eventID == event.id &&
             $0.playerID == player.id
         }

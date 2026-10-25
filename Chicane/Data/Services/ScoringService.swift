@@ -66,7 +66,7 @@ struct ScoringService: Sendable {
                 targetEventID: eventID,
                 in: picks
             )
-            guard let pick else {
+            guard let pick, pick.isComplete else {
                 output[player.id] = 0
                 continue
             }
@@ -159,7 +159,7 @@ struct ScoreboardCalculator: Sendable {
                     series: result.series,
                     eventID: result.eventID,
                     resolver: resolver
-                ) else {
+                ), pick.isComplete else {
                     output[player.id] = 0
                     continue
                 }

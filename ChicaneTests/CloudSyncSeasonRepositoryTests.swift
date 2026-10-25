@@ -3,6 +3,21 @@ import XCTest
 @testable import Chicane
 
 final class PersistedStateMigrationTests: XCTestCase {
+    func testSchemaSixKeepsSavedPicksAndAddsNoCancellation() throws {
+        var state = PersistedState.default
+        let player = Player(id: UUID(), name: "Don")
+        state.players = [player]
+        state.picks = [RacePick(id: UUID(), series: .motoGP, eventID: "moto-2026-r18", playerID: player.id, podium: Podium(p1: "a", p2: "b", p3: "c"), updatedAt: .distantPast)]
+        var payload = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any])
+        payload["schemaVersion"] = 6
+        payload.removeValue(forKey: "eventStatuses")
+        let restored = try JSONDecoder().decode(PersistedState.self, from: JSONSerialization.data(withJSONObject: payload)).normalized()
+        XCTAssertEqual(restored.picks, state.picks)
+        XCTAssertTrue(restored.picks[0].isComplete)
+        XCTAssertTrue(restored.eventStatuses.isEmpty)
+        XCTAssertEqual(restored.schemaVersion, PersistedState.currentSchemaVersion)
+    }
+
     func testVersionOnePayloadDecodesAndBackfillsMergeTimestamps() throws {
         let payload = """
         {
@@ -70,6 +85,37 @@ final class CloudSyncSeasonRepositoryTests: XCTestCase {
             try? FileManager.default.removeItem(at: tempDir)
         }
         super.tearDown()
+    }
+
+    func testClearsAndCancellationUndoBeatStaleDeviceWithFutureClock() async throws {
+        let cloud = MemoryLeagueSyncStore()
+        let local = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        let repo = CloudSyncSeasonRepository(localRepository: local, cloudStore: cloud)
+        let player = Player(id: UUID(), name: "Don")
+        let event = TestFixtures.event(id: "f1-2026-cancel", series: .formula1)
+        let future = Date().addingTimeInterval(86_400)
+        let podium = Podium(p1: "a", p2: "b", p3: "c")
+        var state = PersistedState.default
+        state.settings.leagueCode = "ABC123"
+        state.players = [player]
+        state.picks = [RacePick(id: UUID(), series: .formula1, eventID: event.id, playerID: player.id, podium: podium, updatedAt: future)]
+        state.eventStatuses = [RaceEventStatus(event: event, isCanceled: true, updatedAt: future)]
+        _ = try await local.replaceState(state)
+        await cloud.seed(state, for: "ABC123")
+        let cleared = RacePick(id: state.picks[0].id, series: .formula1, eventID: event.id, playerID: player.id, podium: podium, updatedAt: Date(), draft: .empty)
+        _ = try await repo.upsertPick(cleared)
+        _ = try await repo.upsertEventStatus(RaceEventStatus(event: event, isCanceled: false))
+        // An unchanged stale device uploads its old complete pick/canceled status.
+        let staleLocal = LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir.appendingPathComponent("stale")))
+        _ = try await staleLocal.replaceState(state)
+        let stale = CloudSyncSeasonRepository(localRepository: staleLocal, cloudStore: cloud)
+        let merged = try await stale.loadState()
+        XCTAssertEqual(merged.picks.first?.podiumDraft, .empty)
+        XCTAssertEqual(merged.picks.first?.isComplete, false)
+        XCTAssertEqual(merged.eventStatuses.first?.isCanceled, false)
+        let reloaded = try await repo.loadState()
+        XCTAssertEqual(reloaded.picks.first?.podiumDraft, .empty)
+        XCTAssertEqual(reloaded.eventStatuses.first?.isCanceled, false)
     }
 
     func testLoadStateMergesRemoteLeaguePlayersIntoLocalState() async throws {

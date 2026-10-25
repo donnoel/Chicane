@@ -8,11 +8,14 @@ struct SeasonArchiveService: Sendable {
             let calendar = events.filter { $0.series == series && $0.season == year }.sorted { $0.raceDate < $1.raceDate }
             let currentDrivers = participants.filter { $0.series == series }
             let resolver = StoredIdentityResolver(series: series, events: calendar, participants: currentDrivers)
-            guard let finale = calendar.last,
-                  let finaleResult = resolver.matchingResult(targetEventID: finale.id, in: state.results),
-                  finaleResult.isOfficial, finaleResult.isLocked else { continue }
-
+            let statuses = state.eventStatuses.filter { $0.series == series && $0.season == year }
+            guard let finale = calendar.last else { continue }
+            let finaleResult = resolver.matchingResult(targetEventID: finale.id, in: state.results)
+            let finaleCanceled = statuses.first(where: { $0.matches(finale) })?.isCanceled == true
             let group = state.settings.normalizedLeagueCode
+            let hasArchive = archives.contains { $0.season == year && $0.series == series && $0.leagueCode == group }
+            guard hasArchive || finaleCanceled || (finaleResult?.isOfficial == true && finaleResult?.isLocked == true) else { continue }
+
             let old = archives.first { $0.season == year && $0.series == series && $0.leagueCode == group }
             let players = old?.players ?? state.players
             let frozenEvents = old?.events ?? calendar
@@ -36,7 +39,7 @@ struct SeasonArchiveService: Sendable {
             let picks = frozenEvents.flatMap { event in
                 players.compactMap { player -> RacePick? in
                     guard let pick = identity.matchingPick(for: player.id, targetEventID: event.id, in: state.picks) else { return nil }
-                    return RacePick(id: pick.id, series: series, eventID: event.id, playerID: player.id, podium: podium(pick.podium), isLocked: pick.isLocked, updatedAt: pick.updatedAt)
+                    return RacePick(id: pick.id, series: series, eventID: event.id, playerID: player.id, podium: podium(pick.podium), isLocked: pick.isLocked, updatedAt: pick.updatedAt, draft: pick.draft.map { PodiumDraft(p1: $0.p1.map(participantID), p2: $0.p2.map(participantID), p3: $0.p3.map(participantID)) })
                 }
             }
             let championPicks = state.championPicks.filter {
@@ -59,7 +62,7 @@ struct SeasonArchiveService: Sendable {
                 revision: old?.revision ?? 1, scoringVersion: 1,
                 players: players, bets: old?.bets ?? state.settings.playerBetTextByPlayerID,
                 events: frozenEvents, participants: drivers, picks: picks, results: results,
-                championPicks: championPicks, championResult: champion
+                championPicks: championPicks, championResult: champion, eventStatuses: statuses
             )
             candidate = ArchivedSeason.merged([old, candidate].compactMap { $0 }).first ?? candidate
             if let old, candidate != old {
@@ -122,8 +125,8 @@ struct SeasonArchiveService: Sendable {
             var perfect = 0
             var picksMade = 0
             for snapshot in snapshots {
-                for event in snapshot.events {
-                    guard let pick = snapshot.picks.first(where: { $0.eventID == event.id && $0.playerID == player.id }) else { continue }
+                for event in snapshot.events where !snapshot.isCanceled(event) {
+                    guard let pick = snapshot.picks.first(where: { $0.isComplete && $0.eventID == event.id && $0.playerID == player.id }) else { continue }
                     picksMade += 1
                     guard let result = snapshot.results.first(where: { $0.eventID == event.id }) else { continue }
                     let points = points(pick.podium, result.podium)
@@ -156,10 +159,10 @@ struct SeasonArchiveService: Sendable {
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         var weekends: [Date: [UUID: Int]] = [:]
         for snapshot in snapshots {
-            for event in snapshot.events {
+            for event in snapshot.events where !snapshot.isCanceled(event) {
                 guard let result = snapshot.results.first(where: { $0.eventID == event.id }),
                       let week = calendar.dateInterval(of: .weekOfYear, for: event.raceDate)?.start else { continue }
-                for pick in snapshot.picks where pick.eventID == event.id {
+                for pick in snapshot.picks where pick.isComplete && pick.eventID == event.id {
                     weekends[week, default: [:]][pick.playerID, default: 0] += points(pick.podium, result.podium)
                 }
             }
@@ -176,12 +179,12 @@ struct SeasonArchiveService: Sendable {
         if snapshots.count == RaceSeries.allCases.count && snapshots.allSatisfy(\.isComplete), let first = rows.first, rows.count > 1 {
             let winners = rows.filter { $0.total == first.total }
             highlights.append(SeasonHighlight(id: "finish", title: winners.count > 1 ? "A shared title" : "The winning margin", detail: winners.count > 1 ? "The season finished level on \(first.total) points." : "\(first.name) finished \(first.total - rows[1].total) points clear."))
-            if let finale = snapshots.flatMap(\.events).max(by: { $0.raceDate < $1.raceDate }) {
+            if let finale = snapshots.flatMap({ snapshot in snapshot.events.filter { !snapshot.isCanceled($0) } }).max(by: { $0.raceDate < $1.raceDate }) {
                 var before = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, 0) })
                 for snapshot in snapshots {
-                    for event in snapshot.events where event.raceDate < finale.raceDate {
+                    for event in snapshot.events where event.raceDate < finale.raceDate && !snapshot.isCanceled(event) {
                         guard let result = snapshot.results.first(where: { $0.eventID == event.id }) else { continue }
-                        for pick in snapshot.picks where pick.eventID == event.id {
+                        for pick in snapshot.picks where pick.isComplete && pick.eventID == event.id {
                             before[pick.playerID, default: 0] += points(pick.podium, result.podium)
                         }
                     }

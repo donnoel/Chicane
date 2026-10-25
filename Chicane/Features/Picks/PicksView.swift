@@ -173,7 +173,7 @@ struct PicksView: View {
 
     private func podiumPickIsLocked(for player: Player) -> Bool {
         guard let selectedEventID else { return false }
-        return viewModel.pickIsLocked(for: selectedSeries, eventID: selectedEventID, playerID: player.id)
+        return selectedEvent.map { viewModel.eventIsCanceled($0) } == true || viewModel.pickIsLocked(for: selectedSeries, eventID: selectedEventID, playerID: player.id)
     }
 
     private var championDraftsByPlayer: [UUID: String] {
@@ -409,7 +409,7 @@ struct PicksView: View {
 
     private func playerSummaryStatus(for player: Player) -> String {
         let championSaved = viewModel.championPick(for: selectedSeries, playerID: player.id) != nil
-        let podiumSaved = viewModel.pick(for: selectedSeries, eventID: selectedEventID ?? "", playerID: player.id) != nil
+        let podiumSaved = draftsByPlayer[player.id]?.toPodium() != nil
 
         if championPicksAreLocked && podiumSaved {
             return "Ready"
@@ -466,7 +466,11 @@ struct PicksView: View {
 
     private func podiumStatusText(for player: Player) -> some View {
         Group {
-            if podiumPickIsLocked(for: player) {
+            if selectedEvent.map({ viewModel.eventIsCanceled($0) }) == true {
+                Label("Canceled · Predictions void. No points awarded.", systemImage: "flag.slash")
+                    .font(ChicaneTypography.caption)
+                    .foregroundStyle(.secondary)
+            } else if podiumPickIsLocked(for: player) {
                 Label("Locked once official results are retrieved.", systemImage: "lock.fill")
                     .font(ChicaneTypography.caption)
                     .foregroundStyle(.secondary)
@@ -566,11 +570,7 @@ struct PicksView: View {
 
         var updated: [UUID: PodiumDraft] = [:]
         for player in editablePlayers {
-            if let pick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
-                updated[player.id] = PodiumDraft(podium: pick.podium)
-            } else {
-                updated[player.id] = .empty
-            }
+            updated[player.id] = viewModel.podiumDraft(for: selectedSeries, eventID: selectedEventID, playerID: player.id)
         }
         draftsByPlayer = updated
         savedDraftsByPlayer = updated
@@ -628,12 +628,7 @@ struct PicksView: View {
         var updatedDrafts: [UUID: PodiumDraft] = [:]
         var updatedSavedDrafts: [UUID: PodiumDraft] = [:]
         for player in editablePlayers {
-            let savedDraft: PodiumDraft
-            if let pick = viewModel.pick(for: selectedSeries, eventID: selectedEventID, playerID: player.id) {
-                savedDraft = PodiumDraft(podium: pick.podium)
-            } else {
-                savedDraft = .empty
-            }
+            let savedDraft = viewModel.podiumDraft(for: selectedSeries, eventID: selectedEventID, playerID: player.id)
             let currentDraft = draftsByPlayer[player.id] ?? .empty
             let previousSavedDraft = savedDraftsByPlayer[player.id] ?? .empty
             updatedSavedDrafts[player.id] = savedDraft
@@ -662,12 +657,7 @@ struct PicksView: View {
         let eventID = selectedEventID
         guard !viewModel.pickIsLocked(for: series, eventID: eventID, playerID: player.id) else { return }
 
-        let savedDraft: PodiumDraft
-        if let savedPick = viewModel.pick(for: series, eventID: eventID, playerID: player.id) {
-            savedDraft = PodiumDraft(podium: savedPick.podium)
-        } else {
-            savedDraft = .empty
-        }
+        let savedDraft = viewModel.podiumDraft(for: series, eventID: eventID, playerID: player.id)
 
         guard AutosaveDecision.shouldAutosavePodiumPick(draft: draft, savedDraft: savedDraft) else { return }
 
@@ -769,14 +759,10 @@ struct PicksView: View {
                 successMessage: "Saved \(player.name)'s picks for this event."
             )
             guard selectedSeries == series, selectedEventID == eventID else { return }
-            if let savedPick = viewModel.pick(for: series, eventID: eventID, playerID: player.id) {
-                let savedDraft = PodiumDraft(podium: savedPick.podium)
-                draftsByPlayer[player.id] = savedDraft
-                savedDraftsByPlayer[player.id] = savedDraft
-            } else {
-                draftsByPlayer[player.id] = .empty
-                savedDraftsByPlayer[player.id] = .empty
-            }
+            guard draftsByPlayer[player.id] == draft else { return }
+            let savedDraft = viewModel.podiumDraft(for: series, eventID: eventID, playerID: player.id)
+            draftsByPlayer[player.id] = savedDraft
+            savedDraftsByPlayer[player.id] = savedDraft
         } catch {
             viewModel.showError(error.localizedDescription)
         }

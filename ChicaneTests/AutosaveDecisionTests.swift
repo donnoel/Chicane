@@ -20,10 +20,10 @@ final class AutosaveDecisionTests: XCTestCase {
                 expected: true
             ),
             Case(
-                name: "does not save when incomplete and changed",
+                name: "saves partial selections when changed",
                 draft: PodiumDraft(p1: "a", p2: nil, p3: "c"),
                 savedDraft: .empty,
-                expected: false
+                expected: true
             ),
             Case(
                 name: "saves when existing pick is cleared",
@@ -55,6 +55,11 @@ final class AutosaveDecisionTests: XCTestCase {
                 testCase.name
             )
         }
+    }
+
+    func testHydrationPreservesAnIntentionalClearWhileOldSaveFinishes() {
+        let old = PodiumDraft(p1: "a", p2: "b", p3: "c")
+        XCTAssertFalse(DraftHydrationDecision.shouldAdoptSavedDraft(current: PodiumDraft.empty, previousSaved: old, saved: old, empty: PodiumDraft.empty))
     }
 
     func testShouldAutosaveChampionPickMatrix() {

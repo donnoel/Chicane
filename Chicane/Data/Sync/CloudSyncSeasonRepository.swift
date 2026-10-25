@@ -33,6 +33,7 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         var preferredResultKeys: Set<ResultKey> = []
         var preferredChampionPickKeys: Set<ChampionPickKey> = []
         var preferredChampionResultSeries: Set<RaceSeries> = []
+        var preferredEventStatusIDs: Set<String> = []
 
         static let none = MergePreference()
     }
@@ -83,6 +84,11 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             state,
             preference: MergePreference(deletedPickKeys: [PickKey(series: series, eventID: eventID, playerID: playerID)])
         )
+    }
+
+    func upsertEventStatus(_ status: RaceEventStatus) async throws -> PersistedState {
+        let state = try await localRepository.upsertEventStatus(status)
+        return try await pushIfNeeded(state, preference: MergePreference(preferredEventStatusIDs: [status.id]))
     }
 
     func upsertResult(_ result: RaceResult) async throws -> PersistedState {
@@ -357,6 +363,18 @@ actor CloudSyncSeasonRepository: SeasonRepository {
         )
 
         merged.seasonArchives = ArchivedSeason.merged(local.seasonArchives + remote.seasonArchives.filter { $0.leagueCode == leagueCode })
+        var statuses = RaceEventStatus.merged((local.eventStatuses + remote.eventStatuses).filter {
+            guard let resetCutoff else { return true }
+            return $0.updatedAt >= resetCutoff
+        })
+        for var status in local.eventStatuses where preference.preferredEventStatusIDs.contains(status.id) {
+            if let existing = statuses.first(where: { $0.id == status.id }), existing.updatedAt >= status.updatedAt {
+                status.updatedAt = existing.updatedAt.addingTimeInterval(1)
+            }
+            statuses.removeAll { $0.id == status.id }
+            statuses.append(status)
+        }
+        merged.eventStatuses = RaceEventStatus.merged(statuses)
         merged.settings.leagueCode = leagueCode
 
         let validPlayerIDs = Set(merged.players.map(\.id))
@@ -516,7 +534,10 @@ actor CloudSyncSeasonRepository: SeasonRepository {
             let localPick = localByKey[key]
             let remotePick = remoteByKey[key]
 
-            if preferredLocalKeys.contains(key), let localPick {
+            if preferredLocalKeys.contains(key), var localPick {
+                if let remotePick, remotePick.updatedAt >= localPick.updatedAt {
+                    localPick.updatedAt = remotePick.updatedAt.addingTimeInterval(1)
+                }
                 picksByKey[key] = localPick
                 continue
             }

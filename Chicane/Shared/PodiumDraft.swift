@@ -1,6 +1,6 @@
 import Foundation
 
-struct PodiumDraft: Hashable, Sendable {
+struct PodiumDraft: Codable, Hashable, Sendable {
     var p1: String?
     var p2: String?
     var p3: String?

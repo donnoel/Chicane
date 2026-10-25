@@ -171,17 +171,21 @@ actor LocalSeasonRepository: SeasonRepository {
     }
 
     func upsertPick(_ pick: RacePick) async throws -> PersistedState {
-        guard pick.podium.isUnique else {
+        guard !pick.podiumDraft.hasDuplicates else {
             throw RepositoryError.invalidPodium
         }
 
         return try await mutateState(kind: .picks) { state in
+            var updatedPick = pick
+            if let existing = state.picks.first(where: { $0.series == pick.series && $0.eventID == pick.eventID && $0.playerID == pick.playerID }), existing.updatedAt >= pick.updatedAt {
+                updatedPick.updatedAt = existing.updatedAt.addingTimeInterval(1)
+            }
             state.picks.removeAll {
                 $0.series == pick.series &&
                 $0.eventID == pick.eventID &&
                 $0.playerID == pick.playerID
             }
-            state.picks.append(pick)
+            state.picks.append(updatedPick)
         }
     }
 
@@ -192,6 +196,16 @@ actor LocalSeasonRepository: SeasonRepository {
                 $0.eventID == eventID &&
                 $0.playerID == playerID
             }
+        }
+    }
+
+    func upsertEventStatus(_ status: RaceEventStatus) async throws -> PersistedState {
+        try await mutateState(kind: .results) { state in
+            var updatedStatus = status
+            if let old = state.eventStatuses.first(where: { $0.id == status.id }), old.updatedAt >= status.updatedAt {
+                updatedStatus.updatedAt = old.updatedAt.addingTimeInterval(1)
+            }
+            state.eventStatuses = RaceEventStatus.merged(state.eventStatuses + [updatedStatus])
         }
     }
 
@@ -262,6 +276,7 @@ actor LocalSeasonRepository: SeasonRepository {
 
     func resetSeason() async throws -> PersistedState {
         try await mutateState(kind: .reset) { state in
+            state.eventStatuses = []
             state.picks = []
             state.results = []
             state.championPicks = []

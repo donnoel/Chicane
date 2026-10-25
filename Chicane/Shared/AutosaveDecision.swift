@@ -2,7 +2,7 @@ import Foundation
 
 struct AutosaveDecision {
     static func shouldAutosavePodiumPick(draft: PodiumDraft, savedDraft: PodiumDraft) -> Bool {
-        (draft.isComplete || draft == .empty) && savedDraft != draft
+        !draft.hasDuplicates && savedDraft != draft
     }
 
     static func shouldAutosaveChampionPick(
@@ -27,7 +27,7 @@ struct DraftHydrationDecision {
         saved: Draft,
         empty: Draft
     ) -> Bool {
-        current == empty || current == previousSaved || current == saved
+        current == previousSaved || current == saved
     }
 
     static func shouldAdoptSavedSelection(
