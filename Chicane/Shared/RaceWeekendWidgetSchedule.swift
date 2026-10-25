@@ -218,4 +218,3 @@ private enum WidgetDateFormatter {
         return formatter
     }()
 }
-
