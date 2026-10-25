@@ -290,6 +290,16 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Official result is locked"].exists)
     }
 
+    func testSelectedPodiumOptionCanBeChosenAgain() throws {
+        let app = makeApp()
+        app.launch()
+
+        let option = "Charles Leclerc (Ferrari)"
+        selectPodiumPosition(3, option: option, in: app)
+        selectPodiumPosition(3, option: option, in: app)
+        XCTAssertEqual(app.buttons["Position 3 selection"].value as? String, option)
+    }
+
     func testPlayerPickAndResultPersistAfterRelaunch() throws {
         let runID = UUID().uuidString
         let playerName = "Persistent Player \(UUID().uuidString.prefix(8))"
@@ -504,10 +514,26 @@ final class ChicaneUITests: XCTestCase {
             app.tabBars.buttons[Tab.weekend].tap()
         }
 
-        let playerPicker = app.descendants(matching: .any)["\(playerName) picks"]
-        if playerPicker.waitForExistence(timeout: Timeout.short), playerPicker.isHittable {
-            playerPicker.tap()
+        let playerPicker = app.buttons["\(playerName) picks"]
+        guard playerPicker.waitForExistence(timeout: Timeout.medium) else {
+            XCTFail("Missing player picker: \(playerName)")
+            return
         }
+        // Completing the previous player's taller podium card can leave this strip
+        // above the viewport. Never silently keep editing the previous player.
+        for _ in 0..<5 {
+            if playerPicker.isHittable { break }
+            app.swipeDown()
+        }
+        guard waitUntilHittable(playerPicker) else {
+            XCTFail("Player picker was not hittable: \(playerName)")
+            return
+        }
+        playerPicker.tap()
+        XCTAssertTrue(
+            app.staticTexts[playerName].waitForExistence(timeout: Timeout.medium),
+            "The active player card must show the requested player"
+        )
 
         selectPodiumPosition(3, option: "Charles Leclerc (Ferrari)", in: app)
         selectPodiumPosition(2, option: "Lando Norris (McLaren)", in: app)
@@ -546,7 +572,7 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(picker.waitForExistence(timeout: Timeout.medium))
         picker.tap()
 
-        let optionElement = app.descendants(matching: .any)[option]
+        let optionElement = app.buttons[option]
         XCTAssertTrue(optionElement.waitForExistence(timeout: Timeout.medium))
         optionElement.tap()
 
@@ -554,7 +580,7 @@ final class ChicaneUITests: XCTestCase {
     }
 
     private func selectPodiumPosition(_ position: Int, option: String, in app: XCUIApplication) {
-        let picker = app.descendants(matching: .any)["Position \(position) selection"]
+        let picker = app.buttons["Position \(position) selection"]
         let pickerNavigationBar = app.navigationBars["Position \(position) selection"]
 
         guard openPodiumPicker(picker, navigationBar: pickerNavigationBar, in: app) else {
@@ -562,7 +588,9 @@ final class ChicaneUITests: XCTestCase {
             return
         }
 
-        let optionElement = app.descendants(matching: .any)[option]
+        // The covered podium field also exposes the selected driver's text.
+        // Target the actionable picker row, not that underlying StaticText.
+        let optionElement = app.buttons[option]
         guard optionElement.waitForExistence(timeout: Timeout.medium) else {
             XCTFail("Missing picker option: \(option)")
             return
@@ -602,7 +630,9 @@ final class ChicaneUITests: XCTestCase {
 
     private func scrollToElementIfNeeded(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<5 {
-            if element.exists && element.isHittable {
+            let bottom = app.tabBars.firstMatch.exists ? app.tabBars.firstMatch.frame.minY : app.frame.maxY
+            // Reveal the complete control instead of accepting a sliver above the tab bar.
+            if element.exists && element.isHittable && element.frame.maxY < bottom {
                 return
             }
             app.swipeUp()
@@ -625,7 +655,7 @@ final class ChicaneUITests: XCTestCase {
                 continue
             }
 
-            picker.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            picker.tap()
             if navigationBar.waitForExistence(timeout: Timeout.short) {
                 return true
             }
