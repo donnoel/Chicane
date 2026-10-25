@@ -1,28 +1,34 @@
 import Foundation
 import WidgetKit
+import OSLog
 
 enum RaceWeekendWidgetSnapshotStore {
-    static let appGroupID = "group.dn.thepodium"
-    static let completedEventKeysKey = "race_weekend_widget_completed_event_keys_v2"
-    private static let widgetKind = "RaceWeekendWidget"
+    private static let writer = RaceWeekendWidgetSnapshotWriter()
 
     static func saveResults(_ results: [RaceResult], events: [RaceEvent], canceledEvents: [RaceEvent] = []) {
-        guard results.isEmpty || !events.isEmpty else {
-            return
+        // apply(state:) also runs before calendars finish loading. Preserve the
+        // last good schedule until the app can publish a complete replacement.
+        guard !events.isEmpty, let url = RaceWeekendWidgetSnapshot.sharedURL else { return }
+        let snapshot = snapshot(results: results, events: events, canceledEvents: canceledEvents)
+        let requestedAt = ContinuousClock.now
+        Task {
+            do { try await writer.save(snapshot, to: url, requestedAt: requestedAt) }
+            catch {
+                Logger(subsystem: "dn.thepodium", category: "WidgetCalendar").error("Could not save widget calendar: \(error.localizedDescription, privacy: .public)")
+            }
         }
+    }
 
-        let completedEventKeys = Array(Set(completedEventKeys(results: results, events: events) + canceledEvents.map { completedEventKey(for: $0) })).sorted()
-
-        guard let defaults = UserDefaults(suiteName: appGroupID) else {
-            return
-        }
-
-        guard defaults.stringArray(forKey: completedEventKeysKey) != completedEventKeys else {
-            return
-        }
-
-        defaults.set(completedEventKeys, forKey: completedEventKeysKey)
-        WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
+    static func snapshot(results: [RaceResult], events: [RaceEvent], canceledEvents: [RaceEvent] = []) -> RaceWeekendWidgetSnapshot {
+        RaceWeekendWidgetSnapshot(
+            events: events.map { event in
+                WidgetRaceEvent(id: event.id, series: event.series == .formula1 ? .formula1 : .motoGP,
+                                season: event.season, round: event.round, title: event.title,
+                                circuit: event.circuit, raceDate: event.raceDate)
+            },
+            completedEventKeys: completedEventKeys(results: results.filter(\.isLocked), events: events),
+            canceledEventKeys: canceledEvents.map { completedEventKey(for: $0) }.sorted()
+        )
     }
 
     static func completedEventKeys(results: [RaceResult], events: [RaceEvent]) -> [String] {
@@ -44,5 +50,18 @@ enum RaceWeekendWidgetSnapshotStore {
 
     private static func completedEventKey(for event: RaceEvent) -> String {
         "\(event.series.rawValue)|\(event.season)|\(event.round)"
+    }
+}
+
+/// Serial disk I/O stays off the UI actor. Request ordering also prevents a
+/// delayed task from replacing a newer calendar/cancellation snapshot.
+actor RaceWeekendWidgetSnapshotWriter {
+    private var latestRequest: ContinuousClock.Instant?
+
+    func save(_ snapshot: RaceWeekendWidgetSnapshot, to url: URL, requestedAt: ContinuousClock.Instant) throws {
+        if let latestRequest, requestedAt < latestRequest { return }
+        let changed = try snapshot.write(to: url)
+        latestRequest = requestedAt
+        if changed { WidgetCenter.shared.reloadTimelines(ofKind: "RaceWeekendWidget") }
     }
 }

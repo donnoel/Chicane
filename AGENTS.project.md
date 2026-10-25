@@ -40,6 +40,7 @@
   - In-memory reloads should preserve stable event/participant identities across bundled/online source switches so existing picks/champion selections stay attached.
   - Online refresh for calendars/drivers from official sources when reachable.
   - Next-race countdown should prefer official race-session start times (F1 race page session start; MotoGP `RAC` session date) rather than day-level placeholders or weekend-end timestamps.
+  - The widget reads an atomic calendar/results/cancellations snapshot from the shared App Group's Library/Application Support directory. Publish live event identities and start times together; filter canceled/settled races before selecting the next pending race, and never let a result advance a race before its scheduled start. The bundled calendar is a fallback until the app supplies its first snapshot.
   - Official championship leaders (F1 + MotoGP top 3) refresh from official sources on app reload and after each successful "Fetch Results".
   - Seed data from bundled JSON in `Chicane/Resources/Seed` when online fetch fails.
   - User state persisted to application-support JSON file with atomic writes.
