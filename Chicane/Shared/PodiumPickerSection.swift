@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PodiumPickerSection: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let title: String
     let drivers: [Driver]
@@ -53,36 +54,52 @@ struct PodiumPickerSection: View {
         position: Int,
         selection: Binding<String?>
     ) -> some View {
-        ZStack(alignment: .leading) {
-            ParticipantSelectionField(
-                title: "Position \(position) selection",
-                drivers: drivers,
-                participantSingular: participantSingular,
-                disabledDriverIDs: disabledDriverIDs(for: position),
-                selection: selection
-            )
-            .padding(.leading, 58)
-            .padding(.trailing, 12)
-            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(ChicaneTheme.fieldFill(for: colorScheme))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(ChicaneTheme.fieldStroke(for: colorScheme), lineWidth: 0.8)
-                    )
-            )
-            .shadow(color: ChicaneTheme.fieldShadow(for: colorScheme), radius: 4, x: 0, y: 2)
-            .accessibilityLabel("Position \(position) selection")
-            .accessibilityHint("Select a \(participantSingular)")
-
-            PodiumMedalView(
-                position: position,
-                isSelected: selection.wrappedValue != nil
-            )
-            .padding(.leading, 12)
-            .allowsHitTesting(false)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    positionNumber(position)
+                    selectionField(position: position, selection: selection)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    positionNumber(position)
+                    Divider()
+                        .frame(height: 26)
+                        .accessibilityHidden(true)
+                    selectionField(position: position, selection: selection)
+                }
+            }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(ChicaneTheme.fieldFill(for: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(ChicaneTheme.fieldStroke(for: colorScheme), lineWidth: 0.8)
+                )
+        )
+    }
+
+    private func positionNumber(_ position: Int) -> some View {
+        Text(position.formatted(.number.precision(.integerLength(2))))
+            .font(.system(.title, weight: .medium).monospacedDigit())
+            .foregroundStyle(.primary)
+            .fixedSize()
+            .accessibilityHidden(true)
+    }
+
+    private func selectionField(position: Int, selection: Binding<String?>) -> some View {
+        ParticipantSelectionField(
+            title: "Position \(position) selection",
+            drivers: drivers,
+            participantSingular: participantSingular,
+            disabledDriverIDs: disabledDriverIDs(for: position),
+            selection: selection
+        )
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
     }
 
     private func disabledDriverIDs(for position: Int) -> Set<String> {
