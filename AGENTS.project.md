@@ -16,8 +16,8 @@
 ## Architecture snapshot (current)
 - App entry/navigation:
   - `ChicaneApp` injects `AppViewModel`.
-  - `RootTabView` hosts tabs for Weekend, Standings, Results, Settings.
-  - `PicksView` is opened from Weekend for all-race/manual picks and season champion selections.
+  - `RootTabView` hosts Weekend, Standings and Results tabs. Results contains Formula 1, MotoGP, Seasons, Bets and Settings sections.
+  - `PicksView` is opened from Weekend for all-race/manual picks and season champion selections. Settings lives after Bets in Results; contextual player-setup links also reuse the same Settings form.
 - Core view models/services:
   - `AppViewModel` (main-actor UI state orchestration)
   - `ScoringService` and `ScoreboardCalculator` (pure logic)

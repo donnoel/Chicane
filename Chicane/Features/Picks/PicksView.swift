@@ -71,11 +71,6 @@ struct PicksView: View {
         }
         .navigationTitle("Picks")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                settingsLink
-            }
-        }
         .chicaneBackground()
         .task {
             guard !hasInitialized else { return }
@@ -201,21 +196,6 @@ struct PicksView: View {
                 playerCard(for: player)
             }
         }
-    }
-
-    private var settingsLink: some View {
-        NavigationLink {
-            SettingsView()
-        } label: {
-            Image(systemName: "gear")
-                .font(.system(size: 18, weight: .regular))
-                .foregroundStyle(.secondary)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open Settings")
-        .accessibilityHint("Opens league, player, bet, and app settings")
     }
 
     private var devicePlayerSelectionCard: some View {

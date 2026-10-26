@@ -33,7 +33,34 @@ final class ChicaneUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons[Tab.results].exists)
         XCTAssertFalse(app.tabBars.buttons["Settings"].exists)
         openAllRacesAndManualPicks(in: app)
-        XCTAssertTrue(app.buttons["Open Settings"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertFalse(app.buttons["Open Settings"].exists)
+        openSettings(in: app)
+        XCTAssertTrue(app.textFields["Add Player"].exists)
+    }
+
+    func testSettingsPillFollowsBetsAndKeepsSettingsAndRaceContentSeparate() throws {
+        let app = makeApp()
+        app.launch()
+        openSettings(in: app)
+        let picker = app.segmentedControls["ResultsSectionPicker"]
+        let bets = picker.buttons["Bets"]
+        let settings = picker.buttons["Settings"]
+        XCTAssertGreaterThan(settings.frame.midX, bets.frame.midX)
+        XCTAssertTrue(settings.isSelected)
+        XCTAssertTrue(app.textFields["Add Player"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["Event result"].exists)
+        XCTAssertFalse(app.buttons["Fetch official results"].exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Settings in Results"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        picker.buttons["MotoGP"].tap()
+        XCTAssertTrue(app.staticTexts["Official Results"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue(app.buttons["Fetch official results"].exists)
+        XCTAssertFalse(app.textFields["Add Player"].exists)
+        app.tabBars.buttons[Tab.weekend].tap()
+        openAllRacesAndManualPicks(in: app)
+        XCTAssertFalse(app.buttons["Open Settings"].exists)
     }
 
     func testSeasonsEmptyStateKeepsLiveResultsAvailable() throws {
@@ -123,7 +150,6 @@ final class ChicaneUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts[playerName].waitForExistence(timeout: Timeout.medium))
         dismissKeyboardIfVisible(in: app)
-        navigateBackIfPossible(in: app)
 
         let weekendTab = app.tabBars.buttons[Tab.weekend]
         XCTAssertTrue(weekendTab.waitForExistence(timeout: Timeout.medium))
@@ -485,9 +511,12 @@ final class ChicaneUITests: XCTestCase {
         )
         XCTAssertFalse(app.buttons["Open Settings"].exists)
         openAllRacesAndManualPicks(in: app)
-        XCTAssertTrue(app.buttons["Open Settings"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertFalse(app.buttons["Open Settings"].exists)
+        openSettings(in: app)
+        XCTAssertTrue(app.textFields["Add Player"].exists)
 
         app.tabBars.buttons[Tab.results].tap()
+        app.segmentedControls["ResultsSectionPicker"].buttons.element(boundBy: 0).tap()
         XCTAssertTrue(
             app.descendants(matching: .any)["Fetch official results"]
                 .waitForExistence(timeout: Timeout.medium)
@@ -553,25 +582,16 @@ final class ChicaneUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts[playerName].waitForExistence(timeout: Timeout.medium))
         dismissKeyboardIfVisible(in: app)
-        navigateBackIfPossible(in: app)
     }
 
     private func openSettings(in app: XCUIApplication) {
-        let settingsButton = app.buttons["Open Settings"]
-        if !settingsButton.waitForExistence(timeout: Timeout.short) {
-            openAllRacesAndManualPicks(in: app)
-        }
-
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: Timeout.medium))
-        settingsButton.tap()
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: Timeout.medium))
-    }
-
-    private func navigateBackIfPossible(in app: XCUIApplication) {
-        let backButton = app.navigationBars.buttons.firstMatch
-        if backButton.waitForExistence(timeout: Timeout.short) {
-            backButton.tap()
-        }
+        let results = app.tabBars.buttons[Tab.results]
+        XCTAssertTrue(results.waitForExistence(timeout: Timeout.medium))
+        results.tap()
+        let settings = app.segmentedControls["ResultsSectionPicker"].buttons["Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: Timeout.medium))
+        settings.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["SettingsForm"].waitForExistence(timeout: Timeout.medium))
     }
 
     private func completeWeekendPick(in app: XCUIApplication, playerName: String) {
@@ -608,7 +628,7 @@ final class ChicaneUITests: XCTestCase {
 
     private func openAllRacesAndManualPicks(in app: XCUIApplication) {
         let isPicksScreen = {
-            app.buttons["Open Settings"].exists && app.buttons["BackButton"].exists
+            app.navigationBars["Picks"].exists && app.buttons["BackButton"].exists
         }
 
         if app.staticTexts["Podium Picks"].exists || isPicksScreen() {
@@ -678,6 +698,9 @@ final class ChicaneUITests: XCTestCase {
     private func fetchOfficialResult(in app: XCUIApplication) {
         XCTAssertTrue(app.tabBars.buttons[Tab.results].waitForExistence(timeout: Timeout.medium))
         app.tabBars.buttons[Tab.results].tap()
+        let series = app.segmentedControls["ResultsSectionPicker"].buttons.element(boundBy: 0)
+        XCTAssertTrue(series.waitForExistence(timeout: Timeout.medium))
+        series.tap()
 
         let fetchButton = app.descendants(matching: .any)["Fetch official results"]
         XCTAssertTrue(fetchButton.waitForExistence(timeout: Timeout.medium))

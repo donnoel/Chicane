@@ -7,10 +7,11 @@ import SwiftUI
 /// `selectedEventID` and pass the appropriate event list.
 struct EventPickerHeader: View {
     enum ResultsSection: String {
-        case races, seasons, bets
+        case races, seasons, bets, settings
     }
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     let title: String
     var subtitle: String?
@@ -47,14 +48,18 @@ struct EventPickerHeader: View {
 
             Picker(resultsSection == nil ? "Series" : "Results view", selection: sectionSelection) {
                 ForEach(RaceSeries.allCases) { series in
-                    Text(series.title).tag(series.rawValue)
+                    Text(resultsSection != nil && horizontalSizeClass != .regular ? series.shortTitle : series.title)
+                        .accessibilityLabel(series.title)
+                        .tag(series.rawValue)
                 }
                 if resultsSection != nil {
                     Text("Seasons").tag("seasons")
                     Text("Bets").tag("bets")
+                    Text("Settings").tag("settings")
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier(resultsSection == nil ? "RaceSeriesPicker" : "ResultsSectionPicker")
             .tint(ChicaneTheme.motoBlue)
 
             if resultsSection?.wrappedValue == nil || resultsSection?.wrappedValue == .races {

@@ -44,6 +44,7 @@ struct ResultsView: View {
         case .races: "Official Results"
         case .seasons: "Season Archive"
         case .bets: "Bets"
+        case .settings: "Settings"
         }
     }
 
@@ -52,6 +53,7 @@ struct ResultsView: View {
         case .races: "Fetch locked podiums and event points."
         case .seasons: "Your league, year by year."
         case .bets: "Your season stakes, all in one place."
+        case .settings: "Players, league, and app preferences."
         }
     }
 
@@ -60,55 +62,23 @@ struct ResultsView: View {
         case .races: "flag.checkered"
         case .seasons: "books.vertical"
         case .bets: "person.2"
+        case .settings: "gearshape"
         }
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                EventPickerHeader(
-                    title: headerTitle,
-                    subtitle: headerSubtitle,
-                    headerSystemImage: headerImage,
-                    headerTint: ChicaneTheme.seriesColor(selectedSeries),
-                    selectedSeries: selectedSeriesBinding,
-                    selectedEventID: selectedEventBinding,
-                    events: events,
-                    eventPickerLabel: "Event result",
-                    resultsSection: $selectedSection
-                )
-
-                if selectedSection == .seasons {
-                    SeasonArchiveListView(reviews: viewModel.seasonReviews)
-                } else if selectedSection == .bets {
-                    if playerBetRows.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("No bets yet")
-                                .font(ChicaneTypography.cardTitle)
-                            Text("Add each player’s season bet in Settings. Their stakes will appear here.")
-                                .font(ChicaneTypography.body)
-                                .foregroundStyle(.secondary)
-                        }
-                        .groupedCard()
-                    } else {
-                        playerBetsCard
-                    }
-                } else if selectedEvent != nil {
-                    resultsContent
-                } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("No event selected", systemImage: "calendar")
-                            .font(ChicaneTypography.cardTitle)
-                        Text("Choose an event above to enter the result.")
-                            .font(ChicaneTypography.body)
-                            .foregroundStyle(.secondary)
-                    }
-                    .groupedCard()
+        Group {
+            if selectedSection == .settings {
+                VStack(spacing: 0) {
+                    resultsHeader
+                        .padding(.horizontal, 20)
+                        .padding(.top, 18)
+                        .padding(.bottom, 10)
+                    SettingsView(isEmbeddedInResults: true)
                 }
+            } else {
+                resultsScrollContent
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
-            .padding(.bottom, 32)
         }
         .navigationTitle("Results")
         .navigationBarTitleDisplayMode(.inline)
@@ -160,6 +130,59 @@ struct ResultsView: View {
         }
         .onChange(of: inlineResultStatus?.text) { _, _ in
             announceInlineStatusIfNeeded()
+        }
+    }
+
+    private var resultsHeader: some View {
+        EventPickerHeader(
+            title: headerTitle,
+            subtitle: headerSubtitle,
+            headerSystemImage: headerImage,
+            headerTint: selectedSection == .settings ? .accentColor : ChicaneTheme.seriesColor(selectedSeries),
+            selectedSeries: selectedSeriesBinding,
+            selectedEventID: selectedEventBinding,
+            events: events,
+            eventPickerLabel: "Event result",
+            resultsSection: $selectedSection
+        )
+    }
+
+    private var resultsScrollContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                resultsHeader
+
+                if selectedSection == .seasons {
+                    SeasonArchiveListView(reviews: viewModel.seasonReviews)
+                } else if selectedSection == .bets {
+                    if playerBetRows.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("No bets yet")
+                                .font(ChicaneTypography.cardTitle)
+                            Text("Add each player’s season bet in Settings. Their stakes will appear here.")
+                                .font(ChicaneTypography.body)
+                                .foregroundStyle(.secondary)
+                        }
+                        .groupedCard()
+                    } else {
+                        playerBetsCard
+                    }
+                } else if selectedEvent != nil {
+                    resultsContent
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("No event selected", systemImage: "calendar")
+                            .font(ChicaneTypography.cardTitle)
+                        Text("Choose an event above to enter the result.")
+                            .font(ChicaneTypography.body)
+                            .foregroundStyle(.secondary)
+                    }
+                    .groupedCard()
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
+            .padding(.bottom, 32)
         }
     }
 

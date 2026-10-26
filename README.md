@@ -63,7 +63,7 @@ Chicane tracks standings across:
 | Scoreboard | Series and combined standings, plus per-event score history. |
 | Season Archive | Results → Seasons opens yearly reviews. An official finale fetch starts each series record; all races settled by a result or cancellation, plus confirmed champions, finalize the combined winner. A canceled finale can also start its series record. Saved reviews survive resets. |
 | Track-Local Time | Hero cards show each circuit's current local clock time with a day cue (`Yesterday`, `Today`, `Tomorrow`). |
-| Bet Ledger | Results → Bets shows each player's current season stake. Edit bets in Settings. |
+| Bet Ledger | Results → Bets shows each player's current season stake. Edit bets in Results → Settings. |
 | Shared League Sync | Create one league code and use it on each phone to sync picks, results, and player names through iCloud. Joining prompts before replacing existing local season data. |
 | Offline Fallback | Works with bundled seed data if network sources are unavailable. |
 | Accessibility | Large tap targets, Dynamic Type, VoiceOver labels, and contrast-safe light/dark mode surfaces. |
@@ -79,7 +79,7 @@ Chicane tracks standings across:
 - **All races and manual picks** — Opened from Weekend to enter each player's season champion and P1/P2/P3 predictions for any event
 - **Standings** — Season standings and per-event history (F1, MotoGP, Combined)
 - **Results** — Fetch official results and lock events; open Seasons for permanent year-end reviews and season champion confirmation. See [Season Archive](docs/SEASON_ARCHIVE.md) for completion and persistence rules.
-- **Settings** — Manage players, shared league sync, per-player bets, and season reset
+- **Settings** — Results → Settings manages players, shared league sync, per-player bets, and season reset
   - Player names cannot be blank when saving; use `Remove` to delete a player.
   - Shows the installed app version/build in an `About` section.
   - Reset clears race picks/results and season champion picks/results.

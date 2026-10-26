@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct SettingsView: View {
+    var isEmbeddedInResults = false
     @EnvironmentObject private var viewModel: AppViewModel
     @AppStorage(DevicePlayerSelection.storageKey) private var selectedDevicePlayerIDRawValue = ""
 
@@ -29,6 +30,18 @@ struct SettingsView: View {
     @FocusState private var focusedField: FocusField?
 
     var body: some View {
+        Group {
+            if isEmbeddedInResults {
+                settingsForm
+            } else {
+                settingsForm
+                    .navigationTitle("Settings")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+        }
+    }
+
+    private var settingsForm: some View {
         Form {
             devicePlayerSection
             playerSection
@@ -36,13 +49,12 @@ struct SettingsView: View {
             syncSection
             resetSection
         }
+        .accessibilityIdentifier("SettingsForm")
         .formStyle(.grouped)
         .listSectionSpacing(.compact)
         .tint(.accentColor)
         .scrollContentBackground(.hidden)
         .background(NeutralAppBackground())
-        .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
         .environment(\.defaultMinListRowHeight, CGFloat(28))
         .environment(\.defaultMinListHeaderHeight, CGFloat(20))
         .task {
