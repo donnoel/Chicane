@@ -83,7 +83,8 @@
 - The generic lock-flow UI-test task is implemented in `ChicaneUITests/ChicaneUITests.swift`, including locked results, disabled Weekend picks, and champion lock behavior.
 - Parser and repository coverage exists in `ChicaneTests/F1HTMLParserTests.swift`, `OnlineChampionshipRepositoryTests.swift`, `FallbackRepositoryTests.swift`, and `LocalSeasonRepositoryTests.swift`. Cases include malformed/missing HTML fields, date/season parsing, MotoGP payload shapes, fallback behavior, and local persistence. Retire the generic missing-test tasks; add specific gaps only when identified.
 - This October 18, 2026 status correction is based on source inspection, not a new test run or a claim of exhaustive coverage.
-- Expand calendar/driver seed update documentation.
+- Remaining calendar/driver seed-update documentation is tracked in [#10](https://github.com/donnoel/Chicane/issues/10).
+- GitHub [Issues](https://github.com/donnoel/Chicane/issues) owns outstanding work, priority, and status. Keep these coverage notes as evidence, not a second task list. Do not reopen retired generic test tasks without a concrete new gap.
 
 ## Output expectations per patch
 Provide:
