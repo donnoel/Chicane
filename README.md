@@ -228,6 +228,8 @@ Chicane/
 
 ## 📚 Documentation
 
+GitHub [Issues](https://github.com/donnoel/Chicane/issues) is the source of truth for outstanding work, priorities, and status. Documentation remains the reference for behavior, specifications, and verification evidence; it is not a separate backlog. See [#9](https://github.com/donnoel/Chicane/issues/9) for Event History navigation and [#10](https://github.com/donnoel/Chicane/issues/10) for seed-update documentation. These links identify work, not completed implementation.
+
 - [Repository guidance](AGENTS.md)
 - [Project guide](AGENTS.project.md)
 
