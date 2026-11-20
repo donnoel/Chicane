@@ -54,6 +54,12 @@ struct RootTabView: View {
         .task {
             await performInitialLoad()
         }
+        .task(id: scenePhase) {
+            // A warm reopen does not repeat the initial-load task. Refresh the
+            // calendar too, rather than only syncing saved league state.
+            guard scenePhase == .active, !isInitialSplashVisible else { return }
+            await viewModel.reload()
+        }
         .task(id: leagueAutoSyncTaskID) {
             await runLeagueAutoSyncLoop()
         }

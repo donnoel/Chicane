@@ -50,9 +50,15 @@ struct ChicaneApp: App {
                 scenario: scenario,
                 shouldResetState: shouldResetState
             )
+            let calendarRepository: any CalendarRepository
+            if scenario == .foregroundCalendarRefresh {
+                calendarRepository = UITestForegroundCalendarRepository()
+            } else {
+                calendarRepository = UITestCalendarRepository(scenario: scenario)
+            }
             return AppViewModel(
                 driverRepository: UITestDriverRepository(),
-                calendarRepository: UITestCalendarRepository(scenario: scenario),
+                calendarRepository: calendarRepository,
                 resultRepository: UITestResultRepository(),
                 championshipRepository: UITestChampionshipRepository(),
                 seasonRepository: CloudSyncSeasonRepository(localRepository: localSeasonRepository)
@@ -116,7 +122,7 @@ struct ChicaneApp: App {
             var state = PersistedState.default
             state.players = [Player(id: UITestFixtures.playerID, name: "UITest Player")]
             switch scenario {
-            case .default, .multiRaceWeekend, .singleRaceWeekend:
+            case .default, .multiRaceWeekend, .singleRaceWeekend, .foregroundCalendarRefresh:
                 break
             case .seasonArchive, .pendingSeasonArchive:
                 state.players.append(Player(id: UITestFixtures.rivalID, name: "UITest Rival"))
@@ -195,6 +201,7 @@ private enum UITestScenario: String {
     case singleRaceWeekend = "single_race_weekend"
     case seasonArchive = "season_archive"
     case pendingSeasonArchive = "pending_season_archive"
+    case foregroundCalendarRefresh = "foreground_calendar_refresh"
 }
 
 private enum UITestFixtures {
@@ -251,7 +258,7 @@ private struct UITestCalendarRepository: CalendarRepository {
                 daysUntilRace = 6
             case .singleRaceWeekend:
                 daysUntilRace = 14
-            case .default, .lockedGates:
+            case .default, .lockedGates, .foregroundCalendarRefresh:
                 daysUntilRace = 10
             }
             return [
@@ -273,6 +280,36 @@ private struct UITestCalendarRepository: CalendarRepository {
         let formula1 = try await events(for: .formula1)
         let motoGP = try await events(for: .motoGP)
         return (formula1 + motoGP).sorted { $0.raceDate < $1.raceDate }
+    }
+}
+
+/// Simulates a calendar that was corrected while the app was in the background.
+private actor UITestForegroundCalendarRepository: CalendarRepository {
+    private var motoGPLoadCount = 0
+
+    func events(for series: RaceSeries) async throws -> [RaceEvent] {
+        let daysUntilRace: Double
+        if series == .motoGP {
+            motoGPLoadCount += 1
+            daysUntilRace = motoGPLoadCount == 1 ? -1 : -7
+        } else {
+            daysUntilRace = 1
+        }
+        return [RaceEvent(
+            id: series == .formula1 ? UITestFixtures.eventID : "ui-mgp-r1",
+            series: series,
+            season: 2026,
+            round: 1,
+            title: series == .formula1 ? "UI Test Grand Prix" : "UI Test MotoGP",
+            circuit: "Test Circuit",
+            raceDate: Date().addingTimeInterval(daysUntilRace * 24 * 3600)
+        )]
+    }
+
+    func allEvents() async throws -> [RaceEvent] {
+        let f1 = try await events(for: .formula1)
+        let motoGP = try await events(for: .motoGP)
+        return (f1 + motoGP).sorted { $0.raceDate < $1.raceDate }
     }
 }
 

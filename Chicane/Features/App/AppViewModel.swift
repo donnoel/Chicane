@@ -32,6 +32,7 @@ final class AppViewModel: ObservableObject {
     private let logger = Logger(subsystem: "dn.chicane", category: "AppViewModel")
 
     private var hasLoaded = false
+    private var reloadTask: Task<Void, Never>?
 
     init(
         driverRepository: DriverRepository,
@@ -69,6 +70,20 @@ final class AppViewModel: ObservableObject {
     }
 
     func reload() async {
+        if let reloadTask {
+            await reloadTask.value
+            return
+        }
+
+        // Foreground and pull-to-refresh can overlap. Share the load so an older
+        // calendar response cannot overwrite the newer one.
+        let task = Task { await performReload() }
+        reloadTask = task
+        await task.value
+        reloadTask = nil
+    }
+
+    private func performReload() async {
         isLoading = true
         defer { isLoading = false }
 

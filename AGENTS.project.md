@@ -39,6 +39,7 @@
   - Explicit `refreshState()` calls must bypass the warm local cache so restored or externally modified state can be reloaded from disk before sync.
   - In-memory reloads should preserve stable event/participant identities across bundled/online source switches so existing picks/champion selections stay attached.
   - Online refresh for calendars/drivers from official sources when reachable.
+  - Refresh calendars/drivers on warm foreground returns as well as launch and pull-to-refresh. Share overlapping reloads and re-evaluate Weekend selection after suspension, even when the calendar is unchanged.
   - Next-race countdown should prefer official race-session start times (F1 race page session start; MotoGP `RAC` session date) rather than day-level placeholders or weekend-end timestamps.
   - The widget reads an atomic calendar/results/cancellations snapshot from the shared App Group's Library/Application Support directory. Publish live event identities and start times together; filter canceled/settled races before selecting the next pending race, and never let a result advance a race before its scheduled start. The bundled calendar is a fallback until the app supplies its first snapshot.
   - Official championship leaders (F1 + MotoGP top 3) refresh from official sources on app reload and after each successful "Fetch Results".

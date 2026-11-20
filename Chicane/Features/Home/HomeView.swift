@@ -16,6 +16,7 @@ struct HomeView: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var viewModel: AppViewModel
     @AppStorage(DevicePlayerSelection.storageKey) private var selectedDevicePlayerIDRawValue = ""
     @State private var selectedEventID: String?
@@ -58,6 +59,11 @@ struct HomeView: View {
         }
         .onChange(of: viewModel.eventsBySeries) {
             initializeIfNeeded()
+        }
+        .onChange(of: scenePhase) {
+            // Time can advance while the app is suspended even when an offline
+            // refresh returns the same calendar.
+            if scenePhase == .active { initializeIfNeeded() }
         }
         .onChange(of: selectedEventID) {
             hydrateDrafts()
@@ -531,6 +537,7 @@ struct HomeView: View {
 
     private func startTimePill(for event: RaceEvent) -> some View {
         Label(queueDateText(for: event), systemImage: "clock")
+            .accessibilityIdentifier("WeekendRaceStartTime")
             .font(ChicaneTypography.chip)
             .foregroundStyle(.white)
             .padding(.horizontal, 11)

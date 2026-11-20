@@ -15,6 +15,7 @@ final class ChicaneUITests: XCTestCase {
         case singleRaceWeekend = "single_race_weekend"
         case seasonArchive = "season_archive"
         case pendingSeasonArchive = "pending_season_archive"
+        case foregroundCalendarRefresh = "foreground_calendar_refresh"
     }
 
     private enum Tab {
@@ -232,6 +233,35 @@ final class ChicaneUITests: XCTestCase {
         app.buttons["WeekendRaceSwitcher"].tap()
         XCTAssertEqual(app.staticTexts["WeekendRaceTitle"].label, "UI Test MotoGP")
         XCTAssertEqual(app.staticTexts["WeekendRacePosition"].label, "Race 1 of 2")
+    }
+
+    func testReopeningRefreshesRaceAndStartTimeWithoutPullToRefresh() throws {
+        let app = makeApp(scenario: .foregroundCalendarRefresh)
+        app.launch()
+
+        let title = app.staticTexts["WeekendRaceTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: Timeout.medium))
+        XCTAssertEqual(title.label, "UI Test MotoGP")
+        let originalDate = app.staticTexts["WeekendRaceStartTime"].label
+        selectPodiumPosition(3, option: "Marc Marquez (Ducati)", in: app)
+        selectPodiumPosition(2, option: "Jorge Martin (Aprilia)", in: app)
+        selectPodiumPosition(1, option: "Francesco Bagnaia (Ducati)", in: app)
+        XCTAssertTrue(app.staticTexts["Saved automatically"].waitForExistence(timeout: Timeout.medium))
+
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(app.wait(for: .runningBackground, timeout: Timeout.short))
+        app.activate()
+
+        let showsUpdatedRace = NSPredicate(format: "label == %@", "UI Test Grand Prix")
+        expectation(for: showsUpdatedRace, evaluatedWith: title)
+        waitForExpectations(timeout: Timeout.medium)
+        XCTAssertNotEqual(app.staticTexts["WeekendRaceStartTime"].label, originalDate)
+        XCTAssertEqual(app.staticTexts["WeekendRacePosition"].label, "Next up")
+        openAllRacesAndManualPicks(in: app)
+        app.segmentedControls["RaceSeriesPicker"].buttons["MotoGP"].tap()
+        let firstPick = app.buttons["Position 1 selection"]
+        XCTAssertTrue(firstPick.waitForExistence(timeout: Timeout.medium))
+        XCTAssertTrue((firstPick.value as? String)?.contains("Francesco Bagnaia") == true)
     }
 
     func testWeekendHeroCyclesRacesInStartOrderAndPreservesSavedPicks() throws {

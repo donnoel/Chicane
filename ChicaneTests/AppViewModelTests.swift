@@ -19,6 +19,59 @@ final class AppViewModelTests: XCTestCase {
         try await super.tearDown()
     }
 
+    func testOverlappingReloadsShareOneCalendarLoadAndLaterRefreshStillRuns() async {
+        let requested = expectation(description: "Initial calendar requested")
+        let overlapping = expectation(description: "Overlapping refresh started")
+        let calendar = GatedCalendarRepository(requested: requested)
+        let model = AppViewModel(
+            driverRepository: MockDriverRepository(),
+            calendarRepository: calendar,
+            resultRepository: MockResultRepository(),
+            seasonRepository: LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        )
+
+        let initial = Task { await model.loadIfNeeded() }
+        await fulfillment(of: [requested], timeout: 5)
+        let refresh = Task {
+            overlapping.fulfill()
+            await model.reload()
+        }
+        await fulfillment(of: [overlapping], timeout: 5)
+        await calendar.releaseInitialLoad()
+        await initial.value
+        await refresh.value
+
+        let initialCount = await calendar.requestCount
+        XCTAssertEqual(initialCount, 1)
+        XCTAssertFalse(model.isLoading)
+
+        await model.reload()
+        let refreshedCount = await calendar.requestCount
+        XCTAssertEqual(refreshedCount, 2)
+        XCTAssertFalse(model.isLoading)
+    }
+
+    func testFailedReloadCanBeRetried() async {
+        let calendar = MockCalendarRepository()
+        calendar.errorToThrow = MockError.simulated
+        let model = AppViewModel(
+            driverRepository: MockDriverRepository(),
+            calendarRepository: calendar,
+            resultRepository: MockResultRepository(),
+            seasonRepository: LocalSeasonRepository(store: FileStateStore(baseDirectoryURL: tempDir))
+        )
+        await model.reload()
+        XCTAssertNotNil(model.banner)
+        XCTAssertFalse(model.isLoading)
+
+        let event = TestFixtures.event(id: "retry-race", series: .formula1)
+        calendar.errorToThrow = nil
+        calendar.stubbedEvents[.formula1] = [event]
+        await model.reload()
+        XCTAssertEqual(model.events(for: .formula1), [event])
+        XCTAssertFalse(model.isLoading)
+    }
+
     func testUpdateResultFromOfficialSourceLocksOfficialResultAndRejectsManualChanges() async throws {
         let event = TestFixtures.event(id: "f1-2026-test", series: .formula1)
         let drivers = [
@@ -980,6 +1033,37 @@ final class AppViewModelTests: XCTestCase {
                 p3: drivers[2].id
             )
         )
+    }
+}
+
+private actor GatedCalendarRepository: CalendarRepository {
+    let requested: XCTestExpectation
+    private var continuation: CheckedContinuation<Void, Never>?
+    private(set) var requestCount = 0
+
+    init(requested: XCTestExpectation) {
+        self.requested = requested
+    }
+
+    func events(for series: RaceSeries) async throws -> [RaceEvent] {
+        guard series == .formula1 else { return [] }
+        requestCount += 1
+        if requestCount == 1 {
+            await withCheckedContinuation { continuation in
+                self.continuation = continuation
+                requested.fulfill()
+            }
+        }
+        return []
+    }
+
+    func releaseInitialLoad() {
+        continuation?.resume()
+        continuation = nil
+    }
+
+    func allEvents() async throws -> [RaceEvent] {
+        try await events(for: .formula1)
     }
 }
 
