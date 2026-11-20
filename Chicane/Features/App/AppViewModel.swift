@@ -16,6 +16,7 @@ final class AppViewModel: ObservableObject {
     private var seasonArchives: [ArchivedSeason] = []
     @Published private(set) var driversBySeries: [RaceSeries: [Driver]] = [:]
     @Published private(set) var eventsBySeries: [RaceSeries: [RaceEvent]] = [:]
+    @Published private(set) var calendarWarning: String?
     @Published private(set) var championshipLeadersBySeries: [RaceSeries: [ChampionshipLeader]] = [:]
     @Published private(set) var isLoading = false
     @Published private(set) var isSyncing = false
@@ -129,6 +130,7 @@ final class AppViewModel: ObservableObject {
             driversBySeries[.motoGP]   = mergedMotoGPDrivers
             eventsBySeries[.formula1]  = mergedF1Events
             eventsBySeries[.motoGP]    = mergedMotoGPEvents
+            calendarWarning = await calendarRepository.freshnessWarning()
             normalizeStoredParticipantIDsForLoadedDrivers()
             RaceWeekendWidgetSnapshotStore.saveResults(results, events: allEvents(), canceledEvents: canceledEvents)
             await refreshChampionshipLeaders()

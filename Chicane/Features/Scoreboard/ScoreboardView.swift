@@ -15,6 +15,7 @@ struct ScoreboardView: View {
     @State private var championDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
     @State private var savedChampionDraftsBySeries: [RaceSeries: [UUID: String]] = [:]
     @State private var pendingChampionLock: ChampionLockRequest?
+    @State private var selectedHistoryEvent: RaceEvent?
 
     private struct ChampionLockRequest: Identifiable {
         let player: Player
@@ -52,6 +53,21 @@ struct ScoreboardView: View {
             }
             .onChange(of: selectedDevicePlayerIDRawValue) {
                 hydrateChampionDrafts()
+            }
+            .sheet(item: $selectedHistoryEvent) { event in
+                let eventPicks = viewModel.players.compactMap {
+                    viewModel.pick(for: event.series, eventID: event.id, playerID: $0.id)
+                }
+                LeaguePicksSheet(
+                    event: event,
+                    players: viewModel.players,
+                    currentPlayerID: DevicePlayerSelection.selectedPlayer(in: viewModel.players, rawValue: selectedDevicePlayerIDRawValue)?.id,
+                    picks: eventPicks,
+                    championPicks: viewModel.championPicks,
+                    drivers: viewModel.drivers(for: event.series),
+                    eventAliases: Set(eventPicks.map(\.eventID)),
+                    isHistoryReview: true
+                )
             }
             .alert("Lock champion pick?", isPresented: championLockConfirmationIsPresented) {
                 Button("Cancel", role: .cancel) {}
@@ -329,7 +345,7 @@ struct ScoreboardView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Event History")
                         .font(ChicaneTypography.cardTitle)
-                    Text("Compact race summaries")
+                    Text("Tap a race to view saved picks")
                         .font(ChicaneTypography.subtitle)
                         .foregroundStyle(.secondary)
                 }
@@ -345,44 +361,62 @@ struct ScoreboardView: View {
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(history) { row in
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(row.event.title)
-                                        .font(ChicaneTypography.bodySemibold)
-                                    Text(DateFormatter.dayMonthYear.string(from: row.event.raceDate))
-                                        .font(ChicaneTypography.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text(row.series.shortTitle)
-                                    .font(ChicaneTypography.badgeStrong)
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(ChicaneTheme.seriesColor(row.series), in: Capsule())
-                            }
-
-                            ForEach(viewModel.players) { player in
-                                HStack(spacing: 12) {
-                                    Text(player.name)
-                                        .font(ChicaneTypography.subtitleMedium)
+                        Button {
+                            selectedHistoryEvent = row.event
+                        } label: {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .firstTextBaseline) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(row.event.title)
+                                            .font(ChicaneTypography.bodySemibold)
+                                        Text(DateFormatter.dayMonthYear.string(from: row.event.raceDate))
+                                            .font(ChicaneTypography.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                     Spacer()
-                                    AnimatedScoreText(value: row.pointsByPlayerID[player.id, default: 0], entryDelay: 0.22)
-                                        .font(ChicaneTypography.subtitleSemibold)
+                                    Text(row.series.shortTitle)
+                                        .font(ChicaneTypography.badgeStrong)
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(ChicaneTheme.seriesColor(row.series), in: Capsule())
                                 }
-                                .padding(.vertical, 2)
+
+                                ForEach(viewModel.players) { player in
+                                    HStack(spacing: 12) {
+                                        Text(player.name)
+                                            .font(ChicaneTypography.subtitleMedium)
+                                        Spacer()
+                                        AnimatedScoreText(value: row.pointsByPlayerID[player.id, default: 0], entryDelay: 0.22)
+                                            .font(ChicaneTypography.subtitleSemibold)
+                                    }
+                                    .padding(.vertical, 2)
+                                }
+                                HStack {
+                                    Text("View saved picks")
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                }
+                                .font(ChicaneTypography.footnoteSemibold)
+                                .foregroundStyle(ChicaneTheme.seriesColor(row.series))
                             }
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(.thinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .strokeBorder(ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
+                                    )
+                            )
                         }
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(.thinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .strokeBorder(ChicaneTheme.groupedStroke(for: colorScheme), lineWidth: 0.8)
-                                )
-                        )
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(row.event.series.title), \(row.event.season), \(row.event.accessibilitySummary). " + viewModel.players.map {
+                            "\($0.name), \(row.pointsByPlayerID[$0.id, default: 0]) points"
+                        }.joined(separator: ". "))
+                        .accessibilityHint("Opens every player's saved podium picks, read only")
+                        .accessibilityIdentifier("EventHistory-\(row.event.id)")
                     }
                 }
             }

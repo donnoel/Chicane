@@ -7,6 +7,11 @@ protocol DriverRepository: Sendable {
 protocol CalendarRepository: Sendable {
     func events(for series: RaceSeries) async throws -> [RaceEvent]
     func allEvents() async throws -> [RaceEvent]
+    func freshnessWarning() async -> String?
+}
+
+extension CalendarRepository {
+    func freshnessWarning() async -> String? { nil }
 }
 
 protocol ResultRepository: Sendable {

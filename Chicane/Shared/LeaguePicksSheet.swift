@@ -12,6 +12,8 @@ struct LeaguePicksSheet: View {
     let championPicks: [SeasonChampionPick]
     let drivers: [Driver]
     var showsChampionPicks = false
+    var eventAliases: Set<String> = []
+    var isHistoryReview = false
 
     private var tint: Color {
         ChicaneTheme.seriesColor(event.series)
@@ -26,7 +28,7 @@ struct LeaguePicksSheet: View {
     }
 
     private var initialDetent: PresentationDetent {
-        horizontalSizeClass == .regular ? .large : compactDetent
+        horizontalSizeClass == .regular || isHistoryReview ? .large : compactDetent
     }
 
     private var presentationDetents: Set<PresentationDetent> {
@@ -46,7 +48,7 @@ struct LeaguePicksSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 18)
             }
-            .navigationTitle("League picks")
+            .navigationTitle(isHistoryReview ? "Saved picks" : "League picks")
             .navigationBarTitleDisplayMode(.inline)
             .chicaneBackground()
             .toolbar {
@@ -72,6 +74,14 @@ struct LeaguePicksSheet: View {
             Text("\(event.series.shortTitle) podium picks")
                 .font(ChicaneTypography.subtitle)
                 .foregroundStyle(.secondary)
+            if isHistoryReview {
+                Text("\(event.season) · Round \(event.round) · \(DateFormatter.dayMonthYear.string(from: event.raceDate))")
+                    .font(ChicaneTypography.caption)
+                    .foregroundStyle(.secondary)
+                Text("Read only")
+                    .font(ChicaneTypography.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -102,7 +112,7 @@ struct LeaguePicksSheet: View {
 
                 Spacer()
 
-                statusBadge(title: pick == nil ? "Open" : "Ready", tint: pick == nil ? .secondary : tint)
+                statusBadge(title: isHistoryReview && pick?.isLocked == true ? "Locked" : (pick == nil ? "Open" : "Ready"), tint: pick == nil ? .secondary : tint)
             }
 
             if let pick {
@@ -192,7 +202,7 @@ struct LeaguePicksSheet: View {
     private func podiumPick(for player: Player) -> RacePick? {
         picks.first {
             $0.isComplete && $0.series == event.series &&
-            $0.eventID == event.id &&
+            ($0.eventID == event.id || eventAliases.contains($0.eventID)) &&
             $0.playerID == player.id
         }
     }

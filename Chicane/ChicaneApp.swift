@@ -53,6 +53,14 @@ struct ChicaneApp: App {
             let calendarRepository: any CalendarRepository
             if scenario == .foregroundCalendarRefresh {
                 calendarRepository = UITestForegroundCalendarRepository()
+            } else if scenario == .cachedCalendar {
+                let cacheURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("ChicaneUITests/\(runID)/CalendarCache", isDirectory: true)
+                calendarRepository = FallbackCalendarRepository(
+                    primary: UITestOfflineCalendarRepository(isOffline: launchEnvironment["CHICANE_UI_TEST_OFFLINE_CALENDAR"] == "1"),
+                    fallback: UITestForegroundCalendarRepository(),
+                    cacheDirectoryURL: cacheURL
+                )
             } else {
                 calendarRepository = UITestCalendarRepository(scenario: scenario)
             }
@@ -80,7 +88,8 @@ struct ChicaneApp: App {
             ),
             calendarRepository: FallbackCalendarRepository(
                 primary: onlineCalendar,
-                fallback: bundledCalendar
+                fallback: bundledCalendar,
+                cacheDirectoryURL: FallbackCalendarRepository.defaultCacheDirectoryURL
             ),
             resultRepository: onlineResults,
             championshipRepository: onlineChampionships,
@@ -122,8 +131,20 @@ struct ChicaneApp: App {
             var state = PersistedState.default
             state.players = [Player(id: UITestFixtures.playerID, name: "UITest Player")]
             switch scenario {
-            case .default, .multiRaceWeekend, .singleRaceWeekend, .foregroundCalendarRefresh:
+            case .default, .multiRaceWeekend, .singleRaceWeekend, .foregroundCalendarRefresh, .cachedCalendar:
                 break
+            case .historyInspection:
+                state.players.append(Player(id: UITestFixtures.rivalID, name: "UITest Rival"))
+                for series in RaceSeries.allCases {
+                    let eventID = series == .formula1 ? UITestFixtures.eventID : "ui-mgp-r1"
+                    let ids = series == .formula1
+                        ? [UITestFixtures.driver1ID, UITestFixtures.driver2ID, UITestFixtures.driver3ID]
+                        : ["ui-mgp-bagnaia", "ui-mgp-martin", "ui-mgp-marquez"]
+                    state.results.append(RaceResult(series: series, eventID: eventID, podium: Podium(p1: ids[0], p2: ids[1], p3: ids[2]), isLocked: true, updatedAt: .now))
+                    for player in state.players {
+                        state.picks.append(RacePick(id: UUID(), series: series, eventID: eventID, playerID: player.id, podium: Podium(p1: ids[1], p2: ids[2], p3: ids[0]), isLocked: true, updatedAt: .now))
+                    }
+                }
             case .seasonArchive, .pendingSeasonArchive:
                 state.players.append(Player(id: UITestFixtures.rivalID, name: "UITest Rival"))
                 state.settings.playerBetTextByPlayerID[UITestFixtures.playerID] = "Winner chooses dinner"
@@ -202,6 +223,8 @@ private enum UITestScenario: String {
     case seasonArchive = "season_archive"
     case pendingSeasonArchive = "pending_season_archive"
     case foregroundCalendarRefresh = "foreground_calendar_refresh"
+    case cachedCalendar = "cached_calendar"
+    case historyInspection = "history_inspection"
 }
 
 private enum UITestFixtures {
@@ -258,7 +281,7 @@ private struct UITestCalendarRepository: CalendarRepository {
                 daysUntilRace = 6
             case .singleRaceWeekend:
                 daysUntilRace = 14
-            case .default, .lockedGates, .foregroundCalendarRefresh:
+            case .default, .lockedGates, .foregroundCalendarRefresh, .cachedCalendar, .historyInspection:
                 daysUntilRace = 10
             }
             return [
@@ -310,6 +333,21 @@ private actor UITestForegroundCalendarRepository: CalendarRepository {
         let f1 = try await events(for: .formula1)
         let motoGP = try await events(for: .motoGP)
         return (f1 + motoGP).sorted { $0.raceDate < $1.raceDate }
+    }
+}
+
+private struct UITestOfflineCalendarRepository: CalendarRepository {
+    let isOffline: Bool
+
+    func events(for series: RaceSeries) async throws -> [RaceEvent] {
+        if isOffline { throw URLError(.notConnectedToInternet) }
+        return try await UITestCalendarRepository(scenario: .default).events(for: series)
+    }
+
+    func allEvents() async throws -> [RaceEvent] {
+        let f1 = try await events(for: .formula1)
+        let motoGP = try await events(for: .motoGP)
+        return f1 + motoGP
     }
 }
 

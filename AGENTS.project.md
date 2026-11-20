@@ -43,7 +43,7 @@
   - Next-race countdown should prefer official race-session start times (F1 race page session start; MotoGP `RAC` session date) rather than day-level placeholders or weekend-end timestamps.
   - The widget reads an atomic calendar/results/cancellations snapshot from the shared App Group's Library/Application Support directory. Publish live event identities and start times together; filter canceled/settled races before selecting the next pending race, and never let a result advance a race before its scheduled start. The bundled calendar is a fallback until the app supplies its first snapshot.
   - Official championship leaders (F1 + MotoGP top 3) refresh from official sources on app reload and after each successful "Fetch Results".
-  - Seed data from bundled JSON in `Chicane/Resources/Seed` when online fetch fails.
+  - Calendar fallback uses the last successful per-series atomic calendar cache, then bundled JSON, with a persistent Weekend notice. Participant lists fall back to bundled JSON. See [seed maintenance](docs/SEED_MAINTENANCE.md).
   - User state persisted to application-support JSON file with atomic writes.
 - Schema 7 adds durable partial/cleared race-pick drafts and timestamped, reversible race cancellations. Incomplete drafts never score or count as ready. Canceled races keep their predictions as void, award no points, are skipped by Weekend/widgets, and count as settled in archives. Undo is a persisted status update, so stale devices cannot resurrect cancellation.
 - Schema 6 adds self-contained season archives and explicit official-result provenance. A fetched official finale creates that series' archive; missing race results or a missing confirmed champion keep it pending. Combined reviews are final only when both series are complete.
@@ -84,7 +84,7 @@
 - The generic lock-flow UI-test task is implemented in `ChicaneUITests/ChicaneUITests.swift`, including locked results, disabled Weekend picks, and champion lock behavior.
 - Parser and repository coverage exists in `ChicaneTests/F1HTMLParserTests.swift`, `OnlineChampionshipRepositoryTests.swift`, `FallbackRepositoryTests.swift`, and `LocalSeasonRepositoryTests.swift`. Cases include malformed/missing HTML fields, date/season parsing, MotoGP payload shapes, fallback behavior, and local persistence. Retire the generic missing-test tasks; add specific gaps only when identified.
 - This October 18, 2026 status correction is based on source inspection, not a new test run or a claim of exhaustive coverage.
-- Remaining calendar/driver seed-update documentation is tracked in [#10](https://github.com/donnoel/Chicane/issues/10).
+- [Seed maintenance](docs/SEED_MAINTENANCE.md) covers manual updates, source references, stable identities, race-start checks and isolated fallback validation.
 - GitHub [Issues](https://github.com/donnoel/Chicane/issues) owns outstanding work, priority, and status. Keep these coverage notes as evidence, not a second task list. Do not reopen retired generic test tasks without a concrete new gap.
 
 ## Output expectations per patch

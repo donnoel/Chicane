@@ -16,6 +16,8 @@ final class ChicaneUITests: XCTestCase {
         case seasonArchive = "season_archive"
         case pendingSeasonArchive = "pending_season_archive"
         case foregroundCalendarRefresh = "foreground_calendar_refresh"
+        case cachedCalendar = "cached_calendar"
+        case historyInspection = "history_inspection"
     }
 
     private enum Tab {
@@ -262,6 +264,68 @@ final class ChicaneUITests: XCTestCase {
         let firstPick = app.buttons["Position 1 selection"]
         XCTAssertTrue(firstPick.waitForExistence(timeout: Timeout.medium))
         XCTAssertTrue((firstPick.value as? String)?.contains("Francesco Bagnaia") == true)
+    }
+
+    func testCorrectedCalendarAndPicksSurviveRepeatedOfflineColdStarts() throws {
+        let runID = UUID().uuidString
+        var app = makeApp(scenario: .cachedCalendar, runID: runID)
+        app.launch()
+        XCTAssertTrue(app.staticTexts["WeekendRaceTitle"].waitForExistence(timeout: Timeout.medium))
+        XCTAssertEqual(app.staticTexts["WeekendRaceTitle"].label, "UI Test Grand Prix")
+        completeWeekendPick(in: app, playerName: "UITest Player")
+        XCTAssertTrue(app.staticTexts["Ready"].waitForExistence(timeout: Timeout.medium))
+        for _ in 0..<2 {
+            app.terminate()
+            app = makeApp(scenario: .cachedCalendar, runID: runID, preserveState: true)
+            app.launchEnvironment["CHICANE_UI_TEST_OFFLINE_CALENDAR"] = "1"
+            app.launch()
+            XCTAssertTrue(app.staticTexts["WeekendRaceTitle"].waitForExistence(timeout: Timeout.medium))
+            XCTAssertEqual(app.staticTexts["WeekendRaceTitle"].label, "UI Test Grand Prix")
+            let notice = app.descendants(matching: .any)["CalendarFreshnessNotice"]
+            XCTAssertTrue(notice.waitForExistence(timeout: Timeout.medium))
+            XCTAssertTrue(notice.label.contains("Using saved Formula 1 calendar"))
+            XCTAssertTrue(app.staticTexts["Ready"].exists)
+        }
+    }
+
+    func testEventHistoryOpensAllPlayersZeroPointPicksAndPreservesPosition() throws {
+        let app = makeApp(scenario: .historyInspection)
+        verifyEventHistoryInspection(in: app)
+    }
+
+    func testEventHistoryInspectionWithLargestAccessibilityText() throws {
+        let app = makeApp(scenario: .historyInspection)
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        verifyEventHistoryInspection(in: app)
+    }
+
+    private func verifyEventHistoryInspection(in app: XCUIApplication) {
+        // An argument-domain override exercises device filtering without leaving
+        // a persistent preference behind for another test or app launch.
+        app.launchArguments += ["-selectedDevicePlayerID", "11111111-1111-1111-1111-111111111111"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.buttons[Tab.standings].waitForExistence(timeout: Timeout.medium))
+        app.tabBars.buttons[Tab.standings].tap()
+        for (eventID, expectedDriver) in [("ui-f1-r1", "Lando Norris (McLaren)"), ("ui-mgp-r1", "Jorge Martin (Aprilia)")] {
+            let event = app.buttons["EventHistory-\(eventID)"]
+            scrollToElementIfNeeded(event, in: app)
+            XCTAssertTrue(event.isHittable)
+            XCTAssertTrue(event.label.contains("UITest Player, 0 points"))
+            XCTAssertTrue(event.label.contains("UITest Rival, 0 points"))
+            let originalY = event.frame.minY
+            event.tap()
+            XCTAssertTrue(app.navigationBars["Saved picks"].waitForExistence(timeout: Timeout.medium))
+            XCTAssertTrue(app.staticTexts["UITest Player"].exists)
+            XCTAssertTrue(app.staticTexts["UITest Rival"].exists)
+            XCTAssertTrue(app.staticTexts[expectedDriver].firstMatch.exists)
+            XCTAssertEqual(app.staticTexts.matching(identifier: "Locked").count, 2)
+            XCTAssertFalse(app.buttons["Position 1 selection"].exists)
+            app.buttons["Done"].tap()
+            XCTAssertTrue(event.waitForExistence(timeout: Timeout.medium))
+            XCTAssertTrue(event.isHittable)
+            XCTAssertEqual(event.frame.minY, originalY, accuracy: 5)
+            XCTAssertTrue(event.label.contains("UITest Player, 0 points"))
+        }
     }
 
     func testWeekendHeroCyclesRacesInStartOrderAndPreservesSavedPicks() throws {

@@ -31,6 +31,12 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 18) {
                 if let selectedEvent {
                     hero(for: selectedEvent)
+                    if let warning = viewModel.calendarWarning {
+                        Label(warning, systemImage: "wifi.exclamationmark")
+                            .font(ChicaneTypography.footnote)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("CalendarFreshnessNotice")
+                    }
                     pickFlow(for: selectedEvent)
                     standingsPreview
                     allRacesLink

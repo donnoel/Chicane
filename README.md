@@ -119,7 +119,7 @@ xcodebuild -scheme Chicane -project Chicane.xcodeproj -destination 'platform=iOS
 1. App launches and loads local season state.
 2. If a shared league code is configured, it syncs the latest shared state from iCloud.
 3. Driver/rider lists and calendars refresh from online sources when available.
-4. If network fetch fails, bundled seed JSON is used automatically.
+4. If calendar fetch fails, the last successful saved calendar is used, then bundled JSON if none is readable; Weekend identifies offline calendar use. Participant lists fall back to bundled seed JSON.
 5. Users enter season champion picks and race picks for each player.
 6. Local changes save immediately, then sync back to the shared iCloud league in the background.
 7. While the app is active in a shared league, it automatically re-syncs periodically so updates from other phones appear without opening Settings.
@@ -169,6 +169,8 @@ Online-first with offline fallback:
 - **Bundled seed data** (fallback):
   - `Chicane/Resources/Seed/drivers.json`
   - `Chicane/Resources/Seed/calendar.json`
+
+See [Seed maintenance](docs/SEED_MAINTENANCE.md) for manual updates, official references, stable IDs, race-start checks, validation, and isolated offline testing.
 
 <a id="project-structure"></a>
 
@@ -228,7 +230,7 @@ Chicane/
 
 ## 📚 Documentation
 
-GitHub [Issues](https://github.com/donnoel/Chicane/issues) is the source of truth for outstanding work, priorities, and status. Documentation remains the reference for behavior, specifications, and verification evidence; it is not a separate backlog. See [#9](https://github.com/donnoel/Chicane/issues/9) for Event History navigation and [#10](https://github.com/donnoel/Chicane/issues/10) for seed-update documentation. These links identify work, not completed implementation.
+GitHub [Issues](https://github.com/donnoel/Chicane/issues) is the source of truth for outstanding work, priorities, and status. Documentation remains the reference for behavior, specifications, and verification evidence; it is not a separate backlog. Event History opens read-only saved picks for all players; [seed maintenance](docs/SEED_MAINTENANCE.md) documents the bundled-data workflow.
 
 - [Repository guidance](AGENTS.md)
 - [Project guide](AGENTS.project.md)
